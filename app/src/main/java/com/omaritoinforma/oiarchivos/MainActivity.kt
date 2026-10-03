@@ -26,22 +26,26 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         vm.receive(intent)
         setContent {
-            val dark = when (vm.themeMode) {
-                ThemeMode.SYSTEM -> isSystemInDarkTheme()
-                ThemeMode.LIGHT -> false
-                ThemeMode.DARK -> true
-            }
+            val dark =
+                when (vm.themeMode) {
+                    ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                    ThemeMode.LIGHT -> false
+                    ThemeMode.DARK -> true
+                }
             DisposableEffect(dark) {
                 enableEdgeToEdge(
-                    statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { dark },
+                    statusBarStyle =
+                        SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { dark },
                     navigationBarStyle = SystemBarStyle.auto(LIGHT_SCRIM, DARK_SCRIM) { dark },
                 )
                 onDispose {}
             }
             OiTheme(dark = dark) {
-                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                    AppRoot(vm)
-                }
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background) {
+                        AppRoot(vm)
+                    }
             }
         }
     }

@@ -71,7 +71,12 @@ import com.omaritoinforma.oiarchivos.util.PathUtil
 import com.omaritoinforma.oiarchivos.util.formatSize
 import kotlin.math.roundToInt
 
-private data class Tile(val label: String, val icon: ImageVector, val color: Color, val onClick: () -> Unit)
+private data class Tile(
+    val label: String,
+    val icon: ImageVector,
+    val color: Color,
+    val onClick: () -> Unit
+)
 
 @Composable
 fun HomeScreen(vm: MainViewModel, openDrawer: () -> Unit) {
@@ -80,9 +85,13 @@ fun HomeScreen(vm: MainViewModel, openDrawer: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("OI Archivos") },
-                navigationIcon = { IconButton(onClick = openDrawer) { Icon(Icons.Filled.Menu, "Menú") } },
+                navigationIcon = {
+                    IconButton(onClick = openDrawer) { Icon(Icons.Filled.Menu, "Menú") }
+                },
                 actions = {
-                    IconButton(onClick = { vm.goTo(Screen.Settings) }) { Icon(Icons.Filled.Settings, "Ajustes") }
+                    IconButton(onClick = { vm.goTo(Screen.Settings) }) {
+                        Icon(Icons.Filled.Settings, "Ajustes")
+                    }
                 },
             )
         },
@@ -104,13 +113,23 @@ fun HomeScreen(vm: MainViewModel, openDrawer: () -> Unit) {
                 items(vm.bookmarks.toList(), key = { "bm:$it" }) { b ->
                     ListItem(
                         headlineContent = { Text(PathUtil.displayName(b)) },
-                        supportingContent = { Text(b, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        leadingContent = { Icon(Icons.Filled.Bookmark, null, tint = MaterialTheme.colorScheme.primary) },
+                        supportingContent = {
+                            Text(b, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        },
+                        leadingContent = {
+                            Icon(
+                                Icons.Filled.Bookmark,
+                                null,
+                                tint = MaterialTheme.colorScheme.primary)
+                        },
                         trailingContent = {
-                            IconButton(onClick = { vm.toggleBookmark(b) }) { Icon(Icons.Filled.Close, "Quitar marcador") }
+                            IconButton(onClick = { vm.toggleBookmark(b) }) {
+                                Icon(Icons.Filled.Close, "Quitar marcador")
+                            }
                         },
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { vm.openFolder(b) },
+                        modifier =
+                            Modifier.clip(RoundedCornerShape(12.dp)).clickable { vm.openFolder(b) },
                     )
                 }
             }
@@ -118,36 +137,50 @@ fun HomeScreen(vm: MainViewModel, openDrawer: () -> Unit) {
     }
 }
 
-private fun categoryTiles(vm: MainViewModel): List<Tile> = FileCategory.entries.map { c ->
-    val (icon, color) = when (c) {
-        FileCategory.IMAGES -> Icons.Filled.Image to Color(0xFF43A047)
-        FileCategory.MUSIC -> Icons.Filled.MusicNote to Color(0xFF8E24AA)
-        FileCategory.VIDEOS -> Icons.Filled.Movie to Color(0xFFE53935)
-        FileCategory.DOCUMENTS -> Icons.Filled.Description to Color(0xFF1E88E5)
-        FileCategory.APKS -> Icons.Filled.Android to Color(0xFF7CB342)
-        FileCategory.ARCHIVES -> Icons.Filled.Archive to Color(0xFF8D6E63)
-        FileCategory.RECENT -> Icons.Filled.History to Color(0xFFFB8C00)
+private fun categoryTiles(vm: MainViewModel): List<Tile> =
+    FileCategory.entries.map { c ->
+        val (icon, color) =
+            when (c) {
+                FileCategory.IMAGES -> Icons.Filled.Image to Color(0xFF43A047)
+                FileCategory.MUSIC -> Icons.Filled.MusicNote to Color(0xFF8E24AA)
+                FileCategory.VIDEOS -> Icons.Filled.Movie to Color(0xFFE53935)
+                FileCategory.DOCUMENTS -> Icons.Filled.Description to Color(0xFF1E88E5)
+                FileCategory.APKS -> Icons.Filled.Android to Color(0xFF7CB342)
+                FileCategory.ARCHIVES -> Icons.Filled.Archive to Color(0xFF8D6E63)
+                FileCategory.RECENT -> Icons.Filled.History to Color(0xFFFB8C00)
+            }
+        Tile(c.label, icon, color) { vm.navigate(Location.Category(c)) }
     }
-    Tile(c.label, icon, color) { vm.navigate(Location.Category(c)) }
-}
 
 @Suppress("DEPRECATION")
-private fun publicDir(type: String): String = Environment.getExternalStoragePublicDirectory(type).absolutePath
+private fun publicDir(type: String): String =
+    Environment.getExternalStoragePublicDirectory(type).absolutePath
 
-private fun quickTiles(vm: MainViewModel): List<Tile> = listOf(
-    Tile("Descargas", Icons.Filled.Download, Color(0xFF1E88E5)) { vm.openFolder(publicDir(Environment.DIRECTORY_DOWNLOADS)) },
-    Tile("Cámara", Icons.Filled.CameraAlt, Color(0xFF00897B)) { vm.openFolder(publicDir(Environment.DIRECTORY_DCIM)) },
-    Tile("Imágenes", Icons.Filled.Collections, Color(0xFF43A047)) { vm.openFolder(publicDir(Environment.DIRECTORY_PICTURES)) },
-    Tile("Documentos", Icons.Filled.Description, Color(0xFF3949AB)) { vm.openFolder(publicDir(Environment.DIRECTORY_DOCUMENTS)) },
-    Tile("Papelera", Icons.Filled.Delete, Color(0xFF757575)) { vm.goTo(Screen.Trash) },
-    Tile("Apps", Icons.Filled.Apps, Color(0xFF7CB342)) { vm.goTo(Screen.Apps) },
-    Tile("Red / nube", Icons.Filled.Dns, Color(0xFF1E88E5)) { vm.goTo(Screen.Connections) },
-    Tile("Analizar", Icons.Filled.SdCard, Color(0xFF8E24AA)) { vm.goTo(Screen.Analysis(PathUtil.internalRoot)) },
-    Tile("Historial", Icons.Filled.History, Color(0xFFFB8C00)) { vm.goTo(Screen.History) },
-    Tile("Transferir", Icons.Filled.Download, Color(0xFF00897B)) { vm.goTo(Screen.Transfers) },
-    Tile("Raíz", Icons.Filled.Dns, Color(0xFF6D4C41)) { vm.openFolder("/") },
-    Tile("Ajustes", Icons.Filled.Settings, Color(0xFF546E7A)) { vm.goTo(Screen.Settings) },
-)
+private fun quickTiles(vm: MainViewModel): List<Tile> =
+    listOf(
+        Tile("Descargas", Icons.Filled.Download, Color(0xFF1E88E5)) {
+            vm.openFolder(publicDir(Environment.DIRECTORY_DOWNLOADS))
+        },
+        Tile("Cámara", Icons.Filled.CameraAlt, Color(0xFF00897B)) {
+            vm.openFolder(publicDir(Environment.DIRECTORY_DCIM))
+        },
+        Tile("Imágenes", Icons.Filled.Collections, Color(0xFF43A047)) {
+            vm.openFolder(publicDir(Environment.DIRECTORY_PICTURES))
+        },
+        Tile("Documentos", Icons.Filled.Description, Color(0xFF3949AB)) {
+            vm.openFolder(publicDir(Environment.DIRECTORY_DOCUMENTS))
+        },
+        Tile("Papelera", Icons.Filled.Delete, Color(0xFF757575)) { vm.goTo(Screen.Trash) },
+        Tile("Apps", Icons.Filled.Apps, Color(0xFF7CB342)) { vm.goTo(Screen.Apps) },
+        Tile("Red / nube", Icons.Filled.Dns, Color(0xFF1E88E5)) { vm.goTo(Screen.Connections) },
+        Tile("Analizar", Icons.Filled.SdCard, Color(0xFF8E24AA)) {
+            vm.goTo(Screen.Analysis(PathUtil.internalRoot))
+        },
+        Tile("Historial", Icons.Filled.History, Color(0xFFFB8C00)) { vm.goTo(Screen.History) },
+        Tile("Transferir", Icons.Filled.Download, Color(0xFF00897B)) { vm.goTo(Screen.Transfers) },
+        Tile("Raíz", Icons.Filled.Dns, Color(0xFF6D4C41)) { vm.openFolder("/") },
+        Tile("Ajustes", Icons.Filled.Settings, Color(0xFF546E7A)) { vm.goTo(Screen.Settings) },
+    )
 
 @Composable
 private fun TileGrid(tiles: List<Tile>) {
@@ -164,7 +197,11 @@ private fun TileGrid(tiles: List<Tile>) {
 @Composable
 private fun TileView(t: Tile, modifier: Modifier) {
     Column(
-        modifier = modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = t.onClick).padding(vertical = 8.dp),
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(onClick = t.onClick)
+                .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
@@ -174,7 +211,11 @@ private fun TileView(t: Tile, modifier: Modifier) {
             Icon(t.icon, contentDescription = null, tint = t.color)
         }
         Spacer(Modifier.height(6.dp))
-        Text(t.label, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            t.label,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -199,7 +240,9 @@ private fun StorageCard(v: StorageVolumeInfo, onClick: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Text("${(fraction * 100).roundToInt()} %", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    "${(fraction * 100).roundToInt()} %",
+                    style = MaterialTheme.typography.titleMedium)
             }
             Spacer(Modifier.height(12.dp))
             LinearProgressIndicator(

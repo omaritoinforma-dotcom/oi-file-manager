@@ -12,78 +12,100 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.omaritoinforma.oiarchivos.data.AppInfo
 import com.omaritoinforma.oiarchivos.data.AppsRepo
+import com.omaritoinforma.oiarchivos.data.ArchiveTools
 import com.omaritoinforma.oiarchivos.data.Categories
 import com.omaritoinforma.oiarchivos.data.Clipboard
 import com.omaritoinforma.oiarchivos.data.Conflict
+import com.omaritoinforma.oiarchivos.data.CryptoTools
 import com.omaritoinforma.oiarchivos.data.FileCategory
 import com.omaritoinforma.oiarchivos.data.FileItem
 import com.omaritoinforma.oiarchivos.data.FileOps
 import com.omaritoinforma.oiarchivos.data.FileRepo
 import com.omaritoinforma.oiarchivos.data.Location
 import com.omaritoinforma.oiarchivos.data.OpProgress
+import com.omaritoinforma.oiarchivos.data.OperationResult
 import com.omaritoinforma.oiarchivos.data.Prefs
 import com.omaritoinforma.oiarchivos.data.RecycleBin
 import com.omaritoinforma.oiarchivos.data.RenameRules
+import com.omaritoinforma.oiarchivos.data.SafeFiles
 import com.omaritoinforma.oiarchivos.data.SortBy
 import com.omaritoinforma.oiarchivos.data.Sorter
 import com.omaritoinforma.oiarchivos.data.StorageInfo
 import com.omaritoinforma.oiarchivos.data.StorageVolumeInfo
 import com.omaritoinforma.oiarchivos.data.ThemeMode
+import com.omaritoinforma.oiarchivos.data.TransferService
 import com.omaritoinforma.oiarchivos.data.ViewMode
-import com.omaritoinforma.oiarchivos.data.ZipTools
+import com.omaritoinforma.oiarchivos.util.FileKind
+import com.omaritoinforma.oiarchivos.util.Kinds
 import com.omaritoinforma.oiarchivos.util.Media
 import com.omaritoinforma.oiarchivos.util.PathUtil
 import com.omaritoinforma.oiarchivos.util.Perms
-import kotlinx.coroutines.CancellationException
+import java.io.File
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.omaritoinforma.oiarchivos.data.ArchiveTools
-import com.omaritoinforma.oiarchivos.data.TransferService
-import com.omaritoinforma.oiarchivos.data.OperationResult
-import com.omaritoinforma.oiarchivos.data.CryptoTools
-import com.omaritoinforma.oiarchivos.data.SafeFiles
-import com.omaritoinforma.oiarchivos.util.Kinds
-import com.omaritoinforma.oiarchivos.util.FileKind
-import java.io.File
-import java.util.concurrent.atomic.AtomicLong
 
 sealed interface Screen {
     data object Home : Screen
+
     data object Browser : Screen
+
     data class Editor(val path: String) : Screen
+
     data object Apps : Screen
+
     data object Trash : Screen
+
     data object Settings : Screen
+
     data class Viewer(val path: String) : Screen
+
     data class Archive(val path: String) : Screen
+
     data class Analysis(val root: String) : Screen
+
     data class AdvancedSearch(val root: String) : Screen
+
     data object Connections : Screen
+
     data class Remote(val id: String) : Screen
+
     data class Documents(val uri: String) : Screen
+
     data object Sharing : Screen
+
     data object Transfers : Screen
+
     data object History : Screen
+
     data object RootTools : Screen
+
     data class VideoEdit(val path: String) : Screen
+
     data class DualPane(val path: String) : Screen
 }
 
-data class PendingPaste(val sources: List<File>, val dest: File, val move: Boolean, val conflicts: Int)
+data class PendingPaste(
+    val sources: List<File>,
+    val dest: File,
+    val move: Boolean,
+    val conflicts: Int
+)
 
 /** Una pestaña (ventana) del explorador, con su propio historial y selección. */
 class TabState(start: Location) {
     val id: Long = nextId.incrementAndGet()
     val history = mutableStateListOf(start)
-    val location: Location get() = history.last()
+    val location: Location
+        get() = history.last()
+
     val items = mutableStateListOf<FileItem>()
     var loading by mutableStateOf(false)
     val selected = mutableStateMapOf<String, FileItem>()
@@ -97,50 +119,67 @@ class TabState(start: Location) {
 }
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
-    private val ctx: Context get() = getApplication()
+    private val ctx: Context
+        get() = getApplication()
+
     private val prefs = Prefs(app)
 
     var hasPermission by mutableStateOf(Perms.hasStorage(app))
         private set
 
     val screens = mutableStateListOf<Screen>(Screen.Home)
-    val screen: Screen get() = screens.last()
+    val screen: Screen
+        get() = screens.last()
 
     val tabs = mutableStateListOf<TabState>()
     var activeTab by mutableIntStateOf(0)
         private set
-    val currentTab: TabState? get() = tabs.getOrNull(activeTab)
+
+    val currentTab: TabState?
+        get() = tabs.getOrNull(activeTab)
 
     var viewMode by mutableStateOf(prefs.viewMode)
         private set
+
     var sortBy by mutableStateOf(prefs.sortBy)
         private set
+
     var ascending by mutableStateOf(prefs.ascending)
         private set
+
     var showHidden by mutableStateOf(prefs.showHidden)
         private set
+
     var useTrash by mutableStateOf(prefs.useTrash)
         private set
+
     var themeMode by mutableStateOf(prefs.themeMode)
         private set
+
     var gridSize by mutableIntStateOf(prefs.gridSize)
         private set
-    fun updateGridSize(size: Int) { gridSize=size; prefs.gridSize=size }
+
+    fun updateGridSize(size: Int) {
+        gridSize = size
+        prefs.gridSize = size
+    }
+
     val bookmarks = mutableStateListOf<String>().apply { addAll(prefs.bookmarks) }
 
     val volumes = mutableStateListOf<StorageVolumeInfo>()
     var clipboard by mutableStateOf<Clipboard?>(null)
     var pendingPaste by mutableStateOf<PendingPaste?>(null)
         private set
+
     var message by mutableStateOf<String?>(null)
 
     private val _progress = TransferService.progress
     val progress: StateFlow<OpProgress?> = _progress.asStateFlow()
 
-
     val apps = mutableStateListOf<AppInfo>()
     var appsLoading by mutableStateOf(false)
         private set
+
     val trash = mutableStateListOf<RecycleBin.Entry>()
 
     init {
@@ -161,25 +200,48 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private var incoming: android.content.Intent? = null
 
     fun receive(intent: android.content.Intent) {
-        intent.getStringExtra("folder")?.let { if(File(it).isDirectory)openFolder(it) }
-        if(intent.action in setOf(android.content.Intent.ACTION_SEND,android.content.Intent.ACTION_SEND_MULTIPLE)) { incoming=intent; if(hasPermission)importIncoming() }
+        intent.getStringExtra("folder")?.let { if (File(it).isDirectory) openFolder(it) }
+        if (intent.action in
+            setOf(
+                android.content.Intent.ACTION_SEND, android.content.Intent.ACTION_SEND_MULTIPLE)) {
+            incoming = intent
+            if (hasPermission) importIncoming()
+        }
     }
 
     private fun importIncoming() {
-        val intent=incoming ?: return
-        incoming=null
-        @Suppress("DEPRECATION") val streams: List<android.net.Uri> = if(intent.action==android.content.Intent.ACTION_SEND_MULTIPLE)intent.getParcelableArrayListExtra<android.net.Uri>(android.content.Intent.EXTRA_STREAM).orEmpty() else listOfNotNull(intent.getParcelableExtra<android.net.Uri>(android.content.Intent.EXTRA_STREAM))
-        val text=intent.getCharSequenceExtra(android.content.Intent.EXTRA_TEXT)?.toString()
+        val intent = incoming ?: return
+        incoming = null
+        @Suppress("DEPRECATION")
+        val streams: List<android.net.Uri> =
+            if (intent.action == android.content.Intent.ACTION_SEND_MULTIPLE)
+                intent
+                    .getParcelableArrayListExtra<android.net.Uri>(
+                        android.content.Intent.EXTRA_STREAM)
+                    .orEmpty()
+            else
+                listOfNotNull(
+                    intent.getParcelableExtra<android.net.Uri>(android.content.Intent.EXTRA_STREAM))
+        val text = intent.getCharSequenceExtra(android.content.Intent.EXTRA_TEXT)?.toString()
         runTask("Guardando contenido compartido") { report ->
-            val dest=File(PathUtil.internalRoot,"Download/Compartido con OI").apply { mkdirs() }
-            val out=ArrayList<File>()
-            for(uri in streams) {
+            val dest = File(PathUtil.internalRoot, "Download/Compartido con OI").apply { mkdirs() }
+            val out = ArrayList<File>()
+            for (uri in streams) {
                 currentCoroutineContext().ensureActive()
-                val document=androidx.documentfile.provider.DocumentFile.fromSingleUri(ctx,uri) ?: throw java.io.IOException("No se pudo abrir el archivo compartido")
-                out += com.omaritoinforma.oiarchivos.ui.screens.importDocument(ctx,document,dest,report)
+                val document =
+                    androidx.documentfile.provider.DocumentFile.fromSingleUri(ctx, uri)
+                        ?: throw java.io.IOException("No se pudo abrir el archivo compartido")
+                out +=
+                    com.omaritoinforma.oiarchivos.ui.screens.importDocument(
+                        ctx, document, dest, report)
             }
-            if(text!=null) { val target=FileOps.uniqueName(dest,"Compartido-${System.currentTimeMillis()}.txt");SafeFiles.writeAtomic(target) { it.writeText(text) };out+=target }
-            OperationResult("Guardado en Descargas/Compartido con OI (${out.size})",out)
+            if (text != null) {
+                val target =
+                    FileOps.uniqueName(dest, "Compartido-${System.currentTimeMillis()}.txt")
+                SafeFiles.writeAtomic(target) { it.writeText(text) }
+                out += target
+            }
+            OperationResult("Guardado en Descargas/Compartido con OI (${out.size})", out)
         }
     }
 
@@ -188,7 +250,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         hasPermission = Perms.hasStorage(ctx)
         if (hasPermission) {
             refreshVolumes()
-            if(incoming!=null)importIncoming()
+            if (incoming != null) importIncoming()
             if (had && screen == Screen.Browser) refresh()
         }
     }
@@ -241,15 +303,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun navigate(loc: Location, newTab: Boolean = false) {
         val existing = currentTab
-        val tab = if (newTab || existing == null) {
-            TabState(loc).also {
-                tabs.add(it)
-                activeTab = tabs.lastIndex
+        val tab =
+            if (newTab || existing == null) {
+                TabState(loc).also {
+                    tabs.add(it)
+                    activeTab = tabs.lastIndex
+                }
+            } else {
+                if (existing.location != loc) existing.history.add(loc)
+                existing
             }
-        } else {
-            if (existing.location != loc) existing.history.add(loc)
-            existing
-        }
         tab.selected.clear()
         load(tab)
         goTo(Screen.Browser)
@@ -261,11 +324,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun history(): List<String> = prefs.history
-    fun clearHistory() { prefs.history = emptyList() }
+
+    fun clearHistory() {
+        prefs.history = emptyList()
+    }
+
     fun showResults(items: List<FileItem>, root: String, query: String) {
         val tab = TabState(Location.Search(root, query))
         tab.items.addAll(Sorter.sort(items, sortBy, ascending))
-        tabs.add(tab); activeTab = tabs.lastIndex
+        tabs.add(tab)
+        activeTab = tabs.lastIndex
         goTo(Screen.Browser)
     }
 
@@ -275,8 +343,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             file.isDirectory -> openFolder(path)
             ArchiveTools.supports(file) && file.extension != "apk" -> goTo(Screen.Archive(path))
             Kinds.isEditable(file.extension.lowercase()) -> openEditor(path)
-            Kinds.ofExt(file.extension.lowercase()) in setOf(FileKind.IMAGE, FileKind.AUDIO, FileKind.VIDEO, FileKind.PDF) -> goTo(Screen.Viewer(path))
-            else -> com.omaritoinforma.oiarchivos.util.Opener.open(ctx,file)
+            Kinds.ofExt(file.extension.lowercase()) in
+                setOf(FileKind.IMAGE, FileKind.AUDIO, FileKind.VIDEO, FileKind.PDF) ->
+                goTo(Screen.Viewer(path))
+            else -> com.omaritoinforma.oiarchivos.util.Opener.open(ctx, file)
         }
     }
 
@@ -285,21 +355,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         runTask("Pegando desde red / nube") { report ->
             val out = ArrayList<File>()
             com.omaritoinforma.oiarchivos.data.RemoteFiles.connect(clip.connection).use { fs ->
-                for(entry in clip.entries) {
-                    out += com.omaritoinforma.oiarchivos.data.RemoteFiles.download(fs,entry,File(folder),report)
-                    if(clip.move) fs.delete(entry)
+                for (entry in clip.entries) {
+                    out +=
+                        com.omaritoinforma.oiarchivos.data.RemoteFiles.download(
+                            fs, entry, File(folder), report)
+                    if (clip.move) fs.delete(entry)
                 }
             }
-            withContext(Dispatchers.Main) { com.omaritoinforma.oiarchivos.data.NetworkClipboard.value = null }
-            OperationResult("Pegados ${out.size} elementos",out)
+            withContext(Dispatchers.Main) {
+                com.omaritoinforma.oiarchivos.data.NetworkClipboard.value = null
+            }
+            OperationResult("Pegados ${out.size} elementos", out)
         }
     }
 
     fun encrypt(item: FileItem, password: String, decrypt: Boolean) {
-        val target = FileOps.uniqueName(item.file.parentFile!!, if (decrypt) item.name.removeSuffix(".oienc").let { if (it == item.name) "$it.descifrado" else it } else item.name + ".oienc")
+        val target =
+            FileOps.uniqueName(
+                item.file.parentFile!!,
+                if (decrypt)
+                    item.name.removeSuffix(".oienc").let {
+                        if (it == item.name) "$it.descifrado" else it
+                    }
+                else item.name + ".oienc")
         runTask(if (decrypt) "Descifrando" else "Cifrando") { report ->
-            CryptoTools.transform(item.file,target,password.toCharArray(),decrypt,report)
-            OperationResult("Creado «${target.name}». El original se conserva.",listOf(target))
+            CryptoTools.transform(item.file, target, password.toCharArray(), decrypt, report)
+            OperationResult("Creado «${target.name}». El original se conserva.", listOf(target))
         }
     }
 
@@ -332,7 +413,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             screens.remove(Screen.Browser)
             return
         }
-        if (index < activeTab || activeTab > tabs.lastIndex) activeTab = (activeTab - 1).coerceIn(0, tabs.lastIndex)
+        if (index < activeTab || activeTab > tabs.lastIndex)
+            activeTab = (activeTab - 1).coerceIn(0, tabs.lastIndex)
         currentTab?.let { load(it) }
     }
 
@@ -346,37 +428,44 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         tab.items.clear()
         tab.cache[loc]?.let { tab.items.addAll(it) }
         tab.loading = true
-        tab.job = viewModelScope.launch {
-            try {
-                if (loc is Location.Search) {
-                    tab.items.clear()
-                    FileRepo.search(File(loc.root), loc.query, showHidden).collect { tab.items.add(it) }
-                    val sorted = sorted(tab.items.toList(), loc)
-                    tab.items.clear()
-                    tab.items.addAll(sorted)
-                } else {
-                    val list = withContext(Dispatchers.IO) {
-                        when (loc) {
-                            is Location.Folder -> FileRepo.list(File(loc.path), showHidden)
-                            is Location.Category -> runCatching { Categories.query(ctx, loc.category, showHidden) }
-                                .getOrDefault(emptyList<FileItem>())
-                            is Location.Search -> emptyList<FileItem>()
-                        }
-                    }
-                    if (list == null) {
-                        toast("No se puede leer esta carpeta")
+        tab.job =
+            viewModelScope.launch {
+                try {
+                    if (loc is Location.Search) {
                         tab.items.clear()
-                    } else {
-                        val sorted = sorted(list, loc)
+                        FileRepo.search(File(loc.root), loc.query, showHidden).collect {
+                            tab.items.add(it)
+                        }
+                        val sorted = sorted(tab.items.toList(), loc)
                         tab.items.clear()
                         tab.items.addAll(sorted)
-                        tab.cache[loc] = sorted
+                    } else {
+                        val list =
+                            withContext(Dispatchers.IO) {
+                                when (loc) {
+                                    is Location.Folder -> FileRepo.list(File(loc.path), showHidden)
+                                    is Location.Category ->
+                                        runCatching {
+                                                Categories.query(ctx, loc.category, showHidden)
+                                            }
+                                            .getOrDefault(emptyList<FileItem>())
+                                    is Location.Search -> emptyList<FileItem>()
+                                }
+                            }
+                        if (list == null) {
+                            toast("No se puede leer esta carpeta")
+                            tab.items.clear()
+                        } else {
+                            val sorted = sorted(list, loc)
+                            tab.items.clear()
+                            tab.items.addAll(sorted)
+                            tab.cache[loc] = sorted
+                        }
                     }
+                } finally {
+                    if (isActive) tab.loading = false
                 }
-            } finally {
-                if (isActive) tab.loading = false
             }
-        }
     }
 
     private fun sorted(list: List<FileItem>, loc: Location): List<FileItem> =
@@ -473,14 +562,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- Operaciones con archivos ----------------
 
-    private fun currentFolder(): File? = (currentTab?.location as? Location.Folder)?.let { File(it.path) }
+    private fun currentFolder(): File? =
+        (currentTab?.location as? Location.Folder)?.let { File(it.path) }
 
-    private fun nameError(name: String): String? = when {
-        name.isBlank() -> "El nombre no puede estar vacío"
-        !SafeFiles.validName(name.trim()) -> "Nombre de archivo no válido"
-        name.trim() == "." || name.trim() == ".." -> "Nombre no válido"
-        else -> null
-    }
+    private fun nameError(name: String): String? =
+        when {
+            name.isBlank() -> "El nombre no puede estar vacío"
+            !SafeFiles.validName(name.trim()) -> "Nombre de archivo no válido"
+            name.trim() == "." || name.trim() == ".." -> "Nombre no válido"
+            else -> null
+        }
 
     fun create(name: String, folder: Boolean) {
         val dir = currentFolder() ?: return
@@ -543,7 +634,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     changed += target
                 }
             }
-            OpResult("Renombrados: $done" + (if (skipped > 0) " · omitidos: $skipped" else ""), changed)
+            OpResult(
+                "Renombrados: $done" + (if (skipped > 0) " · omitidos: $skipped" else ""), changed)
         }
     }
 
@@ -553,7 +645,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (paths.isEmpty()) return
         clipboard = Clipboard(paths, move)
         t.selected.clear()
-        toast("${paths.size} elemento(s) listos para ${if (move) "mover" else "copiar"}. Ve al destino y toca «Pegar aquí».")
+        toast(
+            "${paths.size} elemento(s) listos para ${if (move) "mover" else "copiar"}. Ve al destino y toca «Pegar aquí».")
     }
 
     fun paste() {
@@ -570,10 +663,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             clipboard = null
             return
         }
-        val conflicts = sources.count { s ->
-            val t = File(dest, s.name)
-            t.exists() && t.canonicalPath != s.canonicalPath
-        }
+        val conflicts =
+            sources.count { s ->
+                val t = File(dest, s.name)
+                t.exists() && t.canonicalPath != s.canonicalPath
+            }
         if (conflicts > 0) pendingPaste = PendingPaste(sources, dest, clip.move, conflicts)
         else doPaste(sources, dest, clip.move, Conflict.RENAME)
     }
@@ -612,7 +706,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun compress(items: List<FileItem>, name: String, password: String = "") {
         val dir = currentFolder() ?: items.firstOrNull()?.file?.parentFile ?: return
-        val clean = name.trim().let { if (it.lowercase().let { n -> n.endsWith(".zip") || n.endsWith(".7z") || n.endsWith(".tar") || n.endsWith(".tar.gz") }) it else "$it.zip" }
+        val clean =
+            name.trim().let {
+                if (it.lowercase().let { n ->
+                    n.endsWith(".zip") ||
+                        n.endsWith(".7z") ||
+                        n.endsWith(".tar") ||
+                        n.endsWith(".tar.gz")
+                })
+                    it
+                else "$it.zip"
+            }
         nameError(clean)?.let {
             toast(it)
             return
@@ -650,14 +754,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** The service owns the operation so leaving the Activity does not cancel it. */
     fun runTask(title: String, block: suspend ((OpProgress) -> Unit) -> OperationResult) {
         try {
-            if (!TransferService.submit(ctx,title,block)) toast("Espera a que termine la operación actual")
-        } catch (e: Exception) { toast(e.message ?: "No se pudo iniciar la operación") }
+            if (!TransferService.submit(ctx, title, block))
+                toast("Espera a que termine la operación actual")
+        } catch (e: Exception) {
+            toast(e.message ?: "No se pudo iniciar la operación")
+        }
     }
 
-    private fun runOp(title: String, onDone: () -> Unit = {}, block: suspend ((OpProgress) -> Unit) -> OpResult) {
+    private fun runOp(
+        title: String,
+        onDone: () -> Unit = {},
+        block: suspend ((OpProgress) -> Unit) -> OpResult
+    ) {
         runTask(title) { report ->
             val result = block(report)
-            OperationResult(result.message,result.changed)
+            OperationResult(result.message, result.changed)
         }
     }
 
@@ -666,9 +777,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun loadApps(includeSystem: Boolean) {
         appsLoading = true
         viewModelScope.launch {
-            val list = withContext(Dispatchers.IO) {
-                runCatching { AppsRepo.list(ctx, includeSystem) }.getOrDefault(emptyList<AppInfo>())
-            }
+            val list =
+                withContext(Dispatchers.IO) {
+                    runCatching { AppsRepo.list(ctx, includeSystem) }
+                        .getOrDefault(emptyList<AppInfo>())
+                }
             apps.clear()
             apps.addAll(list)
             appsLoading = false
@@ -681,7 +794,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val out = ArrayList<File>()
             for ((i, a) in list.withIndex()) {
                 currentCoroutineContext().ensureActive()
-                report(OpProgress("Respaldando apps", a.label, doneFiles = i, totalFiles = list.size))
+                report(
+                    OpProgress("Respaldando apps", a.label, doneFiles = i, totalFiles = list.size))
                 runCatching { AppsRepo.backup(a) }.onSuccess { out += it }
             }
             OpResult("APK guardados en «OI Archivos/Apps» (${out.size} de ${list.size})", out)
@@ -700,11 +814,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun restore(e: RecycleBin.Entry) {
         viewModelScope.launch {
-            val msg = withContext(Dispatchers.IO) {
-                val m = RecycleBin.restore(e)
-                Media.scan(ctx, listOf(File(e.originalPath)))
-                m
-            }
+            val msg =
+                withContext(Dispatchers.IO) {
+                    val m = RecycleBin.restore(e)
+                    Media.scan(ctx, listOf(File(e.originalPath)))
+                    m
+                }
             toast(msg)
             tabs.forEach { it.cache.clear() }
             loadTrash()

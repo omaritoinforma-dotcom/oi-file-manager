@@ -1,76 +1,349 @@
 package com.omaritoinforma.oiarchivos.data
-import kotlinx.coroutines.*
-import org.junit.*
-import org.junit.Assert.*
-import org.junit.rules.TemporaryFolder
+
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.InputStream
+import kotlinx.coroutines.*
+import org.junit.*
+import org.junit.Assert.*
+import org.junit.rules.TemporaryFolder
 
 class FileSafetyTest {
-    @get:Rule val temp=TemporaryFolder()
-    private fun file(parent:File,name:String,text:String)=File(parent,name).apply{writeText(text)}
-    @Test fun invalidNamesAreRejected(){for(name in listOf("",".","..","../x","a\\b","a\u0000b"))assertFalse(name,SafeFiles.validName(name));assertTrue(SafeFiles.validName("foto con acento é.jpg"))}
-    @Test fun archivePathsCannotEscape(){val root=temp.newFolder();for(name in listOf("../escape","x/../../escape","/etc/passwd","C:\\Users\\x","x\\..\\escape")){try{SafeFiles.archiveTarget(root,name);fail(name)}catch(_:IOException){}};assertEquals(File(root,"ok/é.txt"),SafeFiles.archiveTarget(root,"ok/é.txt"))}
-    @Test fun failedAtomicWritePreservesExistingFile(){val target=temp.newFile();target.writeText("original");try{SafeFiles.writeAtomic(target){it.writeText("partial");throw IOException("interrupted")};fail()}catch(_:IOException){};assertEquals("original",target.readText());assertFalse(target.parentFile!!.listFiles()!!.any{it.name.startsWith(".oi-part-")})}
-    @Test fun keepBothUsesNaturalSuffix(){val root=temp.newFolder();file(root,"foto.jpg","1");file(root,"foto (1).jpg","2");assertEquals("foto (2).jpg",FileOps.uniqueName(root,"foto.jpg").name)}
-    @Test fun movingWithSkippedConflictPreservesSkippedOriginal()=runBlocking{val source=temp.newFolder("source");val destination=temp.newFolder("dest");val dir=File(source,"album").apply{mkdir()};file(dir,"same.txt","original");file(dir,"new.txt","new");val existing=File(destination,"album").apply{mkdir()};file(existing,"same.txt","destination");val result=FileOps.transfer(listOf(dir),destination,true,Conflict.SKIP){};assertEquals("original",File(dir,"same.txt").readText());assertFalse(File(dir,"new.txt").exists());assertEquals("destination",File(existing,"same.txt").readText());assertEquals("new",File(existing,"new.txt").readText());assertEquals(1,result.skipped)}
-    @Test fun canceledOverwriteNeverTruncatesDestination()=runBlocking{val source=temp.newFolder();val destination=temp.newFolder();val input=File(source,"large.bin").apply{writeBytes(ByteArray(800000){7})};val output=file(destination,"large.bin","old destination");try{FileOps.transfer(listOf(input),destination,false,Conflict.OVERWRITE){if(it.doneBytes>0)throw CancellationException("cancel")};fail()}catch(_:CancellationException){};assertEquals("old destination",output.readText());assertTrue(input.exists());assertFalse(destination.listFiles()!!.any{it.name.startsWith(".oi-part-")})}
-    @Test fun cannotCopyFolderIntoItself()=runBlocking{val root=temp.newFolder();try{FileOps.transfer(listOf(root),File(root,"inside"),false,Conflict.RENAME){};fail()}catch(_:IOException){};assertFalse(File(root,"inside").exists())}
-    @Test fun symlinksAreNotFollowed(){val root=temp.newFolder();val outside=temp.newFolder();file(outside,"secret","secret");Files.createSymbolicLink(File(root,"link").toPath(),outside.toPath());assertFalse(SafeFiles.walk(root).any{it.name=="secret"});assertEquals(0L,FileOps.measure(listOf(root)).first)}
-    @Test fun zipSlipRemovesOnlyNewExtractionFolder()=runBlocking{val zip=temp.newFile("bad.zip");ZipOutputStream(zip.outputStream()).use{it.putNextEntry(ZipEntry("../escape.txt"));it.write("bad".toByteArray());it.closeEntry()};val dest=File(temp.root,"extracted");try{ArchiveTools.extract(zip,dest,""){};fail()}catch(_:IOException){};assertFalse(dest.exists());assertFalse(File(temp.root,"escape.txt").exists());assertTrue(zip.exists())}
-    @Test fun encryptedZipRoundTripAndWrongPasswordCleanup()=runBlocking{val root=temp.newFolder();val input=file(root,"texto é.txt","private data");val zip=File(root,"secret.zip");ArchiveTools.compress(listOf(input),zip,"strong password"){};assertEquals(1,ArchiveTools.list(zip).size);val bad=File(root,"bad");try{ArchiveTools.extract(zip,bad,"wrong"){};fail()}catch(_:Exception){};assertFalse(bad.exists());val good=File(root,"good");ArchiveTools.extract(zip,good,"strong password"){};assertEquals(input.readText(),File(good,input.name).readText())}
-    @Test fun sevenZipAndTarRoundTrip()=runBlocking{val root=temp.newFolder();val input=file(root,"sample.txt","payload");for(ext in listOf("7z","tar","tar.gz")){val archive=File(root,"files.$ext");ArchiveTools.compress(listOf(input),archive,""){};val dest=File(root,"output-$ext");ArchiveTools.extract(archive,dest,""){};assertEquals("payload",File(dest,input.name).readText())}}
-    @Test fun cryptoAuthenticatesBeforeCommitting()=runBlocking{val root=temp.newFolder();val source=file(root,"source.txt","confidential");val encrypted=File(root,"source.oienc");CryptoTools.transform(source,encrypted,"password".toCharArray(),false){};val bad=File(root,"bad.txt");try{CryptoTools.transform(encrypted,bad,"wrong".toCharArray(),true){};fail()}catch(_:Exception){};assertFalse(bad.exists());val restored=File(root,"restored.txt");CryptoTools.transform(encrypted,restored,"password".toCharArray(),true){};assertEquals(source.readText(),restored.readText());assertTrue(source.exists())}
-    @Test fun cryptoDetectsTampering()=runBlocking{val root=temp.newFolder();val source=file(root,"a","private");val enc=File(root,"enc");CryptoTools.transform(source,enc,"pw".toCharArray(),false){};val bytes=enc.readBytes();bytes[bytes.lastIndex]=(bytes.last().toInt() xor 1).toByte();enc.writeBytes(bytes);val dest=File(root,"restore");try{CryptoTools.transform(enc,dest,"pw".toCharArray(),true){};fail()}catch(_:Exception){};assertFalse(dest.exists())}
-    @Test fun duplicatesRequireSameContentsNotOnlySize()=runBlocking{val root=temp.newFolder();file(root,"a","same");file(root,"b","same");file(root,"c","diff");val result=AnalysisTools.analyze(root,true){};assertEquals(1,result.duplicates.size);assertEquals(setOf("a","b"),result.duplicates.single().map{it.name}.toSet());assertEquals(12L,result.bytes)}
-    @Test fun advancedSearchCombinesNameSizeExtensionAndContent()=runBlocking{val root=temp.newFolder();file(root,"wanted.txt","hello keyword");file(root,"wanted.csv","hello keyword");file(root,"other.txt","other");val result=AnalysisTools.search(root,SearchFilter("wanted",setOf("txt"),5,100,text="keyword")){};assertEquals(listOf("wanted.txt"),result.map{it.name})}
-    @Test fun gifHasDecodableFrames(){
-        val output=ByteArrayOutputStream();val gif=GifWriter(output,2,1);gif.begin()
-        gif.frame(intArrayOf(0xFFFF0000.toInt(),0xFF00FF00.toInt()),13)
-        gif.frame(intArrayOf(0xFF0000FF.toInt(),0xFFFFFFFF.toInt()),13);gif.end()
-        withGifReader(output.toByteArray()) { reader,type ->
-            assertEquals(2,type.getMethod("getNumImages",Boolean::class.javaPrimitiveType).invoke(reader,true))
-            val first=type.getMethod("read",Int::class.javaPrimitiveType).invoke(reader,0)
-            val second=type.getMethod("read",Int::class.javaPrimitiveType).invoke(reader,1)
-            assertEquals(0xFFFF0000.toInt(),rgb(first,0,0))
-            assertEquals(0xFF0000FF.toInt(),rgb(second,0,0))
+    @get:Rule val temp = TemporaryFolder()
+
+    private fun file(parent: File, name: String, text: String) =
+        File(parent, name).apply { writeText(text) }
+
+    @Test
+    fun invalidNamesAreRejected() {
+        for (name in listOf("", ".", "..", "../x", "a\\b", "a\u0000b")) assertFalse(
+            name, SafeFiles.validName(name))
+        assertTrue(SafeFiles.validName("foto con acento é.jpg"))
+    }
+
+    @Test
+    fun archivePathsCannotEscape() {
+        val root = temp.newFolder()
+        for (name in
+            listOf("../escape", "x/../../escape", "/etc/passwd", "C:\\Users\\x", "x\\..\\escape")) {
+            try {
+                SafeFiles.archiveTarget(root, name)
+                fail(name)
+            } catch (_: IOException) {}
+        }
+        assertEquals(File(root, "ok/é.txt"), SafeFiles.archiveTarget(root, "ok/é.txt"))
+    }
+
+    @Test
+    fun failedAtomicWritePreservesExistingFile() {
+        val target = temp.newFile()
+        target.writeText("original")
+        try {
+            SafeFiles.writeAtomic(target) {
+                it.writeText("partial")
+                throw IOException("interrupted")
+            }
+            fail()
+        } catch (_: IOException) {}
+        assertEquals("original", target.readText())
+        assertFalse(target.parentFile!!.listFiles()!!.any { it.name.startsWith(".oi-part-") })
+    }
+
+    @Test
+    fun keepBothUsesNaturalSuffix() {
+        val root = temp.newFolder()
+        file(root, "foto.jpg", "1")
+        file(root, "foto (1).jpg", "2")
+        assertEquals("foto (2).jpg", FileOps.uniqueName(root, "foto.jpg").name)
+    }
+
+    @Test
+    fun movingWithSkippedConflictPreservesSkippedOriginal() = runBlocking {
+        val source = temp.newFolder("source")
+        val destination = temp.newFolder("dest")
+        val dir = File(source, "album").apply { mkdir() }
+        file(dir, "same.txt", "original")
+        file(dir, "new.txt", "new")
+        val existing = File(destination, "album").apply { mkdir() }
+        file(existing, "same.txt", "destination")
+        val result = FileOps.transfer(listOf(dir), destination, true, Conflict.SKIP) {}
+        assertEquals("original", File(dir, "same.txt").readText())
+        assertFalse(File(dir, "new.txt").exists())
+        assertEquals("destination", File(existing, "same.txt").readText())
+        assertEquals("new", File(existing, "new.txt").readText())
+        assertEquals(1, result.skipped)
+    }
+
+    @Test
+    fun canceledOverwriteNeverTruncatesDestination() = runBlocking {
+        val source = temp.newFolder()
+        val destination = temp.newFolder()
+        val input = File(source, "large.bin").apply { writeBytes(ByteArray(800000) { 7 }) }
+        val output = file(destination, "large.bin", "old destination")
+        try {
+            FileOps.transfer(listOf(input), destination, false, Conflict.OVERWRITE) {
+                if (it.doneBytes > 0) throw CancellationException("cancel")
+            }
+            fail()
+        } catch (_: CancellationException) {}
+        assertEquals("old destination", output.readText())
+        assertTrue(input.exists())
+        assertFalse(destination.listFiles()!!.any { it.name.startsWith(".oi-part-") })
+    }
+
+    @Test
+    fun changedSourceNeverReplacesDestinationOrDeletesOriginal() = runBlocking {
+        val source = temp.newFolder()
+        val destination = temp.newFolder()
+        val input = File(source, "large.bin").apply { writeBytes(ByteArray(800000) { 7 }) }
+        val output = file(destination, "large.bin", "old destination")
+        var changed = false
+        try {
+            FileOps.transfer(listOf(input), destination, true, Conflict.OVERWRITE) {
+                if (it.doneBytes > 0 && !changed) {
+                    changed = true
+                    input.appendText("new data")
+                }
+            }
+            fail()
+        } catch (_: IOException) {}
+        assertEquals("old destination", output.readText())
+        assertTrue(input.exists())
+        assertTrue(changed)
+    }
+
+    @Test
+    fun newFileCommitNeverOverwritesConcurrentDestination() {
+        val root = temp.newFolder()
+        val staged = file(root, "staged", "new")
+        val existing = file(root, "target", "original")
+        try {
+            SafeFiles.commit(staged, existing, false)
+            fail()
+        } catch (_: IOException) {}
+        assertEquals("original", existing.readText())
+        assertTrue(staged.exists())
+    }
+
+    @Test
+    fun cannotCopyFolderIntoItself() = runBlocking {
+        val root = temp.newFolder()
+        try {
+            FileOps.transfer(listOf(root), File(root, "inside"), false, Conflict.RENAME) {}
+            fail()
+        } catch (_: IOException) {}
+        assertFalse(File(root, "inside").exists())
+    }
+
+    @Test
+    fun symlinksAreNotFollowed() {
+        val root = temp.newFolder()
+        val outside = temp.newFolder()
+        file(outside, "secret", "secret")
+        Files.createSymbolicLink(File(root, "link").toPath(), outside.toPath())
+        assertFalse(SafeFiles.walk(root).any { it.name == "secret" })
+        assertEquals(0L, FileOps.measure(listOf(root)).first)
+    }
+
+    @Test
+    fun zipSlipRemovesOnlyNewExtractionFolder() = runBlocking {
+        val zip = temp.newFile("bad.zip")
+        ZipOutputStream(zip.outputStream()).use {
+            it.putNextEntry(ZipEntry("../escape.txt"))
+            it.write("bad".toByteArray())
+            it.closeEntry()
+        }
+        val dest = File(temp.root, "extracted")
+        try {
+            ArchiveTools.extract(zip, dest, "") {}
+            fail()
+        } catch (_: IOException) {}
+        assertFalse(dest.exists())
+        assertFalse(File(temp.root, "escape.txt").exists())
+        assertTrue(zip.exists())
+    }
+
+    @Test
+    fun encryptedZipRoundTripAndWrongPasswordCleanup() = runBlocking {
+        val root = temp.newFolder()
+        val input = file(root, "texto é.txt", "private data")
+        val zip = File(root, "secret.zip")
+        ArchiveTools.compress(listOf(input), zip, "strong password") {}
+        assertEquals(1, ArchiveTools.list(zip).size)
+        val bad = File(root, "bad")
+        try {
+            ArchiveTools.extract(zip, bad, "wrong") {}
+            fail()
+        } catch (_: Exception) {}
+        assertFalse(bad.exists())
+        val good = File(root, "good")
+        ArchiveTools.extract(zip, good, "strong password") {}
+        assertEquals(input.readText(), File(good, input.name).readText())
+    }
+
+    @Test
+    fun sevenZipAndTarRoundTrip() = runBlocking {
+        val root = temp.newFolder()
+        val input = file(root, "sample.txt", "payload")
+        for (ext in listOf("7z", "tar", "tar.gz")) {
+            val archive = File(root, "files.$ext")
+            ArchiveTools.compress(listOf(input), archive, "") {}
+            val dest = File(root, "output-$ext")
+            ArchiveTools.extract(archive, dest, "") {}
+            assertEquals("payload", File(dest, input.name).readText())
         }
     }
-    @Test fun gifResetsCodebookForLargeFrames(){
-        val output=ByteArrayOutputStream();val gif=GifWriter(output,40,40);gif.begin()
-        gif.frame(IntArray(1600){if(it%2==0)0xFFFFFFFF.toInt()else 0xFF000000.toInt()},10);gif.end()
-        withGifReader(output.toByteArray()) { reader,type ->
-            val bitmap=type.getMethod("read",Int::class.javaPrimitiveType).invoke(reader,0)
-            assertEquals(0xFFFFFFFF.toInt(),rgb(bitmap,0,0))
-            assertEquals(0xFF000000.toInt(),rgb(bitmap,1,0))
+
+    @Test
+    fun cryptoAuthenticatesBeforeCommitting() = runBlocking {
+        val root = temp.newFolder()
+        val source = file(root, "source.txt", "confidential")
+        val encrypted = File(root, "source.oienc")
+        CryptoTools.transform(source, encrypted, "password".toCharArray(), false) {}
+        val bad = File(root, "bad.txt")
+        try {
+            CryptoTools.transform(encrypted, bad, "wrong".toCharArray(), true) {}
+            fail()
+        } catch (_: Exception) {}
+        assertFalse(bad.exists())
+        val restored = File(root, "restored.txt")
+        CryptoTools.transform(encrypted, restored, "password".toCharArray(), true) {}
+        assertEquals(source.readText(), restored.readText())
+        assertTrue(source.exists())
+    }
+
+    @Test
+    fun cryptoDetectsTampering() = runBlocking {
+        val root = temp.newFolder()
+        val source = file(root, "a", "private")
+        val enc = File(root, "enc")
+        CryptoTools.transform(source, enc, "pw".toCharArray(), false) {}
+        val bytes = enc.readBytes()
+        bytes[bytes.lastIndex] = (bytes.last().toInt() xor 1).toByte()
+        enc.writeBytes(bytes)
+        val dest = File(root, "restore")
+        try {
+            CryptoTools.transform(enc, dest, "pw".toCharArray(), true) {}
+            fail()
+        } catch (_: Exception) {}
+        assertFalse(dest.exists())
+    }
+
+    @Test
+    fun duplicatesRequireSameContentsNotOnlySize() = runBlocking {
+        val root = temp.newFolder()
+        file(root, "a", "same")
+        file(root, "b", "same")
+        file(root, "c", "diff")
+        val result = AnalysisTools.analyze(root, true) {}
+        assertEquals(1, result.duplicates.size)
+        assertEquals(setOf("a", "b"), result.duplicates.single().map { it.name }.toSet())
+        assertEquals(12L, result.bytes)
+    }
+
+    @Test
+    fun advancedSearchCombinesNameSizeExtensionAndContent() = runBlocking {
+        val root = temp.newFolder()
+        file(root, "wanted.txt", "hello keyword")
+        file(root, "wanted.csv", "hello keyword")
+        file(root, "other.txt", "other")
+        val result =
+            AnalysisTools.search(
+                root, SearchFilter("wanted", setOf("txt"), 5, 100, text = "keyword")) {}
+        assertEquals(listOf("wanted.txt"), result.map { it.name })
+    }
+
+    @Test
+    fun gifHasDecodableFrames() {
+        val output = ByteArrayOutputStream()
+        val gif = GifWriter(output, 2, 1)
+        gif.begin()
+        gif.frame(intArrayOf(0xFFFF0000.toInt(), 0xFF00FF00.toInt()), 13)
+        gif.frame(intArrayOf(0xFF0000FF.toInt(), 0xFFFFFFFF.toInt()), 13)
+        gif.end()
+        withGifReader(output.toByteArray()) { reader, type ->
+            assertEquals(
+                2,
+                type
+                    .getMethod("getNumImages", Boolean::class.javaPrimitiveType)
+                    .invoke(reader, true))
+            val first = type.getMethod("read", Int::class.javaPrimitiveType).invoke(reader, 0)
+            val second = type.getMethod("read", Int::class.javaPrimitiveType).invoke(reader, 1)
+            assertEquals(0xFFFF0000.toInt(), rgb(first, 0, 0))
+            assertEquals(0xFF0000FF.toInt(), rgb(second, 0, 0))
         }
     }
-    // Android's compile stubs omit java.desktop; the unit-test JVM still provides a real GIF decoder.
-    private fun withGifReader(bytes:ByteArray,block:(Any,Class<*>)->Unit){
-        val io=Class.forName("javax.imageio.ImageIO")
-        val input=io.getMethod("createImageInputStream",Any::class.java).invoke(null,ByteArrayInputStream(bytes))
-        val readers=io.getMethod("getImageReadersByFormatName",String::class.java).invoke(null,"gif") as Iterator<*>
-        val reader=readers.next()!!;val type=Class.forName("javax.imageio.ImageReader")
-        try{type.getMethod("setInput",Any::class.java).invoke(reader,input);block(reader,type)}
-        finally{type.getMethod("dispose").invoke(reader);Class.forName("javax.imageio.stream.ImageInputStream").getMethod("close").invoke(input)}
+
+    @Test
+    fun gifResetsCodebookForLargeFrames() {
+        val output = ByteArrayOutputStream()
+        val gif = GifWriter(output, 40, 40)
+        gif.begin()
+        gif.frame(
+            IntArray(1600) { if (it % 2 == 0) 0xFFFFFFFF.toInt() else 0xFF000000.toInt() }, 10)
+        gif.end()
+        withGifReader(output.toByteArray()) { reader, type ->
+            val bitmap = type.getMethod("read", Int::class.javaPrimitiveType).invoke(reader, 0)
+            assertEquals(0xFFFFFFFF.toInt(), rgb(bitmap, 0, 0))
+            assertEquals(0xFF000000.toInt(), rgb(bitmap, 1, 0))
+        }
     }
-    private fun rgb(bitmap:Any,x:Int,y:Int)=Class.forName("java.awt.image.BufferedImage").getMethod("getRGB",Int::class.javaPrimitiveType,Int::class.javaPrimitiveType).invoke(bitmap,x,y)
-    @Test fun cryptoRejectsTruncatedEnvelope()=runBlocking{
-        val root=temp.newFolder();val source=file(root,"source","private");val enc=File(root,"encrypted")
-        CryptoTools.transform(source,enc,"pw".toCharArray(),false){}
-        val bytes=enc.readBytes();enc.writeBytes(bytes.copyOf(bytes.size-20))
-        val target=File(root,"decrypted");try{CryptoTools.transform(enc,target,"pw".toCharArray(),true){};fail()}catch(_:Exception){}
+
+    // Android's compile stubs omit java.desktop; the unit-test JVM still provides a real GIF
+    // decoder.
+    private fun withGifReader(bytes: ByteArray, block: (Any, Class<*>) -> Unit) {
+        val io = Class.forName("javax.imageio.ImageIO")
+        val input =
+            io.getMethod("createImageInputStream", Any::class.java)
+                .invoke(null, ByteArrayInputStream(bytes))
+        val readers =
+            io.getMethod("getImageReadersByFormatName", String::class.java).invoke(null, "gif")
+                as Iterator<*>
+        val reader = readers.next()!!
+        val type = Class.forName("javax.imageio.ImageReader")
+        try {
+            type.getMethod("setInput", Any::class.java).invoke(reader, input)
+            block(reader, type)
+        } finally {
+            type.getMethod("dispose").invoke(reader)
+            Class.forName("javax.imageio.stream.ImageInputStream").getMethod("close").invoke(input)
+        }
+    }
+
+    private fun rgb(bitmap: Any, x: Int, y: Int) =
+        Class.forName("java.awt.image.BufferedImage")
+            .getMethod("getRGB", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType)
+            .invoke(bitmap, x, y)
+
+    @Test
+    fun cryptoRejectsTruncatedEnvelope() = runBlocking {
+        val root = temp.newFolder()
+        val source = file(root, "source", "private")
+        val enc = File(root, "encrypted")
+        CryptoTools.transform(source, enc, "pw".toCharArray(), false) {}
+        val bytes = enc.readBytes()
+        enc.writeBytes(bytes.copyOf(bytes.size - 20))
+        val target = File(root, "decrypted")
+        try {
+            CryptoTools.transform(enc, target, "pw".toCharArray(), true) {}
+            fail()
+        } catch (_: Exception) {}
         assertFalse(target.exists())
     }
-    @Test fun cryptoRoundTripsMultipleChunks()=runBlocking{
-        val root=temp.newFolder();val source=File(root,"source").apply{writeBytes(ByteArray(200000){(it%255).toByte()})};val enc=File(root,"encrypted");val dest=File(root,"decrypted")
-        CryptoTools.transform(source,enc,"pw".toCharArray(),false){};CryptoTools.transform(enc,dest,"pw".toCharArray(),true){}
-        assertArrayEquals(source.readBytes(),dest.readBytes())
+
+    @Test
+    fun cryptoRoundTripsMultipleChunks() = runBlocking {
+        val root = temp.newFolder()
+        val source =
+            File(root, "source").apply { writeBytes(ByteArray(200000) { (it % 255).toByte() }) }
+        val enc = File(root, "encrypted")
+        val dest = File(root, "decrypted")
+        CryptoTools.transform(source, enc, "pw".toCharArray(), false) {}
+        CryptoTools.transform(enc, dest, "pw".toCharArray(), true) {}
+        assertArrayEquals(source.readBytes(), dest.readBytes())
     }
 }

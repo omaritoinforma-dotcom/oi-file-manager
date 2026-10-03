@@ -32,32 +32,48 @@ fun SettingsScreen(vm: MainViewModel) {
         topBar = {
             TopAppBar(
                 title = { Text("Ajustes") },
-                navigationIcon = { IconButton(onClick = vm::back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás") } },
+                navigationIcon = {
+                    IconButton(onClick = vm::back) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás")
+                    }
+                },
             )
         },
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding)) {
             item {
-                SwitchRow("Mostrar archivos ocultos", "Archivos y carpetas que empiezan con punto", vm.showHidden) {
-                    vm.toggleHidden()
-                }
+                SwitchRow(
+                    "Mostrar archivos ocultos",
+                    "Archivos y carpetas que empiezan con punto",
+                    vm.showHidden) {
+                        vm.toggleHidden()
+                    }
             }
             item {
-                SwitchRow("Usar la papelera", "Al eliminar, mover a la papelera para poder restaurar", vm.useTrash) {
-                    vm.updateUseTrash(it)
-                }
+                SwitchRow(
+                    "Usar la papelera",
+                    "Al eliminar, mover a la papelera para poder restaurar",
+                    vm.useTrash) {
+                        vm.updateUseTrash(it)
+                    }
             }
             item {
                 androidx.compose.foundation.layout.Column(Modifier.padding(16.dp)) {
                     Text("Tamaño de las celdas: ${vm.gridSize}")
-                    androidx.compose.material3.Slider(value=vm.gridSize.toFloat(),onValueChange={vm.updateGridSize(it.toInt())},valueRange=72f..160f,steps=10)
+                    androidx.compose.material3.Slider(
+                        value = vm.gridSize.toFloat(),
+                        onValueChange = { vm.updateGridSize(it.toInt()) },
+                        valueRange = 72f..160f,
+                        steps = 10)
                 }
             }
             item { SectionTitle("Tema", Modifier.padding(start = 16.dp, top = 16.dp)) }
             items(ThemeMode.entries.toList()) { m ->
                 ListItem(
                     headlineContent = { Text(m.label) },
-                    leadingContent = { RadioButton(selected = vm.themeMode == m, onClick = { vm.updateTheme(m) }) },
+                    leadingContent = {
+                        RadioButton(selected = vm.themeMode == m, onClick = { vm.updateTheme(m) })
+                    },
                     modifier = Modifier.clickable { vm.updateTheme(m) },
                 )
             }
@@ -66,7 +82,8 @@ fun SettingsScreen(vm: MainViewModel) {
                 ListItem(
                     headlineContent = { Text("OI Archivos ${BuildConfig.VERSION_NAME}") },
                     supportingContent = {
-                        Text("Uso personal. Sin anuncios ni rastreo. La red se usa para las conexiones y transferencias que activas.")
+                        Text(
+                            "Uso personal. Sin anuncios ni rastreo. La red se usa para las conexiones y transferencias que activas.")
                     },
                 )
             }
@@ -75,7 +92,12 @@ fun SettingsScreen(vm: MainViewModel) {
 }
 
 @Composable
-private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+private fun SwitchRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit
+) {
     ListItem(
         headlineContent = { Text(title) },
         supportingContent = { Text(subtitle) },

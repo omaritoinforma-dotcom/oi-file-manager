@@ -8,32 +8,43 @@ import java.nio.file.StandardCopyOption
 
 /** Never follow links during recursive operations; never truncate the destination in place. */
 object SafeFiles {
-    fun validName(name: String): Boolean = name.isNotBlank() && name !in setOf(".", "..") &&
-        name.none { it == '/' || it == '\\' || it == '\u0000' }
+    fun validName(name: String): Boolean =
+        name.isNotBlank() &&
+            name !in setOf(".", "..") &&
+            name.none { it == '/' || it == '\\' || it == '\u0000' }
 
     fun requireName(name: String) {
         if (!validName(name)) throw IOException("Nombre de archivo no válido")
     }
 
-    fun walk(root: File): Sequence<File> = root.walkTopDown().maxDepth(128)
-        .onEnter { !Files.isSymbolicLink(it.toPath()) }
-        .filter { !Files.isSymbolicLink(it.toPath()) }
+    fun walk(root: File): Sequence<File> =
+        root
+            .walkTopDown()
+            .maxDepth(128)
+            .onEnter { !Files.isSymbolicLink(it.toPath()) }
+            .filter { !Files.isSymbolicLink(it.toPath()) }
 
     fun requireRegular(file: File) {
-        if (Files.isSymbolicLink(file.toPath())) throw IOException("No se siguen enlaces simbólicos: ${file.name}")
+        if (Files.isSymbolicLink(file.toPath()))
+            throw IOException("No se siguen enlaces simbólicos: ${file.name}")
         if (!file.exists()) throw IOException("Ya no existe «${file.name}»")
     }
 
     fun commit(temp: File, target: File, replace: Boolean = true) {
-        val options = if (replace) arrayOf(StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-            else arrayOf(StandardCopyOption.ATOMIC_MOVE)
-        // ATOMIC_MOVE is allowed to replace an existing target, even without REPLACE_EXISTING.
-        if (!replace && target.exists()) throw IOException("Ya existe «${target.name}»")
+        // ATOMIC_MOVE may replace a target even without REPLACE_EXISTING. Use the
+        // no-replace operation when creating a new file so concurrent writes cannot be lost.
+        if (!replace) {
+            Files.move(temp.toPath(), target.toPath())
+            return
+        }
         try {
-            Files.move(temp.toPath(), target.toPath(), *options)
+            Files.move(
+                temp.toPath(),
+                target.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING)
         } catch (_: AtomicMoveNotSupportedException) {
-            if (replace) Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
-            else Files.move(temp.toPath(), target.toPath())
+            Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
         }
     }
 
@@ -44,16 +55,21 @@ object SafeFiles {
         try {
             block(temp)
             commit(temp, target)
-        } finally { temp.delete() }
+        } finally {
+            temp.delete()
+        }
     }
 
     fun archiveTarget(root: File, name: String): File {
         val normalized = name.replace('\\', '/')
-        if (normalized.startsWith('/') || Regex("^[A-Za-z]:").containsMatchIn(normalized) ||
-            normalized.split('/').any { it == ".." } || normalized.contains('\u0000'))
+        if (normalized.startsWith('/') ||
+            Regex("^[A-Za-z]:").containsMatchIn(normalized) ||
+            normalized.split('/').any { it == ".." } ||
+            normalized.contains('\u0000'))
             throw IOException("Ruta insegura en el archivo comprimido")
         val target = File(root, normalized).canonicalFile
-        if (!target.path.startsWith(root.canonicalPath + File.separator)) throw IOException("Ruta fuera del destino")
+        if (!target.path.startsWith(root.canonicalPath + File.separator))
+            throw IOException("Ruta fuera del destino")
         return target
     }
 }

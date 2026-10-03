@@ -65,12 +65,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.omaritoinforma.oiarchivos.data.Conflict
 import com.omaritoinforma.oiarchivos.data.OpProgress
+import com.omaritoinforma.oiarchivos.ui.screens.*
 import com.omaritoinforma.oiarchivos.ui.screens.AppsScreen
 import com.omaritoinforma.oiarchivos.ui.screens.BrowserScreen
 import com.omaritoinforma.oiarchivos.ui.screens.EditorScreen
 import com.omaritoinforma.oiarchivos.ui.screens.HomeScreen
 import com.omaritoinforma.oiarchivos.ui.screens.SettingsScreen
-import com.omaritoinforma.oiarchivos.ui.screens.*
 import com.omaritoinforma.oiarchivos.util.PathUtil
 import com.omaritoinforma.oiarchivos.util.formatSize
 import kotlinx.coroutines.launch
@@ -123,15 +123,20 @@ fun AppRoot(vm: MainViewModel) {
 @Composable
 private fun PermissionScreen(vm: MainViewModel) {
     val ctx = LocalContext.current
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
-        vm.onResume()
-    }
+    val launcher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+            vm.onResume()
+        }
     Column(
         modifier = Modifier.fillMaxSize().systemBarsPadding().padding(32.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Icon(Icons.Filled.Folder, contentDescription = null, modifier = Modifier.size(96.dp), tint = MaterialTheme.colorScheme.primary)
+        Icon(
+            Icons.Filled.Folder,
+            contentDescription = null,
+            modifier = Modifier.size(96.dp),
+            tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(24.dp))
         Text(
             "OI Archivos necesita acceso a tus archivos",
@@ -146,25 +151,37 @@ private fun PermissionScreen(vm: MainViewModel) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.height(24.dp))
-        Button(onClick = {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                try {
-                    ctx.startActivity(
-                        Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION, Uri.parse("package:${ctx.packageName}")),
-                    )
-                } catch (e: ActivityNotFoundException) {
+        Button(
+            onClick = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     try {
-                        ctx.startActivity(Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
-                    } catch (e2: Exception) {
-                        Toast.makeText(ctx, "Abre Ajustes > Apps > OI Archivos > Permisos", Toast.LENGTH_LONG).show()
+                        ctx.startActivity(
+                            Intent(
+                                Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                Uri.parse("package:${ctx.packageName}")),
+                        )
+                    } catch (e: ActivityNotFoundException) {
+                        try {
+                            ctx.startActivity(
+                                Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION))
+                        } catch (e2: Exception) {
+                            Toast.makeText(
+                                    ctx,
+                                    "Abre Ajustes > Apps > OI Archivos > Permisos",
+                                    Toast.LENGTH_LONG)
+                                .show()
+                        }
                     }
+                } else {
+                    launcher.launch(
+                        arrayOf(
+                            Manifest.permission.READ_EXTERNAL_STORAGE,
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                    )
                 }
-            } else {
-                launcher.launch(
-                    arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                )
+            }) {
+                Text("Conceder permiso")
             }
-        }) { Text("Conceder permiso") }
     }
 }
 
@@ -182,13 +199,16 @@ private fun AppDrawer(vm: MainViewModel, close: () -> Unit) {
                 close()
             }
             vm.volumes.forEach { v ->
-                DrawerItem(v.name, if (v.removable) Icons.Filled.SdCard else Icons.Filled.PhoneAndroid) {
-                    vm.openFolder(v.path)
-                    close()
-                }
+                DrawerItem(
+                    v.name, if (v.removable) Icons.Filled.SdCard else Icons.Filled.PhoneAndroid) {
+                        vm.openFolder(v.path)
+                        close()
+                    }
             }
             DrawerItem("Descargas", Icons.Filled.Download) {
-                vm.openFolder(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).absolutePath)
+                vm.openFolder(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                        .absolutePath)
                 close()
             }
             DrawerItem("Raíz del sistema", Icons.Filled.Dns) {
@@ -218,11 +238,26 @@ private fun AppDrawer(vm: MainViewModel, close: () -> Unit) {
                 vm.goTo(Screen.Apps)
                 close()
             }
-            DrawerItem("Red, nube y USB", Icons.Filled.Dns, vm.screen == Screen.Connections) { vm.goTo(Screen.Connections); close() }
-            DrawerItem("Analizar espacio", Icons.Filled.SdCard) { vm.goTo(Screen.Analysis(PathUtil.internalRoot)); close() }
-            DrawerItem("Transferencias", Icons.Filled.Download, vm.screen == Screen.Transfers) { vm.goTo(Screen.Transfers); close() }
-            DrawerItem("Historial", Icons.Filled.Folder, vm.screen == Screen.History) { vm.goTo(Screen.History); close() }
-            DrawerItem("Root con Magisk", Icons.Filled.Dns, vm.screen == Screen.RootTools) { vm.goTo(Screen.RootTools); close() }
+            DrawerItem("Red, nube y USB", Icons.Filled.Dns, vm.screen == Screen.Connections) {
+                vm.goTo(Screen.Connections)
+                close()
+            }
+            DrawerItem("Analizar espacio", Icons.Filled.SdCard) {
+                vm.goTo(Screen.Analysis(PathUtil.internalRoot))
+                close()
+            }
+            DrawerItem("Transferencias", Icons.Filled.Download, vm.screen == Screen.Transfers) {
+                vm.goTo(Screen.Transfers)
+                close()
+            }
+            DrawerItem("Historial", Icons.Filled.Folder, vm.screen == Screen.History) {
+                vm.goTo(Screen.History)
+                close()
+            }
+            DrawerItem("Root con Magisk", Icons.Filled.Dns, vm.screen == Screen.RootTools) {
+                vm.goTo(Screen.RootTools)
+                close()
+            }
             DrawerItem("Ajustes", Icons.Filled.Settings, vm.screen == Screen.Settings) {
                 vm.goTo(Screen.Settings)
                 close()
@@ -232,7 +267,12 @@ private fun AppDrawer(vm: MainViewModel, close: () -> Unit) {
 }
 
 @Composable
-private fun DrawerItem(label: String, icon: ImageVector, selected: Boolean = false, onClick: () -> Unit) {
+private fun DrawerItem(
+    label: String,
+    icon: ImageVector,
+    selected: Boolean = false,
+    onClick: () -> Unit
+) {
     NavigationDrawerItem(
         label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         icon = { Icon(icon, contentDescription = null) },
@@ -261,13 +301,20 @@ private fun Overlays(vm: MainViewModel) {
             onDismissRequest = { vm.resolvePaste(null) },
             title = { Text("Ya existen elementos con ese nombre") },
             text = {
-                Text("${p.conflicts} de ${p.sources.size} elemento(s) ya existen en la carpeta de destino. ¿Qué quieres hacer?")
+                Text(
+                    "${p.conflicts} de ${p.sources.size} elemento(s) ya existen en la carpeta de destino. ¿Qué quieres hacer?")
             },
             confirmButton = {
                 Column(horizontalAlignment = Alignment.End) {
-                    TextButton(onClick = { vm.resolvePaste(Conflict.RENAME) }) { Text("Conservar ambos (renombrar)") }
-                    TextButton(onClick = { vm.resolvePaste(Conflict.OVERWRITE) }) { Text("Reemplazar / combinar") }
-                    TextButton(onClick = { vm.resolvePaste(Conflict.SKIP) }) { Text("Omitir los que existen") }
+                    TextButton(onClick = { vm.resolvePaste(Conflict.RENAME) }) {
+                        Text("Conservar ambos (renombrar)")
+                    }
+                    TextButton(onClick = { vm.resolvePaste(Conflict.OVERWRITE) }) {
+                        Text("Reemplazar / combinar")
+                    }
+                    TextButton(onClick = { vm.resolvePaste(Conflict.SKIP) }) {
+                        Text("Omitir los que existen")
+                    }
                     TextButton(onClick = { vm.resolvePaste(null) }) { Text("Cancelar") }
                 }
             },
@@ -283,22 +330,28 @@ private fun ProgressDialog(p: OpProgress, onCancel: () -> Unit) {
         title = { Text(p.title) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (p.current.isNotEmpty()) Text(p.current, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                val fraction: Float? = when {
-                    p.totalBytes > 0 -> (p.doneBytes.toFloat() / p.totalBytes).coerceIn(0f, 1f)
-                    p.totalFiles > 0 -> (p.doneFiles.toFloat() / p.totalFiles).coerceIn(0f, 1f)
-                    else -> null
-                }
+                if (p.current.isNotEmpty())
+                    Text(p.current, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                val fraction: Float? =
+                    when {
+                        p.totalBytes > 0 -> (p.doneBytes.toFloat() / p.totalBytes).coerceIn(0f, 1f)
+                        p.totalFiles > 0 -> (p.doneFiles.toFloat() / p.totalFiles).coerceIn(0f, 1f)
+                        else -> null
+                    }
                 if (fraction != null) {
-                    LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth())
+                    LinearProgressIndicator(
+                        progress = { fraction }, modifier = Modifier.fillMaxWidth())
                 } else {
                     LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
                 if (p.totalFiles > 0) {
-                    Text("${p.doneFiles} de ${p.totalFiles} archivos", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        "${p.doneFiles} de ${p.totalFiles} archivos",
+                        style = MaterialTheme.typography.bodySmall)
                 }
                 if (p.totalBytes > 0) {
-                    val remaining = if (p.bytesPerSec > 0) (p.totalBytes - p.doneBytes) / p.bytesPerSec else -1
+                    val remaining =
+                        if (p.bytesPerSec > 0) (p.totalBytes - p.doneBytes) / p.bytesPerSec else -1
                     Text(
                         "${formatSize(p.doneBytes)} de ${formatSize(p.totalBytes)} · ${formatSize(p.bytesPerSec)}/s" +
                             (if (remaining >= 0) " · faltan ${formatEta(remaining)}" else ""),
@@ -311,8 +364,9 @@ private fun ProgressDialog(p: OpProgress, onCancel: () -> Unit) {
     )
 }
 
-private fun formatEta(seconds: Long): String = when {
-    seconds < 60 -> "${seconds}s"
-    seconds < 3600 -> "${seconds / 60}m ${seconds % 60}s"
-    else -> "${seconds / 3600}h ${(seconds % 3600) / 60}m"
-}
+private fun formatEta(seconds: Long): String =
+    when {
+        seconds < 60 -> "${seconds}s"
+        seconds < 3600 -> "${seconds / 60}m ${seconds % 60}s"
+        else -> "${seconds / 3600}h ${(seconds % 3600) / 60}m"
+    }

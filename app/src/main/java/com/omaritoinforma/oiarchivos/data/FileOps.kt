@@ -1,10 +1,9 @@
 package com.omaritoinforma.oiarchivos.data
 
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 import java.io.File
 import java.io.IOException
-import java.nio.file.Files
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 /** Lleva la cuenta del progreso y la velocidad de una operación. */
 class Tracker(private val title: String, private val report: (OpProgress) -> Unit) {
@@ -17,8 +16,9 @@ class Tracker(private val title: String, private val report: (OpProgress) -> Uni
     private var lastEmit = 0L
 
     fun addBytes(n: Long) {
+        val firstChunk = doneBytes == 0L
         doneBytes += n
-        emit(force = false)
+        emit(force = firstChunk)
     }
 
     fun fileDone() {
@@ -31,7 +31,15 @@ class Tracker(private val title: String, private val report: (OpProgress) -> Uni
         if (!force && now - lastEmit < 150) return
         lastEmit = now
         val elapsed = (now - start).coerceAtLeast(1)
-        report(OpProgress(title, current, doneBytes, totalBytes, doneFiles, totalFiles, doneBytes * 1000 / elapsed))
+        report(
+            OpProgress(
+                title,
+                current,
+                doneBytes,
+                totalBytes,
+                doneFiles,
+                totalFiles,
+                doneBytes * 1000 / elapsed))
     }
 }
 
@@ -86,13 +94,20 @@ object FileOps {
                 throw IOException("No se puede $verb «${s.name}» dentro de sí misma")
             }
         }
-        if (!destDir.exists() && !destDir.mkdirs()) throw IOException("No se pudo crear la carpeta de destino")
+        if (!destDir.exists() && !destDir.mkdirs())
+            throw IOException("No se pudo crear la carpeta de destino")
 
         val targets = mutableListOf<File>()
-        val roots = sources.distinctBy { it.canonicalPath }.filter { source ->
-            sources.none { other -> other != source && other.isDirectory &&
-                source.canonicalPath.startsWith(other.canonicalPath + File.separator) }
-        }
+        val roots =
+            sources
+                .distinctBy { it.canonicalPath }
+                .filter { source ->
+                    sources.none { other ->
+                        other != source &&
+                            other.isDirectory &&
+                            source.canonicalPath.startsWith(other.canonicalPath + File.separator)
+                    }
+                }
         val (bytes, count) = measure(roots)
         tracker.totalBytes = bytes
         tracker.totalFiles = count
@@ -109,14 +124,17 @@ object FileOps {
                 target = uniqueName(destDir, s.name)
             } else if (target.exists()) {
                 when (conflict) {
-                    Conflict.SKIP -> if (!s.isDirectory || !target.isDirectory) {
-                        skipped++
-                        continue
-                    }
+                    Conflict.SKIP ->
+                        if (!s.isDirectory || !target.isDirectory) {
+                            skipped++
+                            continue
+                        }
                     Conflict.RENAME -> target = uniqueName(destDir, s.name)
-                    Conflict.OVERWRITE -> if (target.isDirectory != s.isDirectory) {
-                        throw IOException("«${target.name}» es de otro tipo; renómbralo o conserva ambos")
-                    }
+                    Conflict.OVERWRITE ->
+                        if (target.isDirectory != s.isDirectory) {
+                            throw IOException(
+                                "«${target.name}» es de otro tipo; renómbralo o conserva ambos")
+                        }
                 }
             }
             // Mover dentro del mismo almacenamiento es instantáneo.
@@ -131,7 +149,13 @@ object FileOps {
         return TransferResult(targets, skipped)
     }
 
-    private suspend fun copyRecursive(src: File, initialDst: File, t: Tracker, conflict: Conflict, move: Boolean): Int {
+    private suspend fun copyRecursive(
+        src: File,
+        initialDst: File,
+        t: Tracker,
+        conflict: Conflict,
+        move: Boolean
+    ): Int {
         currentCoroutineContext().ensureActive()
         SafeFiles.requireRegular(src)
         var dst = initialDst
@@ -139,26 +163,34 @@ object FileOps {
             when (conflict) {
                 Conflict.SKIP -> return 1
                 Conflict.RENAME -> dst = uniqueName(dst.parentFile!!, dst.name)
-                Conflict.OVERWRITE -> if (dst.isDirectory != src.isDirectory) throw IOException("Tipos incompatibles: ${dst.name}")
+                Conflict.OVERWRITE ->
+                    if (dst.isDirectory != src.isDirectory)
+                        throw IOException("Tipos incompatibles: ${dst.name}")
             }
         }
         var skipped = 0
         if (src.isDirectory) {
             if (!dst.exists() && !dst.mkdirs()) throw IOException("No se pudo crear «${dst.name}»")
             val children = src.listFiles() ?: throw IOException("No se puede leer «${src.name}»")
-            for (child in children) skipped += copyRecursive(child, File(dst, child.name), t, conflict, move)
+            for (child in children) skipped +=
+                copyRecursive(child, File(dst, child.name), t, conflict, move)
             dst.setLastModified(src.lastModified())
             // Keep the original folder if any of its children were skipped.
-            if (move && src.list()?.isEmpty() == true && !src.delete()) throw IOException("No se pudo borrar ${src.name}")
+            if (move && src.list()?.isEmpty() == true && !src.delete())
+                throw IOException("No se pudo borrar ${src.name}")
         } else {
             copyFile(src, dst, t)
             currentCoroutineContext().ensureActive()
-            if (move && !src.delete()) throw IOException("Copiado, pero no se pudo borrar el original: ${src.name}")
+            if (move && !src.delete())
+                throw IOException("Copiado, pero no se pudo borrar el original: ${src.name}")
         }
         return skipped
     }
 
     private suspend fun copyFile(src: File, dst: File, t: Tracker) {
+        val originalSize = src.length()
+        val originalModified = src.lastModified()
+        var copied = 0L
         t.current = src.name
         t.emit()
         val temp = File.createTempFile(".oi-part-", ".tmp", dst.parentFile)
@@ -170,15 +202,24 @@ object FileOps {
                         val n = input.read(buf)
                         if (n < 0) break
                         out.write(buf, 0, n)
+                        copied += n
                         t.addBytes(n.toLong())
                         currentCoroutineContext().ensureActive()
                     }
                 }
             }
-            temp.setLastModified(src.lastModified())
+            if (copied != originalSize ||
+                src.length() != originalSize ||
+                src.lastModified() != originalModified) {
+                throw IOException(
+                    "El archivo cambió durante la copia: ${src.name}; vuelve a intentarlo")
+            }
+            temp.setLastModified(originalModified)
             currentCoroutineContext().ensureActive()
             SafeFiles.commit(temp, dst)
-        } finally { temp.delete() }
+        } finally {
+            temp.delete()
+        }
         t.fileDone()
     }
 

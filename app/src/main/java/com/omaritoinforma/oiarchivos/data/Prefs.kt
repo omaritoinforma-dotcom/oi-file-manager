@@ -35,7 +35,7 @@ class Prefs(context: Context) {
 
     var gridSize: Int
         get() = sp.getInt("grid_size", 96)
-        set(v) = sp.edit().putInt("grid_size", v.coerceIn(72,160)).apply()
+        set(v) = sp.edit().putInt("grid_size", v.coerceIn(72, 160)).apply()
 
     var bookmarks: List<String>
         get() = sp.getString("bookmarks", "").orEmpty().split('\n').filter { it.isNotBlank() }
