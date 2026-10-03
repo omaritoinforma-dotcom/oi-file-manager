@@ -6,3 +6,7 @@ local.properties
 captures/
 .DS_Store
 .kotlin/
+
+__pycache__/
+smoke-output/
+apk/

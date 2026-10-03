@@ -33,7 +33,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -400,11 +399,10 @@ private fun BatchRenameDialog(
 
 @Composable
 private fun PropertiesDialog(items: List<FileItem>, onDismiss: () -> Unit) {
-    val info by
-        produceState<PropInfo?>(null, items) {
-            value =
-                withContext(Dispatchers.IO) { runCatching { FileRepo.props(items) }.getOrNull() }
-        }
+    var info by remember(items) { mutableStateOf<PropInfo?>(null) }
+    LaunchedEffect(items) {
+        info = withContext(Dispatchers.IO) { runCatching { FileRepo.props(items) }.getOrNull() }
+    }
     var hashes by remember { mutableStateOf<List<Pair<String, String>>?>(null) }
     var hashing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -567,25 +565,25 @@ private fun CompressDialog(
 @Composable
 private fun ApkInfoDialog(item: FileItem, dismiss: () -> Unit) {
     val ctx = LocalContext.current
-    val info by
-        produceState<String?>(null, item.path) {
-            value =
-                withContext(Dispatchers.IO) {
-                    runCatching {
-                            @Suppress("DEPRECATION")
-                            val packageInfo =
-                                ctx.packageManager.getPackageArchiveInfo(
-                                    item.path, android.content.pm.PackageManager.GET_PERMISSIONS)
-                                    ?: throw IllegalArgumentException("No es un APK compatible")
-                            val application = packageInfo.applicationInfo
-                            application?.sourceDir = item.path
-                            application?.publicSourceDir = item.path
-                            "Aplicación: ${application?.loadLabel(ctx.packageManager)}\nPaquete: ${packageInfo.packageName}\nVersión: ${packageInfo.versionName}\n\nPermisos solicitados:\n" +
-                                (packageInfo.requestedPermissions?.joinToString("\n") ?: "Ninguno")
-                        }
-                        .getOrElse { it.message ?: "No se pudo inspeccionar el APK" }
-                }
-        }
+    var info by remember(item.path) { mutableStateOf<String?>(null) }
+    LaunchedEffect(item.path) {
+        info =
+            withContext(Dispatchers.IO) {
+                runCatching {
+                        @Suppress("DEPRECATION")
+                        val packageInfo =
+                            ctx.packageManager.getPackageArchiveInfo(
+                                item.path, android.content.pm.PackageManager.GET_PERMISSIONS)
+                                ?: throw IllegalArgumentException("No es un APK compatible")
+                        val application = packageInfo.applicationInfo
+                        application?.sourceDir = item.path
+                        application?.publicSourceDir = item.path
+                        "Aplicación: ${application?.loadLabel(ctx.packageManager)}\nPaquete: ${packageInfo.packageName}\nVersión: ${packageInfo.versionName}\n\nPermisos solicitados:\n" +
+                            (packageInfo.requestedPermissions?.joinToString("\n") ?: "Ninguno")
+                    }
+                    .getOrElse { it.message ?: "No se pudo inspeccionar el APK" }
+            }
+    }
     AlertDialog(
         onDismissRequest = dismiss,
         title = { Text(item.name) },

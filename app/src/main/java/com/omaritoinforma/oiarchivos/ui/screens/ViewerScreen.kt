@@ -1,6 +1,4 @@
-@file:OptIn(
-    androidx.compose.material3.ExperimentalMaterial3Api::class,
-    androidx.media3.common.util.UnstableApi::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
 package com.omaritoinforma.oiarchivos.ui.screens
 
@@ -124,6 +122,7 @@ private fun ImageGallery(path: String, modifier: Modifier) {
 }
 
 @Composable
+@androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
 private fun MediaViewer(file: File, modifier: Modifier) {
     val ctx = LocalContext.current
     val audio = Kinds.ofExt(file.extension.lowercase()) == FileKind.AUDIO
@@ -211,39 +210,39 @@ private fun PdfViewer(file: File, modifier: Modifier) {
     var page by remember(file) { mutableIntStateOf(0) }
     var count by remember(file) { mutableIntStateOf(0) }
     var error by remember(file) { mutableStateOf<String?>(null) }
-    val image by
-        produceState<Bitmap?>(null, file, page) {
-            value = null
-            withContext(Dispatchers.IO) {
-                runCatching {
-                        ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use {
-                            fd ->
-                            PdfRenderer(fd).use { pdf ->
-                                count = pdf.pageCount
-                                pdf.openPage(page).use { p ->
-                                    val width = 1400
-                                    Bitmap.createBitmap(
-                                            width,
-                                            (width.toDouble() * p.height / p.width)
-                                                .toInt()
-                                                .coerceIn(1, 4000),
-                                            Bitmap.Config.ARGB_8888)
-                                        .apply {
-                                            eraseColor(android.graphics.Color.WHITE)
-                                            p.render(
-                                                this,
-                                                null,
-                                                null,
-                                                PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                                        }
-                                }
+    var image by remember(file) { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(file, page) {
+        image = null
+        error = null
+        withContext(Dispatchers.IO) {
+            runCatching {
+                    ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
+                        PdfRenderer(fd).use { pdf ->
+                            count = pdf.pageCount
+                            pdf.openPage(page).use { p ->
+                                val width = 1400
+                                Bitmap.createBitmap(
+                                        width,
+                                        (width.toDouble() * p.height / p.width)
+                                            .toInt()
+                                            .coerceIn(1, 4000),
+                                        Bitmap.Config.ARGB_8888)
+                                    .apply {
+                                        eraseColor(android.graphics.Color.WHITE)
+                                        p.render(
+                                            this,
+                                            null,
+                                            null,
+                                            PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                                    }
                             }
                         }
                     }
-                    .onSuccess { value = it }
-                    .onFailure { error = it.message }
-            }
+                }
+                .onSuccess { image = it }
+                .onFailure { error = it.message }
         }
+    }
     Column(modifier) {
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
             image?.let {

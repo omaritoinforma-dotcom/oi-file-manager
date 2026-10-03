@@ -35,4 +35,4 @@ Java 17, SDK Android 35:
 
 Las pruebas ejercitan conflictos al mover, cancelaciones sin truncar destinos, rutas maliciosas, enlaces simbólicos, ZIP con contraseña, 7z/TAR, cifrado y alteraciones de contenido, duplicados, búsqueda y GIF decodificable.
 
-Las ramas `codex/**` compilan y guardan el APK como artefacto. Solo `main` publica una release, después de las pruebas. Las conexiones con cuentas reales, los codecs del teléfono, USB y root deben validarse también en un dispositivo compatible.
+Las ramas `codex/**` compilan y guardan el APK como artefacto. Solo `main` publica una release, después de las pruebas y de ejecutar el APK en un emulador Android 15. La prueba de integración recorre el permiso de almacenamiento, navegación, doble panel, editor y guardado real, PDF, galería, extracción de ZIP y servidor HTTP con autenticación, subida y bloqueo de rutas externas. Las conexiones con cuentas reales, los codecs del teléfono, USB y root deben validarse también en un dispositivo compatible.

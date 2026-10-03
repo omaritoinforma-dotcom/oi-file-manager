@@ -34,8 +34,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,11 +77,11 @@ fun FileRow(
 ) {
     val bg = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(bg)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(horizontal = 16.dp, vertical = if (details) 10.dp else 8.dp),
+        modifier =
+            Modifier.fillMaxWidth()
+                .background(bg)
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                .padding(horizontal = 16.dp, vertical = if (details) 10.dp else 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         FileThumb(item, if (details) 44.dp else 34.dp, selected)
@@ -91,7 +92,9 @@ fun FileRow(
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                color = if (item.isHidden) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                color =
+                    if (item.isHidden) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.onSurface,
             )
             if (details) {
                 Text(
@@ -126,12 +129,12 @@ fun FileRow(
 fun GridCell(item: FileItem, selected: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
     val bg = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
     Column(
-        modifier = Modifier
-            .padding(4.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(bg)
-            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .padding(8.dp),
+        modifier =
+            Modifier.padding(4.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(bg)
+                .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+                .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         FileThumb(item, 64.dp, selected)
@@ -151,12 +154,18 @@ fun FileThumb(item: FileItem, size: Dp, selected: Boolean) {
     val kind = Kinds.of(item)
     Box(Modifier.size(size), contentAlignment = Alignment.Center) {
         when {
-            selected -> Box(
-                Modifier.fillMaxSize().clip(CircleShape).background(MaterialTheme.colorScheme.primary),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Filled.Check, contentDescription = "Seleccionado", tint = MaterialTheme.colorScheme.onPrimary)
-            }
+            selected ->
+                Box(
+                    Modifier.fillMaxSize()
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Filled.Check,
+                        contentDescription = "Seleccionado",
+                        tint = MaterialTheme.colorScheme.onPrimary)
+                }
             kind == FileKind.IMAGE || kind == FileKind.VIDEO -> {
                 val fallback = rememberVectorPainter(Kinds.icon(kind))
                 AsyncImage(
@@ -169,12 +178,13 @@ fun FileThumb(item: FileItem, size: Dp, selected: Boolean) {
                 )
             }
             kind == FileKind.APK -> ApkThumb(item.path)
-            else -> Icon(
-                Kinds.icon(kind),
-                contentDescription = null,
-                tint = Kinds.color(kind),
-                modifier = Modifier.fillMaxSize(0.9f),
-            )
+            else ->
+                Icon(
+                    Kinds.icon(kind),
+                    contentDescription = null,
+                    tint = Kinds.color(kind),
+                    modifier = Modifier.fillMaxSize(0.9f),
+                )
         }
     }
 }
@@ -182,8 +192,9 @@ fun FileThumb(item: FileItem, size: Dp, selected: Boolean) {
 @Composable
 private fun ApkThumb(path: String) {
     val ctx = LocalContext.current
-    val bmp by produceState<ImageBitmap?>(null, path) {
-        value = withContext(Dispatchers.IO) { runCatching { ApkIcons.load(ctx, path) }.getOrNull() }
+    var bmp by remember(path) { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(path) {
+        bmp = withContext(Dispatchers.IO) { runCatching { ApkIcons.load(ctx, path) }.getOrNull() }
     }
     val b = bmp
     if (b != null) {
@@ -224,11 +235,13 @@ fun Breadcrumb(path: String, onNavigate: (String) -> Unit) {
                     seg.label,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = if (last) FontWeight.Bold else FontWeight.Normal,
-                    color = if (last) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { onNavigate(seg.path) }
-                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                    color =
+                        if (last) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier =
+                        Modifier.clip(RoundedCornerShape(8.dp))
+                            .clickable { onNavigate(seg.path) }
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
                 )
             }
         }
@@ -246,12 +259,18 @@ fun MenuItem(label: String, icon: ImageVector, onClick: () -> Unit) {
 
 /** Botón con ícono y texto para la barra inferior de acciones. */
 @Composable
-fun BarAction(icon: ImageVector, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun BarAction(
+    icon: ImageVector,
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
     Column(
-        modifier = modifier
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(12.dp))
+                .clickable(onClick = onClick)
+                .padding(vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {

@@ -1,5 +1,3 @@
-@file:OptIn(androidx.media3.common.util.UnstableApi::class)
-
 package com.omaritoinforma.oiarchivos.data
 
 import android.content.Context
@@ -26,6 +24,7 @@ data class VideoEdit(
     val mute: Boolean = false
 )
 
+@androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
 object VideoTools {
     suspend fun export(
         ctx: Context,
