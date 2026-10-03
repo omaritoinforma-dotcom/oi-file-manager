@@ -29,6 +29,14 @@ class Prefs(context: Context) {
         get() = enumOr(sp.getString("theme", null), ThemeMode.SYSTEM)
         set(v) = sp.edit().putString("theme", v.name).apply()
 
+    var history: List<String>
+        get() = sp.getString("history", "").orEmpty().split('\n').filter { it.isNotBlank() }
+        set(v) = sp.edit().putString("history", v.joinToString("\n")).apply()
+
+    var gridSize: Int
+        get() = sp.getInt("grid_size", 96)
+        set(v) = sp.edit().putInt("grid_size", v.coerceIn(72,160)).apply()
+
     var bookmarks: List<String>
         get() = sp.getString("bookmarks", "").orEmpty().split('\n').filter { it.isNotBlank() }
         set(v) = sp.edit().putString("bookmarks", v.joinToString("\n")).apply()

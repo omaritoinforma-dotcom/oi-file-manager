@@ -1,0 +1,136 @@
+package com.omaritoinforma.oiarchivos.data
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.os.IBinder
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import com.omaritoinforma.oiarchivos.MainActivity
+import com.omaritoinforma.oiarchivos.util.Media
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
+import java.util.UUID
+
+data class TransferRecord(val id: String, val title: String, val time: Long, val status: String, val detail: String)
+data class OperationResult(val message: String?, val changed: List<File> = emptyList())
+
+/** Operations belong to the service, not to a Compose screen or Activity. */
+class TransferService : Service() {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var job: Job? = null
+    private var interruptedDetail = ""
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == "cancel") { job?.cancel(); return START_NOT_STICKY }
+        createChannel(this)
+        startForeground(11, notification(this, OpProgress(pendingTitle)))
+        if (job?.isActive == true) return START_NOT_STICKY
+        val work = pendingWork
+        pendingWork = null
+        if (work == null) { finish(); return START_NOT_STICKY }
+        val id = UUID.randomUUID().toString()
+        val title = pendingTitle
+        interruptedDetail = id
+        record(this, TransferRecord(id, title, System.currentTimeMillis(), "En curso", ""))
+        job = scope.launch {
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    var lastNotification = 0L
+                    work { value ->
+                        progress.value = value
+                        val now = System.currentTimeMillis()
+                        if(now-lastNotification>=500) {
+                            lastNotification=now
+                            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(11, notification(this@TransferService, value))
+                        }
+                    }
+                }
+                if (result.changed.isNotEmpty()) withContext(Dispatchers.IO) { Media.scan(this@TransferService, result.changed) }
+                val detail = result.message ?: "Completado"
+                record(this@TransferService, TransferRecord(id, title, System.currentTimeMillis(), "Completado", detail))
+                completion.value = System.nanoTime() to detail
+            } catch (e: CancellationException) {
+                record(this@TransferService, TransferRecord(id, title, System.currentTimeMillis(), "Cancelado", "Los originales pendientes se conservan"))
+                completion.value = System.nanoTime() to "Operación cancelada"
+            } catch (e: Exception) {
+                val detail = e.message ?: e.javaClass.simpleName
+                record(this@TransferService, TransferRecord(id, title, System.currentTimeMillis(), "Error", detail))
+                completion.value = System.nanoTime() to "Error: $detail"
+            } finally { finish() }
+        }
+        return START_NOT_STICKY
+    }
+
+    private fun finish() {
+        interruptedDetail = ""
+        progress.value = null
+        busy = false
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
+    override fun onTimeout(startId: Int, fgsType: Int) { job?.cancel(); finish() }
+    override fun onDestroy() { scope.cancel(); super.onDestroy() }
+
+    companion object {
+        val progress = MutableStateFlow<OpProgress?>(null)
+        val completion = MutableStateFlow<Pair<Long, String>?>(null)
+        private var pendingWork: (suspend ((OpProgress) -> Unit) -> OperationResult)? = null
+        private var pendingTitle = "Operación"
+        @Volatile private var busy = false
+
+        @Synchronized fun submit(ctx: Context, title: String, work: suspend ((OpProgress) -> Unit) -> OperationResult): Boolean {
+            if (busy) return false
+            busy = true
+            pendingWork = work
+            pendingTitle = title
+            progress.value = OpProgress(title)
+            try { ContextCompat.startForegroundService(ctx, Intent(ctx, TransferService::class.java)) }
+            catch (e: Exception) { busy = false; pendingWork = null; progress.value = null; throw e }
+            return true
+        }
+
+        fun cancel(ctx: Context) { ctx.startService(Intent(ctx, TransferService::class.java).setAction("cancel")) }
+
+        fun createChannel(ctx: Context) {
+            (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .createNotificationChannel(NotificationChannel("transfers", "Transferencias de archivos", NotificationManager.IMPORTANCE_LOW))
+        }
+
+        private fun notification(ctx: Context, p: OpProgress): android.app.Notification {
+            val open = PendingIntent.getActivity(ctx, 1, Intent(ctx, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            val cancel = PendingIntent.getService(ctx, 2, Intent(ctx, TransferService::class.java).setAction("cancel"), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            return NotificationCompat.Builder(ctx, "transfers").setSmallIcon(android.R.drawable.stat_sys_download)
+                .setContentTitle(p.title).setContentText(p.current).setContentIntent(open).setOngoing(true)
+                .setProgress(100, if (p.totalBytes > 0) (p.doneBytes * 100 / p.totalBytes).toInt().coerceIn(0,100) else 0, p.totalBytes <= 0)
+                .addAction(0, "Cancelar", cancel).build()
+        }
+
+        @Synchronized private fun record(ctx: Context, item: TransferRecord) {
+            val list = history(ctx).filter { it.id != item.id }.toMutableList()
+            list.add(0, item)
+            val arr = JSONArray()
+            list.take(100).forEach { arr.put(JSONObject().put("id", it.id).put("title", it.title).put("time", it.time).put("status", it.status).put("detail", it.detail)) }
+            ctx.getSharedPreferences("transfer_history", Context.MODE_PRIVATE).edit().putString("records", arr.toString()).commit()
+        }
+
+        fun history(ctx: Context): List<TransferRecord> = runCatching {
+            val arr = JSONArray(ctx.getSharedPreferences("transfer_history", Context.MODE_PRIVATE).getString("records", "[]"))
+            (0 until arr.length()).map { i ->
+                val o = arr.getJSONObject(i)
+                val state = o.getString("status")
+                TransferRecord(o.getString("id"), o.getString("title"), o.getLong("time"),
+                    if (state == "En curso" && !busy) "Interrumpido" else state, o.optString("detail"))
+            }
+        }.getOrDefault(emptyList())
+    }
+}

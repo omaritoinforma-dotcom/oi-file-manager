@@ -38,10 +38,12 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
@@ -96,6 +98,8 @@ import com.omaritoinforma.oiarchivos.data.Location
 import com.omaritoinforma.oiarchivos.data.ViewMode
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
 import com.omaritoinforma.oiarchivos.ui.TabState
+import com.omaritoinforma.oiarchivos.ui.Screen
+import com.omaritoinforma.oiarchivos.data.*
 import com.omaritoinforma.oiarchivos.ui.components.BarAction
 import com.omaritoinforma.oiarchivos.ui.components.Breadcrumb
 import com.omaritoinforma.oiarchivos.ui.components.FileRow
@@ -136,10 +140,10 @@ fun BrowserScreen(vm: MainViewModel, openDrawer: () -> Unit) {
         }
         val ext = item.extension
         when {
-            ext == "zip" || ext == "jar" -> dialog = BrowserDialog.OpenArchive(item)
+            ArchiveTools.supports(item.file) && ext != "apk" -> vm.goTo(Screen.Archive(item.path))
             ext == "apk" -> dialog = BrowserDialog.OpenApk(item)
             Kinds.isEditable(ext) -> vm.openEditor(item.path)
-            else -> Opener.open(ctx, item.file)
+            else -> vm.openFile(item.path)
         }
     }
 
@@ -211,6 +215,7 @@ private fun BrowserTopBar(
     onSearch: () -> Unit,
     onDialog: (BrowserDialog) -> Unit,
 ) {
+    val context = LocalContext.current
     var menu by remember { mutableStateOf(false) }
     TopAppBar(
         navigationIcon = { IconButton(onClick = openDrawer) { Icon(Icons.Filled.Menu, "Menú") } },
@@ -229,6 +234,19 @@ private fun BrowserTopBar(
             Box {
                 IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Más opciones") }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    MenuItem("Búsqueda avanzada", Icons.Filled.Search) {
+                        menu = false
+                        vm.goTo(Screen.AdvancedSearch((loc as? Location.Folder)?.path ?: PathUtil.internalRoot))
+                    }
+                    MenuItem("Analizar esta carpeta", Icons.Filled.Info) {
+                        menu = false
+                        vm.goTo(Screen.Analysis((loc as? Location.Folder)?.path ?: PathUtil.internalRoot))
+                    }
+                    MenuItem("Doble panel",Icons.Filled.ViewList) { menu=false;vm.goTo(Screen.DualPane((loc as? Location.Folder)?.path ?: PathUtil.internalRoot)) }
+                    MenuItem("Red, nube y USB", Icons.Filled.Link) { menu = false; vm.goTo(Screen.Connections) }
+                    if (NetworkClipboard.value != null && loc is Location.Folder) {
+                        MenuItem("Pegar desde red / nube", Icons.Filled.Download) { menu=false; vm.pasteNetwork(loc.path) }
+                    }
                     MenuItem("Ordenar…", Icons.Filled.Sort) {
                         menu = false
                         onDialog(BrowserDialog.Sort)
@@ -245,6 +263,7 @@ private fun BrowserTopBar(
                             menu = false
                             vm.up()
                         }
+                        MenuItem("Acceso directo en Android", Icons.Filled.OpenInNew) { menu=false; runCatching { com.omaritoinforma.oiarchivos.util.FolderActions.pin(context,loc.path) }.onFailure { vm.toast(it.message.orEmpty()) } }
                         val marked = loc.path in vm.bookmarks
                         MenuItem(
                             if (marked) "Quitar de marcadores" else "Agregar a marcadores",
@@ -357,13 +376,20 @@ private fun SelectionBottomBar(vm: MainViewModel, tab: TabState, ctx: Context, s
                     menu = false
                     setDialog(BrowserDialog.Compress(selectedItems))
                 }
-                if (single != null && single.extension in setOf("zip", "jar", "apk")) {
+                if (single != null && ArchiveTools.supports(single.file)) {
                     MenuItem("Extraer aquí", Icons.Filled.Unarchive) {
                         menu = false
                         vm.extract(single)
                     }
                 }
                 if (single != null && !single.isDirectory) {
+                    MenuItem(if(single.extension == "oienc") "Descifrar con contraseña" else "Cifrar con contraseña", Icons.Filled.Info) {
+                        menu=false; setDialog(BrowserDialog.Encrypt(single,single.extension == "oienc"))
+                    }
+                    if(single.extension == "apk") MenuItem("Inspeccionar APK", Icons.Filled.Info) { menu=false; setDialog(BrowserDialog.InspectApk(single)) }
+                    if(Kinds.ofExt(single.extension) == com.omaritoinforma.oiarchivos.util.FileKind.IMAGE) MenuItem("Establecer fondo de pantalla",Icons.Filled.Image) {
+                        menu=false; vm.runTask("Estableciendo fondo") { com.omaritoinforma.oiarchivos.util.FolderActions.wallpaper(ctx,single.file);OperationResult("Fondo de pantalla actualizado") }
+                    }
                     MenuItem("Abrir con…", Icons.Filled.OpenInNew) {
                         menu = false
                         Opener.open(ctx, single.file, chooser = true)
@@ -399,6 +425,8 @@ private fun SelectionBottomBar(vm: MainViewModel, tab: TabState, ctx: Context, s
                         setDialog(BrowserDialog.BatchRename(selectedItems))
                     }
                 }
+                if(single != null) MenuItem(if(single.name.startsWith('.')) "Mostrar (quitar punto)" else "Ocultar (añadir punto)",Icons.Filled.Visibility) { menu=false; vm.rename(single,if(single.name.startsWith('.')) single.name.trimStart('.') else "."+single.name) }
+                if(single?.isDirectory == true) MenuItem("Alternar .nomedia",Icons.Filled.VisibilityOff) { menu=false;vm.runTask("Actualizando .nomedia") { val marker=java.io.File(single.file,".nomedia"); val ok=if(marker.exists())marker.delete() else marker.createNewFile();if(!ok)throw java.io.IOException("No se pudo cambiar .nomedia");OperationResult("Configuración de medios actualizada",listOf(single.file)) } }
                 MenuItem("Copiar ruta", Icons.Filled.Link) {
                     menu = false
                     Opener.copyText(ctx, selectedItems.joinToString("\n") { it.path })
@@ -523,7 +551,7 @@ private fun FileListing(
             onDispose { tab.scroll[loc] = state.firstVisibleItemIndex to state.firstVisibleItemScrollOffset }
         }
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(96.dp),
+            columns = GridCells.Adaptive(vm.gridSize.dp),
             state = state,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 4.dp, end = 4.dp, bottom = 96.dp),

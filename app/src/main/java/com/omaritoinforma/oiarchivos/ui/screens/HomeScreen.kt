@@ -141,6 +141,10 @@ private fun quickTiles(vm: MainViewModel): List<Tile> = listOf(
     Tile("Documentos", Icons.Filled.Description, Color(0xFF3949AB)) { vm.openFolder(publicDir(Environment.DIRECTORY_DOCUMENTS)) },
     Tile("Papelera", Icons.Filled.Delete, Color(0xFF757575)) { vm.goTo(Screen.Trash) },
     Tile("Apps", Icons.Filled.Apps, Color(0xFF7CB342)) { vm.goTo(Screen.Apps) },
+    Tile("Red / nube", Icons.Filled.Dns, Color(0xFF1E88E5)) { vm.goTo(Screen.Connections) },
+    Tile("Analizar", Icons.Filled.SdCard, Color(0xFF8E24AA)) { vm.goTo(Screen.Analysis(PathUtil.internalRoot)) },
+    Tile("Historial", Icons.Filled.History, Color(0xFFFB8C00)) { vm.goTo(Screen.History) },
+    Tile("Transferir", Icons.Filled.Download, Color(0xFF00897B)) { vm.goTo(Screen.Transfers) },
     Tile("Raíz", Icons.Filled.Dns, Color(0xFF6D4C41)) { vm.openFolder("/") },
     Tile("Ajustes", Icons.Filled.Settings, Color(0xFF546E7A)) { vm.goTo(Screen.Settings) },
 )

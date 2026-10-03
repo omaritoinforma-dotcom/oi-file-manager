@@ -70,7 +70,7 @@ import com.omaritoinforma.oiarchivos.ui.screens.BrowserScreen
 import com.omaritoinforma.oiarchivos.ui.screens.EditorScreen
 import com.omaritoinforma.oiarchivos.ui.screens.HomeScreen
 import com.omaritoinforma.oiarchivos.ui.screens.SettingsScreen
-import com.omaritoinforma.oiarchivos.ui.screens.TrashScreen
+import com.omaritoinforma.oiarchivos.ui.screens.*
 import com.omaritoinforma.oiarchivos.util.PathUtil
 import com.omaritoinforma.oiarchivos.util.formatSize
 import kotlinx.coroutines.launch
@@ -102,6 +102,19 @@ fun AppRoot(vm: MainViewModel) {
             Screen.Apps -> AppsScreen(vm)
             Screen.Trash -> TrashScreen(vm)
             Screen.Settings -> SettingsScreen(vm)
+            is Screen.Viewer -> ViewerScreen(vm, screen.path)
+            is Screen.Archive -> ArchiveScreen(vm, screen.path)
+            is Screen.Analysis -> AnalysisScreen(vm, screen.root)
+            is Screen.AdvancedSearch -> AdvancedSearchScreen(vm, screen.root)
+            Screen.Connections -> ConnectionsScreen(vm)
+            is Screen.Remote -> RemoteScreen(vm, screen.id)
+            is Screen.Documents -> DocumentsScreen(vm, screen.uri)
+            Screen.Sharing -> SharingScreen(vm)
+            Screen.Transfers -> TransfersScreen(vm)
+            Screen.History -> HistoryScreen(vm)
+            Screen.RootTools -> RootToolsScreen(vm)
+            is Screen.VideoEdit -> VideoEditScreen(vm, screen.path)
+            is Screen.DualPane -> DualPaneScreen(vm, screen.path)
         }
     }
     Overlays(vm)
@@ -128,7 +141,7 @@ private fun PermissionScreen(vm: MainViewModel) {
         Spacer(Modifier.height(12.dp))
         Text(
             "Para explorar, copiar, mover y organizar todo tu almacenamiento, concede el permiso " +
-                "«Acceso a todos los archivos». La app no tiene permiso de internet: nada sale de tu teléfono.",
+                "«Acceso a todos los archivos». Las conexiones de red solo se usan cuando tú las activas.",
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -205,6 +218,11 @@ private fun AppDrawer(vm: MainViewModel, close: () -> Unit) {
                 vm.goTo(Screen.Apps)
                 close()
             }
+            DrawerItem("Red, nube y USB", Icons.Filled.Dns, vm.screen == Screen.Connections) { vm.goTo(Screen.Connections); close() }
+            DrawerItem("Analizar espacio", Icons.Filled.SdCard) { vm.goTo(Screen.Analysis(PathUtil.internalRoot)); close() }
+            DrawerItem("Transferencias", Icons.Filled.Download, vm.screen == Screen.Transfers) { vm.goTo(Screen.Transfers); close() }
+            DrawerItem("Historial", Icons.Filled.Folder, vm.screen == Screen.History) { vm.goTo(Screen.History); close() }
+            DrawerItem("Root con Magisk", Icons.Filled.Dns, vm.screen == Screen.RootTools) { vm.goTo(Screen.RootTools); close() }
             DrawerItem("Ajustes", Icons.Filled.Settings, vm.screen == Screen.Settings) {
                 vm.goTo(Screen.Settings)
                 close()

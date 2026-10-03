@@ -4,6 +4,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import java.io.File
 import java.io.IOException
+import java.nio.file.Files
 
 /** Lleva la cuenta del progreso y la velocidad de una operación. */
 class Tracker(private val title: String, private val report: (OpProgress) -> Unit) {
@@ -41,6 +42,7 @@ object FileOps {
 
     /** "foto.jpg" -> "foto (1).jpg" si ya existe. */
     fun uniqueName(dir: File, name: String): File {
+        SafeFiles.requireName(name)
         var f = File(dir, name)
         if (!f.exists()) return f
         val dot = name.lastIndexOf('.')
@@ -58,7 +60,7 @@ object FileOps {
         var bytes = 0L
         var count = 0
         for (root in files) {
-            for (f in root.walkTopDown()) {
+            for (f in SafeFiles.walk(root)) {
                 if (f.isFile) {
                     bytes += f.length()
                     count++
@@ -87,9 +89,17 @@ object FileOps {
         if (!destDir.exists() && !destDir.mkdirs()) throw IOException("No se pudo crear la carpeta de destino")
 
         val targets = mutableListOf<File>()
-        val pending = mutableListOf<Pair<File, File>>()
+        val roots = sources.distinctBy { it.canonicalPath }.filter { source ->
+            sources.none { other -> other != source && other.isDirectory &&
+                source.canonicalPath.startsWith(other.canonicalPath + File.separator) }
+        }
+        val (bytes, count) = measure(roots)
+        tracker.totalBytes = bytes
+        tracker.totalFiles = count
         var skipped = 0
-        for (s in sources) {
+        for (s in roots) {
+            currentCoroutineContext().ensureActive()
+            SafeFiles.requireRegular(s)
             var target = File(destDir, s.name)
             if (target.canonicalPath == s.canonicalPath) {
                 if (move) {
@@ -99,12 +109,14 @@ object FileOps {
                 target = uniqueName(destDir, s.name)
             } else if (target.exists()) {
                 when (conflict) {
-                    Conflict.SKIP -> {
+                    Conflict.SKIP -> if (!s.isDirectory || !target.isDirectory) {
                         skipped++
                         continue
                     }
                     Conflict.RENAME -> target = uniqueName(destDir, s.name)
-                    Conflict.OVERWRITE -> if (target.isDirectory != s.isDirectory) target.deleteRecursively()
+                    Conflict.OVERWRITE -> if (target.isDirectory != s.isDirectory) {
+                        throw IOException("«${target.name}» es de otro tipo; renómbralo o conserva ambos")
+                    }
                 }
             }
             // Mover dentro del mismo almacenamiento es instantáneo.
@@ -112,41 +124,47 @@ object FileOps {
                 targets += target
                 continue
             }
-            pending += s to target
-        }
-
-        val (bytes, count) = measure(pending.map { it.first })
-        tracker.totalBytes = bytes
-        tracker.totalFiles = count
-        tracker.emit()
-        for ((s, t) in pending) {
-            copyRecursive(s, t, tracker)
-            if (move && !s.deleteRecursively()) {
-                throw IOException("Se copió «${s.name}» pero no se pudo borrar el original")
-            }
-            targets += t
+            val omitted = copyRecursive(s, target, tracker, conflict, move)
+            skipped += omitted
+            targets += target
         }
         return TransferResult(targets, skipped)
     }
 
-    private suspend fun copyRecursive(src: File, dst: File, t: Tracker) {
+    private suspend fun copyRecursive(src: File, initialDst: File, t: Tracker, conflict: Conflict, move: Boolean): Int {
         currentCoroutineContext().ensureActive()
+        SafeFiles.requireRegular(src)
+        var dst = initialDst
+        if (dst.exists() && !(src.isDirectory && dst.isDirectory)) {
+            when (conflict) {
+                Conflict.SKIP -> return 1
+                Conflict.RENAME -> dst = uniqueName(dst.parentFile!!, dst.name)
+                Conflict.OVERWRITE -> if (dst.isDirectory != src.isDirectory) throw IOException("Tipos incompatibles: ${dst.name}")
+            }
+        }
+        var skipped = 0
         if (src.isDirectory) {
             if (!dst.exists() && !dst.mkdirs()) throw IOException("No se pudo crear «${dst.name}»")
-            val children = src.listFiles() ?: emptyArray()
-            for (child in children) copyRecursive(child, File(dst, child.name), t)
+            val children = src.listFiles() ?: throw IOException("No se puede leer «${src.name}»")
+            for (child in children) skipped += copyRecursive(child, File(dst, child.name), t, conflict, move)
             dst.setLastModified(src.lastModified())
+            // Keep the original folder if any of its children were skipped.
+            if (move && src.list()?.isEmpty() == true && !src.delete()) throw IOException("No se pudo borrar ${src.name}")
         } else {
             copyFile(src, dst, t)
+            currentCoroutineContext().ensureActive()
+            if (move && !src.delete()) throw IOException("Copiado, pero no se pudo borrar el original: ${src.name}")
         }
+        return skipped
     }
 
     private suspend fun copyFile(src: File, dst: File, t: Tracker) {
         t.current = src.name
         t.emit()
+        val temp = File.createTempFile(".oi-part-", ".tmp", dst.parentFile)
         try {
             src.inputStream().use { input ->
-                dst.outputStream().use { out ->
+                temp.outputStream().use { out ->
                     val buf = ByteArray(BUFFER)
                     while (true) {
                         val n = input.read(buf)
@@ -157,11 +175,10 @@ object FileOps {
                     }
                 }
             }
-        } catch (e: Exception) {
-            dst.delete() // no dejar archivos a medias
-            throw e
-        }
-        dst.setLastModified(src.lastModified())
+            temp.setLastModified(src.lastModified())
+            currentCoroutineContext().ensureActive()
+            SafeFiles.commit(temp, dst)
+        } finally { temp.delete() }
         t.fileDone()
     }
 

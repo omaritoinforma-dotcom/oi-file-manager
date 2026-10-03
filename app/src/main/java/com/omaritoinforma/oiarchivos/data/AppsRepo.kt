@@ -14,6 +14,7 @@ data class AppInfo(
     val apkPath: String,
     val size: Long,
     val isSystem: Boolean,
+    val splits: List<String> = emptyList(),
 )
 
 object AppsRepo {
@@ -39,15 +40,18 @@ object AppsRepo {
                 apkPath = apk,
                 size = File(apk).length(),
                 isSystem = system,
+                splits = ai.splitSourceDirs?.toList().orEmpty(),
             )
         }.sortedBy { it.label.lowercase() }
     }
 
-    fun backup(app: AppInfo): File {
+    suspend fun backup(app: AppInfo): File {
         val dir = backupDir.apply { mkdirs() }
-        val safe = "${app.label}_${app.versionName}.apk".replace(Regex("[\\\\/:*?\"<>|]"), "_")
-        val out = File(dir, safe)
-        File(app.apkPath).copyTo(out, overwrite = true)
+        val extension = if(app.splits.isEmpty()) "apk" else "apks"
+        val safe = "${app.label}_${app.versionName}.$extension".replace(Regex("[\\\\/:*?\"<>|]"), "_")
+        val out = FileOps.uniqueName(dir, safe)
+        if(app.splits.isEmpty()) SafeFiles.writeAtomic(out) { File(app.apkPath).copyTo(it,overwrite=true) }
+        else ArchiveTools.compress((listOf(app.apkPath)+app.splits).map(::File),out,"") {}
         return out
     }
 }

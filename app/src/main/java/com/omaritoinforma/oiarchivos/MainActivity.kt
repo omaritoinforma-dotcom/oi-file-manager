@@ -24,6 +24,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        vm.receive(intent)
         setContent {
             val dark = when (vm.themeMode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
@@ -43,6 +44,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        vm.receive(intent)
     }
 
     override fun onResume() {

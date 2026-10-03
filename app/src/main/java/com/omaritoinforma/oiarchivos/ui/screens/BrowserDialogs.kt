@@ -73,6 +73,8 @@ sealed interface BrowserDialog {
     data class Compress(val items: List<FileItem>) : BrowserDialog
     data class OpenArchive(val item: FileItem) : BrowserDialog
     data class OpenApk(val item: FileItem) : BrowserDialog
+    data class Encrypt(val item: FileItem, val decrypt: Boolean) : BrowserDialog
+    data class InspectApk(val item: FileItem) : BrowserDialog
     data object Sort : BrowserDialog
 }
 
@@ -81,6 +83,11 @@ fun BrowserDialogs(vm: MainViewModel, dialog: BrowserDialog, setDialog: (Browser
     val ctx = LocalContext.current
     val dismiss: () -> Unit = { setDialog(null) }
     when (dialog) {
+        is BrowserDialog.Encrypt -> PasswordDialog(if(dialog.decrypt) "Descifrar archivo" else "Cifrar archivo",dismiss) { password ->
+            vm.encrypt(dialog.item,password,dialog.decrypt); dismiss()
+        }
+        is BrowserDialog.InspectApk -> ApkInfoDialog(dialog.item,dismiss)
+
         BrowserDialog.CreateMenu -> AlertDialog(
             onDismissRequest = dismiss,
             title = { Text("Crear nuevo") },
@@ -153,14 +160,8 @@ fun BrowserDialogs(vm: MainViewModel, dialog: BrowserDialog, setDialog: (Browser
 
         is BrowserDialog.Properties -> PropertiesDialog(dialog.items, dismiss)
 
-        is BrowserDialog.Compress -> NameDialog(
-            title = "Comprimir en ZIP",
-            initial = (dialog.items.singleOrNull()?.name?.substringBeforeLast('.') ?: "Archivo") + ".zip",
-            confirm = "Comprimir",
-            onDismiss = dismiss,
-        ) {
-            vm.compress(dialog.items, it)
-            dismiss()
+        is BrowserDialog.Compress -> CompressDialog(dialog.items,dismiss) { name,password ->
+            vm.compress(dialog.items,name,password);dismiss()
         }
 
         is BrowserDialog.OpenArchive -> AlertDialog(
@@ -410,4 +411,29 @@ private fun PropRow(label: String, value: String) {
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
         Text(value, style = MaterialTheme.typography.bodyMedium)
     }
+}
+
+@Composable
+private fun PasswordDialog(title:String,dismiss:()->Unit,submit:(String)->Unit){
+    var password by remember{mutableStateOf("")}
+    AlertDialog(onDismissRequest=dismiss,title={Text(title)},text={Column{OutlinedTextField(password,{password=it},label={Text("Contraseña")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation());Text("Se crea una copia. El original se conserva.")}},confirmButton={TextButton(onClick={submit(password)},enabled=password.isNotEmpty()){Text("Continuar")}},dismissButton={TextButton(onClick=dismiss){Text("Cancelar")}})
+}
+
+@Composable
+private fun CompressDialog(items:List<FileItem>,dismiss:()->Unit,submit:(String,String)->Unit){
+    var name by remember{mutableStateOf((items.firstOrNull()?.name?.substringBeforeLast('.') ?: "Archivos")+".zip")}
+    var password by remember{mutableStateOf("")}
+    AlertDialog(onDismissRequest=dismiss,title={Text("Crear ZIP")},text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)){OutlinedTextField(name,{name=it},label={Text("Nombre: .zip, .7z, .tar o .tar.gz")});OutlinedTextField(password,{password=it},label={Text("Contraseña opcional (AES)")},visualTransformation=androidx.compose.ui.text.input.PasswordVisualTransformation())}},confirmButton={TextButton(onClick={submit(name,password)},enabled=name.isNotBlank()){Text("Comprimir")}},dismissButton={TextButton(onClick=dismiss){Text("Cancelar")}})
+}
+
+@Composable
+private fun ApkInfoDialog(item:FileItem,dismiss:()->Unit){
+    val ctx=LocalContext.current
+    val info by produceState<String?>(null,item.path){value=withContext(Dispatchers.IO){runCatching{
+        @Suppress("DEPRECATION") val packageInfo=ctx.packageManager.getPackageArchiveInfo(item.path,android.content.pm.PackageManager.GET_PERMISSIONS) ?: throw IllegalArgumentException("No es un APK compatible")
+        val application=packageInfo.applicationInfo
+        application?.sourceDir=item.path;application?.publicSourceDir=item.path
+        "Aplicación: ${application?.loadLabel(ctx.packageManager)}\nPaquete: ${packageInfo.packageName}\nVersión: ${packageInfo.versionName}\n\nPermisos solicitados:\n"+(packageInfo.requestedPermissions?.joinToString("\n") ?: "Ninguno")
+    }.getOrElse{it.message ?: "No se pudo inspeccionar el APK"}}}
+    AlertDialog(onDismissRequest=dismiss,title={Text(item.name)},text={SelectionContainer{Text(info ?: "Leyendo…",Modifier.verticalScroll(rememberScrollState()))}},confirmButton={TextButton(onClick=dismiss){Text("Cerrar")}})
 }

@@ -47,6 +47,12 @@ fun SettingsScreen(vm: MainViewModel) {
                     vm.updateUseTrash(it)
                 }
             }
+            item {
+                androidx.compose.foundation.layout.Column(Modifier.padding(16.dp)) {
+                    Text("Tamaño de las celdas: ${vm.gridSize}")
+                    androidx.compose.material3.Slider(value=vm.gridSize.toFloat(),onValueChange={vm.updateGridSize(it.toInt())},valueRange=72f..160f,steps=10)
+                }
+            }
             item { SectionTitle("Tema", Modifier.padding(start = 16.dp, top = 16.dp)) }
             items(ThemeMode.entries.toList()) { m ->
                 ListItem(
@@ -60,7 +66,7 @@ fun SettingsScreen(vm: MainViewModel) {
                 ListItem(
                     headlineContent = { Text("OI Archivos ${BuildConfig.VERSION_NAME}") },
                     supportingContent = {
-                        Text("Uso personal. Sin anuncios, sin rastreo y sin permiso de internet.")
+                        Text("Uso personal. Sin anuncios ni rastreo. La red se usa para las conexiones y transferencias que activas.")
                     },
                 )
             }
