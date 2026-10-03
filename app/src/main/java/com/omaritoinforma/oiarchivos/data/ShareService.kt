@@ -182,7 +182,8 @@ private class LocalHttp(private val root: File, address: String, private val pas
                         part.outputStream().use { input.copyTo(it) }
                     }
                 }
-                return newFixedLengthResponse(Response.Status.REDIRECT, "text/plain", "Subido")
+                // 303 = "ver la carpeta de nuevo"; un 301 es permanente y el navegador podría guardarlo en caché.
+                return newFixedLengthResponse(Response.Status.REDIRECT_SEE_OTHER, "text/plain", "Subido")
                     .apply { addHeader("Location", session.uri) }
             }
             if (session.method != Method.GET && session.method != Method.HEAD)

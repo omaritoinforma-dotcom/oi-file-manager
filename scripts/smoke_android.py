@@ -155,7 +155,8 @@ def verify_http():
         assert request("/../oi-smoke.xml")[0] in (400, 403, 404)
         boundary = "OI-Android-Smoke"
         body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"http-upload.txt\"\r\nContent-Type: text/plain\r\n\r\nHTTP upload payload\r\n--{boundary}--\r\n").encode()
-        assert request("/?csrf=" + password, body=body, content_type=f"multipart/form-data; boundary={boundary}")[0] == 200
+        # Tras subir, el servidor responde 303 (Post/Redirect/Get) para que el navegador recargue la carpeta.
+        assert request("/?csrf=" + password, body=body, content_type=f"multipart/form-data; boundary={boundary}")[0] == 303
         assert adb("shell", "cat", "/sdcard/Download/http-upload.txt") == "HTTP upload payload"
         CHECKS.append("http-auth-download-upload-confinement")
         print("PASS: http-auth-download-upload-confinement", flush=True)
