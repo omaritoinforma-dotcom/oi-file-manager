@@ -10,3 +10,4 @@ captures/
 __pycache__/
 smoke-output/
 apk/
+build-checkpoints/

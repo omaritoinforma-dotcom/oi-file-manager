@@ -1,0 +1,57 @@
+{
+  "apk_version": "0.2.5",
+  "version_code": 5,
+  "apk_sha256": "8819dbc6374acea54a6f016136af62dd7bd3c2796ec8753b9f032c01df5c7ec4",
+  "suites": [
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.CloudXmlTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "timestamp": "2026-10-03T22:25:05"
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.ProtocolTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "timestamp": "2026-10-03T22:25:07"
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.DurableCopyTest",
+      "tests": "7",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "timestamp": "2026-10-03T22:25:05"
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.NativeArchiveTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "timestamp": "2026-10-03T22:25:07"
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.FileSafetyTest",
+      "tests": "21",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "timestamp": "2026-10-03T22:25:06"
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.SubtitleTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "timestamp": "2026-10-03T22:25:07"
+    }
+  ],
+  "lint_status": "Blocked by missing dependencies; Google download denied by network policy",
+  "android_integration_status": "Not verified for this checkpoint"
+}

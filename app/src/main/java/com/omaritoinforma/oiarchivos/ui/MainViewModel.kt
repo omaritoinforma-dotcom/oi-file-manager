@@ -17,10 +17,12 @@ import com.omaritoinforma.oiarchivos.data.Categories
 import com.omaritoinforma.oiarchivos.data.Clipboard
 import com.omaritoinforma.oiarchivos.data.Conflict
 import com.omaritoinforma.oiarchivos.data.CryptoTools
+import com.omaritoinforma.oiarchivos.data.DurableCopy
 import com.omaritoinforma.oiarchivos.data.FileCategory
 import com.omaritoinforma.oiarchivos.data.FileItem
 import com.omaritoinforma.oiarchivos.data.FileOps
 import com.omaritoinforma.oiarchivos.data.FileRepo
+import com.omaritoinforma.oiarchivos.data.GestureAction
 import com.omaritoinforma.oiarchivos.data.Location
 import com.omaritoinforma.oiarchivos.data.OpProgress
 import com.omaritoinforma.oiarchivos.data.OperationResult
@@ -75,6 +77,8 @@ sealed interface Screen {
 
     data object Connections : Screen
 
+    data object Bluetooth : Screen
+
     data class Remote(val id: String) : Screen
 
     data class Documents(val uri: String) : Screen
@@ -123,6 +127,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         get() = getApplication()
 
     private val prefs = Prefs(app)
+    var swipeLeft by mutableStateOf(prefs.swipeLeft)
+        private set
+    var swipeRight by mutableStateOf(prefs.swipeRight)
+        private set
+    fun updateGesture(left: Boolean, action: GestureAction) {
+        if (left) { swipeLeft = action; prefs.swipeLeft = action }
+        else { swipeRight = action; prefs.swipeRight = action }
+    }
+    fun performGesture(action: GestureAction) {
+        when (action) {
+            GestureAction.NONE -> {}
+            GestureAction.UP -> up()
+            GestureAction.HOME -> goHome()
+            GestureAction.REFRESH -> refresh()
+            GestureAction.NEXT_TAB -> if (tabs.isNotEmpty()) selectTab((activeTab + 1) % tabs.size)
+            GestureAction.PREVIOUS_TAB -> if (tabs.isNotEmpty()) selectTab((activeTab - 1 + tabs.size) % tabs.size)
+            GestureAction.NEW_TAB -> addTab()
+            GestureAction.HIDDEN -> toggleHidden()
+            GestureAction.SELECT_ALL -> selectAll()
+        }
+    }
 
     var hasPermission by mutableStateOf(Perms.hasStorage(app))
         private set
@@ -681,13 +706,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun doPaste(sources: List<File>, dest: File, move: Boolean, conflict: Conflict) {
         clipboard = null
-        runOp(if (move) "Moviendo" else "Copiando") { report ->
-            val r = FileOps.transfer(sources, dest, move, conflict, report)
-            val msg = buildString {
-                append(if (move) "Movidos: ${r.targets.size}" else "Copiados: ${r.targets.size}")
-                if (r.skipped > 0) append(" · omitidos: ${r.skipped}")
-            }
-            OpResult(msg, r.targets + (if (move) sources else emptyList()))
+        viewModelScope.launch {
+            runCatching {
+                    val job =
+                        withContext(Dispatchers.IO) {
+                            DurableCopy.create(
+                                TransferService.jobsDirectory(ctx), sources, dest, move, conflict)
+                        }
+                    if (!TransferService.submitDurable(ctx, job))
+                        toast(
+                            "Transferencia guardada en la cola. Abre Transferencias para iniciarla.")
+                }
+                .onFailure { toast(it.message ?: "No se pudo preparar la copia") }
         }
     }
 

@@ -37,6 +37,14 @@ class Prefs(context: Context) {
         get() = sp.getInt("grid_size", 96)
         set(v) = sp.edit().putInt("grid_size", v.coerceIn(72, 160)).apply()
 
+    var swipeLeft: GestureAction
+        get() = enumOr(sp.getString("swipe_left", null), GestureAction.NONE)
+        set(v) = sp.edit().putString("swipe_left", v.name).apply()
+
+    var swipeRight: GestureAction
+        get() = enumOr(sp.getString("swipe_right", null), GestureAction.NONE)
+        set(v) = sp.edit().putString("swipe_right", v.name).apply()
+
     var bookmarks: List<String>
         get() = sp.getString("bookmarks", "").orEmpty().split('\n').filter { it.isNotBlank() }
         set(v) = sp.edit().putString("bookmarks", v.joinToString("\n")).apply()

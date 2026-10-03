@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.omaritoinforma.oiarchivos.data.CloudXmlTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-03T22:25:05" hostname="1084998424d7" time="0.133">
+  <properties/>
+  <testcase name="sugarSyncCredentialsCannotBeSentToAnotherHostOrPort" classname="com.omaritoinforma.oiarchivos.data.CloudXmlTest" time="0.022"/>
+  <testcase name="xmlTextRoundTripEscapesNamesWithoutLosingUnicode" classname="com.omaritoinforma.oiarchivos.data.CloudXmlTest" time="0.1"/>
+  <testcase name="externalEntitiesAndOversizedResponsesAreRejected" classname="com.omaritoinforma.oiarchivos.data.CloudXmlTest" time="0.01"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[[Fatal Error] :1:10: DOCTYPE is disallowed when the feature "http://apache.org/xml/features/disallow-doctype-decl" set to true.
+]]></system-err>
+</testsuite>

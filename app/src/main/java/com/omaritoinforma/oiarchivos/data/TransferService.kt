@@ -33,19 +33,32 @@ class TransferService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var job: Job? = null
     private var interruptedDetail = ""
+    private var userCanceled = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "cancel") {
+            userCanceled = true
+            paused.value = false
             job?.cancel()
+            return START_NOT_STICKY
+        }
+        if (intent?.action == "pause" || intent?.action == "resume") {
+            if (supportsPause.value) paused.value = intent.action == "pause"
+            progress.value?.let {
+                (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(
+                    11, notification(this, it))
+            }
             return START_NOT_STICKY
         }
         createChannel(this)
         startForeground(11, notification(this, OpProgress(pendingTitle)))
         if (job?.isActive == true) return START_NOT_STICKY
         val work = pendingWork
+        val durable = pendingDurable
         pendingWork = null
+        pendingDurable = null
         if (work == null) {
             finish()
             return START_NOT_STICKY
@@ -59,8 +72,14 @@ class TransferService : Service() {
                 try {
                     val result =
                         withContext(Dispatchers.IO) {
+                            val context = currentCoroutineContext()
                             var lastNotification = 0L
                             work { value ->
+                                context.ensureActive()
+                                while (supportsPause.value && paused.value) {
+                                    Thread.sleep(100)
+                                    context.ensureActive()
+                                }
                                 progress.value = value
                                 val now = System.currentTimeMillis()
                                 if (now - lastNotification >= 500) {
@@ -80,13 +99,15 @@ class TransferService : Service() {
                         TransferRecord(id, title, System.currentTimeMillis(), "Completado", detail))
                     completion.value = System.nanoTime() to detail
                 } catch (e: CancellationException) {
+                    if (userCanceled)
+                        withContext(NonCancellable + Dispatchers.IO) { durable?.discard() }
                     record(
                         this@TransferService,
                         TransferRecord(
                             id,
                             title,
                             System.currentTimeMillis(),
-                            "Cancelado",
+                            if (userCanceled) "Cancelado" else "Interrumpido",
                             "Los originales pendientes se conservan"))
                     completion.value = System.nanoTime() to "Operación cancelada"
                 } catch (e: Exception) {
@@ -105,6 +126,8 @@ class TransferService : Service() {
     private fun finish() {
         interruptedDetail = ""
         progress.value = null
+        paused.value = false
+        supportsPause.value = false
         busy = false
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -123,6 +146,9 @@ class TransferService : Service() {
     companion object {
         val progress = MutableStateFlow<OpProgress?>(null)
         val completion = MutableStateFlow<Pair<Long, String>?>(null)
+        val paused = MutableStateFlow(false)
+        val supportsPause = MutableStateFlow(false)
+        private var pendingDurable: DurableCopy? = null
         private var pendingWork: (suspend ((OpProgress) -> Unit) -> OperationResult)? = null
         private var pendingTitle = "Operación"
         @Volatile private var busy = false
@@ -135,6 +161,7 @@ class TransferService : Service() {
         ): Boolean {
             if (busy) return false
             busy = true
+            supportsPause.value = pendingDurable != null
             pendingWork = work
             pendingTitle = title
             progress.value = OpProgress(title)
@@ -151,6 +178,26 @@ class TransferService : Service() {
 
         fun cancel(ctx: Context) {
             ctx.startService(Intent(ctx, TransferService::class.java).setAction("cancel"))
+        }
+
+        fun pause(ctx: Context, pause: Boolean) {
+            ctx.startService(
+                Intent(ctx, TransferService::class.java)
+                    .setAction(if (pause) "pause" else "resume"))
+        }
+
+        fun jobsDirectory(ctx: Context) = File(ctx.filesDir, "transfer-jobs")
+
+        @Synchronized
+        fun submitDurable(ctx: Context, job: DurableCopy): Boolean {
+            if (busy) return false
+            pendingDurable = job
+            return try {
+                submit(ctx, job.title) { job.run(it) }
+            } catch (e: Exception) {
+                pendingDurable = null
+                throw e
+            }
         }
 
         fun createChannel(ctx: Context) {
@@ -175,6 +222,13 @@ class TransferService : Service() {
                     2,
                     Intent(ctx, TransferService::class.java).setAction("cancel"),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            val pause =
+                PendingIntent.getService(
+                    ctx,
+                    3,
+                    Intent(ctx, TransferService::class.java)
+                        .setAction(if (paused.value) "resume" else "pause"),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             return NotificationCompat.Builder(ctx, "transfers")
                 .setSmallIcon(android.R.drawable.stat_sys_download)
                 .setContentTitle(p.title)
@@ -188,6 +242,10 @@ class TransferService : Service() {
                     else 0,
                     p.totalBytes <= 0)
                 .addAction(0, "Cancelar", cancel)
+                .apply {
+                    if (supportsPause.value)
+                        addAction(0, if (paused.value) "Reanudar" else "Pausar", pause)
+                }
                 .build()
         }
 

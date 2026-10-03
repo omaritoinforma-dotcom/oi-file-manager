@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.omaritoinforma.oiarchivos.data.DurableCopyTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-03T22:25:05" hostname="1084998424d7" time="0.208">
+  <properties/>
+  <testcase name="cannotCreateDestinationInsideOriginalOrFollowDestinationLink" classname="com.omaritoinforma.oiarchivos.data.DurableCopyTest" time="0.025"/>
+  <testcase name="destinationChangedWhileInterruptedIsPreserved" classname="com.omaritoinforma.oiarchivos.data.DurableCopyTest" time="0.108"/>
+  <testcase name="resumedMoveKeepsSkippedChildrenAndFinishesOtherChildren" classname="com.omaritoinforma.oiarchivos.data.DurableCopyTest" time="0.043"/>
+  <testcase name="corruptedPartialDoesNotReplaceExistingDestination" classname="com.omaritoinforma.oiarchivos.data.DurableCopyTest" time="0.006"/>
+  <testcase name="discardRemovesOnlyPartialsAndPreservesBothUserFiles" classname="com.omaritoinforma.oiarchivos.data.DurableCopyTest" time="0.004"/>
+  <testcase name="processRestartResumesPartialAndOnlyThenDeletesMovedOriginal" classname="com.omaritoinforma.oiarchivos.data.DurableCopyTest" time="0.015"/>
+  <testcase name="changedOriginalWithSameSizeAndTimeIsDetectedByPersistedPrefix" classname="com.omaritoinforma.oiarchivos.data.DurableCopyTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

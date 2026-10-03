@@ -352,9 +352,52 @@ internal class S3Fs(private val account: Connection) : RemoteFs {
         RemoteFiles.join(parent, name).also { request("$it/", "PUT", size = 0).close() }
 
     override fun rename(entry: RemoteEntry, name: String) {
-        if (entry.directory)
-            throw IOException("Para cambiar una carpeta S3, copia sus archivos a una carpeta nueva")
+        SafeFiles.requireName(name)
         val target = RemoteFiles.join(entry.path.substringBeforeLast('/'), name)
+        if (target == entry.path) return
+        if (list(entry.path.substringBeforeLast('/')).any { it.name == name })
+            throw IOException("Ya existe un archivo o carpeta con ese nombre")
+        if (entry.directory) {
+            // Snapshot the complete prefix first. Originals are deleted only once every copy
+            // succeeded.
+            val bucket = entry.path.trimStart('/').substringBefore('/')
+            val prefix = entry.path.trimStart('/').substringAfter('/').trimEnd('/') + "/"
+            val objects = ArrayList<String>()
+            var next = ""
+            do {
+                val query = mutableMapOf("list-type" to "2", "prefix" to prefix)
+                if (next.isNotEmpty()) query["continuation-token"] = next
+                val doc = xml(request("/$bucket", "GET", query))
+                val contents = doc.getElementsByTagNameNS("*", "Contents")
+                for (i in 0 until contents.length) {
+                    val key =
+                        (contents.item(i) as Element)
+                            .getElementsByTagNameNS("*", "Key")
+                            .item(0)
+                            .textContent
+                    if (!key.startsWith(prefix))
+                        throw IOException("S3 devolvió un archivo fuera de la carpeta")
+                    objects += "/$bucket/$key"
+                    if (objects.size > 100000)
+                        throw IOException("La carpeta supera el límite de 100.000 archivos")
+                }
+                next =
+                    doc.getElementsByTagNameNS("*", "NextContinuationToken")
+                        .item(0)
+                        ?.textContent
+                        .orEmpty()
+            } while (next.isNotEmpty())
+            for (source in objects) copyObject(
+                source, target.trimEnd('/') + "/" + source.substringAfter("/$bucket/$prefix"))
+            if (objects.isEmpty()) request(target.trimEnd('/') + "/", "PUT", size = 0).close()
+            for (source in objects) request(source, "DELETE").close()
+            return
+        }
+        copyObject(entry.path, target)
+        delete(entry)
+    }
+
+    private fun copyObject(source: String, target: String) {
         val result =
             xml(
                 request(
@@ -364,14 +407,13 @@ internal class S3Fs(private val account: Connection) : RemoteFs {
                         mapOf(
                             "x-amz-copy-source" to
                                 "/" +
-                                    entry.path.trimStart('/').split('/').joinToString("/") {
+                                    source.trimStart('/').split('/').joinToString("/") {
                                         encode(it)
                                     },
                             "if-none-match" to "*"),
                     size = 0))
         if (result.documentElement.localName != "CopyObjectResult")
             throw IOException("S3 no confirmó la copia")
-        delete(entry)
     }
 
     override fun delete(entry: RemoteEntry) {

@@ -18,7 +18,11 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Preparar 7-Zip para las pruebas de RAR cifrado
+        run: python3 scripts/build_archives.py --host
       - name: Pruebas y compilación
+        env:
+          OI_ARCHIVE_TEST_EXECUTABLE: ${{ github.workspace }}/build/native-archives/--host/7zz
         run: |
           chmod +x gradlew
           ./gradlew testDebugUnitTest assembleRelease lintDebug --stacktrace

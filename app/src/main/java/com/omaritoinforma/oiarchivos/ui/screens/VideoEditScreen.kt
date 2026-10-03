@@ -24,19 +24,41 @@ fun VideoEditScreen(vm: MainViewModel, path: String) {
     var caption by remember { mutableStateOf("") }
     var music by remember { mutableStateOf("") }
     var join by remember { mutableStateOf("") }
+    var image by remember { mutableStateOf("") }
+    var subtitles by remember { mutableStateOf("") }
+    var background by remember { mutableStateOf("") }
+    var color by remember { mutableStateOf("#202020") }
+    var canvas by remember { mutableIntStateOf(0) }
     var error by remember { mutableStateOf<String?>(null) }
     fun edit(): VideoEdit? {
         val lo = start.toDoubleOrNull()
         val hi = if (end.isBlank()) null else end.toDoubleOrNull()
-        if (lo == null || lo < 0 || (end.isNotBlank() && (hi == null || hi <= lo))) {
+        if (lo == null ||
+            !lo.isFinite() ||
+            lo < 0 ||
+            (end.isNotBlank() && (hi == null || !hi.isFinite() || hi <= lo))) {
             error = "Revisa el intervalo de tiempo"
             return null
         }
         val additional = join.lines().map { it.trim() }.filter { it.isNotBlank() }
-        if (additional.any { !File(it).isFile } || (music.isNotBlank() && !File(music).isFile)) {
-            error = "Revisa las rutas de música y videos"
+        if ((additional + listOf(music, image, subtitles, background).filter { it.isNotBlank() })
+            .any { !File(it).isFile }) {
+            error = "Revisa los archivos adicionales"
             return null
         }
+        val backgroundColor =
+            runCatching { android.graphics.Color.parseColor(color) }
+                .getOrElse {
+                    error = "Revisa el color de fondo, por ejemplo #202020"
+                    return null
+                }
+        val size =
+            when (canvas) {
+                1 -> 1280 to 720
+                2 -> 720 to 1280
+                3 -> 1080 to 1080
+                else -> 0 to 0
+            }
         return VideoEdit(
             (lo * 1000).toLong(),
             hi?.let { (it * 1000).toLong() } ?: Long.MAX_VALUE,
@@ -46,7 +68,13 @@ fun VideoEditScreen(vm: MainViewModel, path: String) {
             caption,
             music,
             additional,
-            mute)
+            mute,
+            image,
+            subtitles,
+            size.first,
+            size.second,
+            backgroundColor,
+            background)
     }
     ToolPage("Editar ${source.name}", vm) { pad ->
         LazyColumn(
@@ -119,6 +147,51 @@ fun VideoEditScreen(vm: MainViewModel, path: String) {
                         { join = it },
                         label = { Text("Rutas de videos a unir, una por línea") },
                         modifier = Modifier.fillMaxWidth())
+                }
+                item {
+                    OutlinedTextField(
+                        image,
+                        { image = it },
+                        label = { Text("Imagen superpuesta (ruta opcional)") },
+                        modifier = Modifier.fillMaxWidth())
+                }
+                item {
+                    OutlinedTextField(
+                        subtitles,
+                        { subtitles = it },
+                        label = { Text("Archivo SRT (ruta opcional)") },
+                        supportingText = {
+                            Text("Los tiempos corresponden al video exportado, desde 00:00.")
+                        },
+                        modifier = Modifier.fillMaxWidth())
+                }
+                item {
+                    TextButton(onClick = { canvas = (canvas + 1) % 4 }) {
+                        Text(
+                            "Lienzo: " +
+                                when (canvas) {
+                                    1 -> "Horizontal 1280 × 720"
+                                    2 -> "Vertical 720 × 1280"
+                                    3 -> "Cuadrado 1080 × 1080"
+                                    else -> "Tamaño original"
+                                })
+                    }
+                }
+                if (canvas != 0) {
+                    item {
+                        OutlinedTextField(
+                            color,
+                            { color = it },
+                            label = { Text("Color de fondo (#RRGGBB)") },
+                            modifier = Modifier.fillMaxWidth())
+                    }
+                    item {
+                        OutlinedTextField(
+                            background,
+                            { background = it },
+                            label = { Text("Imagen de fondo (ruta opcional)") },
+                            modifier = Modifier.fillMaxWidth())
+                    }
                 }
                 error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
                 item {

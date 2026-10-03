@@ -2,6 +2,7 @@ package com.omaritoinforma.oiarchivos.ui.screens
 
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,15 +10,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.google.android.gms.auth.api.identity.Identity
 import com.omaritoinforma.oiarchivos.data.*
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
 import com.omaritoinforma.oiarchivos.ui.Screen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import net.openid.appauth.AuthorizationService
 
 @Composable
 fun ConnectionsScreen(vm: MainViewModel) {
@@ -27,6 +31,51 @@ fun ConnectionsScreen(vm: MainViewModel) {
     var loadingError by remember { mutableStateOf<String?>(null) }
     var edit by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<Connection?>(null) }
+    var refresh by remember { mutableIntStateOf(0) }
+    var pendingId by rememberSaveable { mutableStateOf<String?>(null) }
+    var additionalLogin by remember { mutableStateOf<Connection?>(null) }
+    val authService = remember { AuthorizationService(ctx) }
+    DisposableEffect(authService) { onDispose { authService.dispose() } }
+    val oauth =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result
+            ->
+            val account =
+                runCatching { store.load().firstOrNull { it.id == pendingId } }.getOrNull()
+            pendingId = null
+            if (account != null)
+                CloudAuth.finish(ctx, authService, account, result.data) { outcome ->
+                    outcome
+                        .onSuccess { refresh++ }
+                        .onFailure { vm.toast(it.message ?: "No se pudo entrar") }
+                }
+        }
+    val google =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+            result ->
+            runCatching {
+                    val data =
+                        result.data ?: throw java.io.IOException("Inicio de sesión cancelado")
+                    CloudAuth.googleFinish(
+                        ctx,
+                        Identity.getAuthorizationClient(ctx).getAuthorizationResultFromIntent(data))
+                }
+                .onSuccess { refresh++ }
+                .onFailure { vm.toast(it.message ?: "No se pudo autorizar Google Drive") }
+        }
+    fun loginGoogle() {
+        Identity.getAuthorizationClient(ctx)
+            .authorize(CloudAuth.googleRequest())
+            .addOnSuccessListener { result ->
+                if (result.hasResolution())
+                    google.launch(
+                        IntentSenderRequest.Builder(result.pendingIntent!!.intentSender).build())
+                else
+                    runCatching { CloudAuth.googleFinish(ctx, result) }
+                        .onSuccess { refresh++ }
+                        .onFailure { vm.toast(it.message ?: "No se pudo entrar") }
+            }
+            .addOnFailureListener { vm.toast("No se pudo autorizar Google Drive: ${it.message}") }
+    }
     val tree =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
             if (uri != null) {
@@ -42,7 +91,7 @@ fun ConnectionsScreen(vm: MainViewModel) {
                 vm.goTo(Screen.Documents(uri.toString()))
             }
         }
-    LaunchedEffect(edit) {
+    LaunchedEffect(edit, refresh) {
         withContext(Dispatchers.IO) { runCatching { store.load() } }
             .onSuccess { accounts = it }
             .onFailure { loadingError = "No se pudieron leer las conexiones: ${it.message}" }
@@ -60,6 +109,20 @@ fun ConnectionsScreen(vm: MainViewModel) {
                 }
         }) { pad ->
             LazyColumn(Modifier.fillMaxSize().padding(pad)) {
+                item {
+                    ListItem(
+                        headlineContent = { Text("Entrar en Google Drive") },
+                        supportingContent = {
+                            Text("Elegir una cuenta y autorizar acceso a sus archivos")
+                        },
+                        modifier = Modifier.clickable { loginGoogle() })
+                }
+                item {
+                    ListItem(
+                        headlineContent = { Text("Explorar equipos por Bluetooth") },
+                        supportingContent = { Text("Archivos y carpetas mediante OBEX FTP") },
+                        modifier = Modifier.clickable { vm.goTo(Screen.Bluetooth) })
+                }
                 item {
                     ListItem(
                         headlineContent = { Text("Carpeta de SD / USB / proveedor de nube") },
@@ -86,13 +149,31 @@ fun ConnectionsScreen(vm: MainViewModel) {
                         headlineContent = { Text(c.label) },
                         supportingContent = { Text(c.protocol.label) },
                         trailingContent = {
-                            TextButton(
-                                onClick = {
-                                    selected = c
-                                    edit = true
-                                }) {
-                                    Text("Editar")
-                                }
+                            Column {
+                                if (c.protocol == Protocol.BAIDU ||
+                                    c.protocol == Protocol.SUGARSYNC)
+                                    TextButton(onClick = { additionalLogin = c }) { Text("Entrar") }
+                                if (c.protocol in CloudAuth.providers && c.clientId.isNotBlank())
+                                    TextButton(
+                                        onClick = {
+                                            runCatching {
+                                                    pendingId = c.id
+                                                    oauth.launch(CloudAuth.request(authService, c))
+                                                }
+                                                .onFailure {
+                                                    vm.toast(it.message ?: "No se pudo entrar")
+                                                }
+                                        }) {
+                                            Text("Entrar")
+                                        }
+                                TextButton(
+                                    onClick = {
+                                        selected = c
+                                        edit = true
+                                    }) {
+                                        Text("Editar")
+                                    }
+                            }
                         },
                         modifier = Modifier.clickable { vm.goTo(Screen.Remote(c.id)) })
                 }
@@ -104,6 +185,15 @@ fun ConnectionsScreen(vm: MainViewModel) {
                     }
             }
         }
+    additionalLogin?.let { c ->
+        AdditionalCloudLoginDialog(
+            c,
+            onDone = {
+                additionalLogin = null
+                refresh++
+            },
+            onDismiss = { additionalLogin = null })
+    }
     if (edit)
         ConnectionDialog(
             selected,
@@ -137,11 +227,19 @@ private fun ConnectionDialog(
     var secret by remember { mutableStateOf(existing?.secret.orEmpty()) }
     var root by remember { mutableStateOf(existing?.root ?: "/") }
     var fingerprint by remember { mutableStateOf(existing?.fingerprint.orEmpty()) }
+    var clientId by remember { mutableStateOf(existing?.clientId.orEmpty()) }
+    var clientSecret by remember { mutableStateOf(existing?.clientSecret.orEmpty()) }
     var error by remember { mutableStateOf<String?>(null) }
     val cloud =
         protocol in
             setOf(
-                Protocol.DRIVE, Protocol.DROPBOX, Protocol.ONEDRIVE, Protocol.BOX, Protocol.YANDEX)
+                Protocol.DRIVE,
+                Protocol.DROPBOX,
+                Protocol.ONEDRIVE,
+                Protocol.BOX,
+                Protocol.YANDEX,
+                Protocol.BAIDU,
+                Protocol.SUGARSYNC)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (existing == null) "Nueva conexión" else "Editar conexión") },
@@ -154,7 +252,7 @@ private fun ConnectionDialog(
                 item {
                     Column {
                         Protocol.entries
-                            .filter { it != Protocol.ROOT }
+                            .filter { it != Protocol.ROOT && it != Protocol.BLUETOOTH }
                             .chunked(3)
                             .forEach { row ->
                                 Row {
@@ -200,12 +298,26 @@ private fun ConnectionDialog(
                     item { OutlinedTextField(port, { port = it }, label = { Text("Puerto") }) }
                     item { OutlinedTextField(user, { user = it }, label = { Text("Usuario") }) }
                 }
+                if (protocol == Protocol.SUGARSYNC) {
+                    item {
+                        OutlinedTextField(
+                            user, { user = it }, label = { Text("Correo de SugarSync") })
+                    }
+                    item {
+                        OutlinedTextField(
+                            host,
+                            { host = it },
+                            label = { Text("Identificador de tu aplicación SugarSync /sc/…") })
+                    }
+                }
                 item {
                     OutlinedTextField(
                         secret,
                         { secret = it },
                         label = {
-                            Text(if (cloud) "Token de acceso del proveedor" else "Contraseña")
+                            Text(
+                                if (cloud) "Token de acceso (opcional si usas Entrar)"
+                                else "Contraseña")
                         },
                         visualTransformation = PasswordVisualTransformation())
                 }
@@ -240,7 +352,33 @@ private fun ConnectionDialog(
                                     "Cópiala del administrador del servidor. No se aceptan claves distintas.")
                             })
                     }
-                if (cloud)
+                if (protocol in CloudAuth.providers ||
+                    protocol == Protocol.BAIDU ||
+                    protocol == Protocol.SUGARSYNC) {
+                    item {
+                        OutlinedTextField(
+                            clientId,
+                            { clientId = it },
+                            label = {
+                                Text(
+                                    if (protocol == Protocol.SUGARSYNC)
+                                        "Access Key ID de tu aplicación"
+                                    else "Identificador de la aplicación OAuth")
+                            },
+                            supportingText = {
+                                Text(
+                                    "Tras guardar, pulsa Entrar para autorizar la cuenta y renovar el acceso automáticamente.")
+                            })
+                    }
+                    item {
+                        OutlinedTextField(
+                            clientSecret,
+                            { clientSecret = it },
+                            label = { Text("Clave de tu aplicación (si el proveedor la exige)") },
+                            visualTransformation = PasswordVisualTransformation())
+                    }
+                }
+                if (cloud && clientId.isBlank())
                     item {
                         Text(
                             "Esta conexión usa un token de tu cuenta con permisos de archivos. Cuando caduque, actualízalo aquí. También puedes usar el selector de Android si tienes instalada la app de tu nube.")
@@ -262,7 +400,7 @@ private fun ConnectionDialog(
                         n == null ||
                         n !in 1..65535 ||
                         (protocol == Protocol.SFTP && fingerprint.isBlank()) ||
-                        (cloud && secret.isBlank())) {
+                        (cloud && secret.isBlank() && clientId.isBlank())) {
                         error = "Completa los campos y revisa el puerto"
                     } else
                         onSave(
@@ -275,7 +413,16 @@ private fun ConnectionDialog(
                                 user,
                                 secret,
                                 root.trim(),
-                                fingerprint.trim()))
+                                fingerprint.trim(),
+                                clientId.trim(),
+                                clientSecret,
+                                if (protocol == existing?.protocol &&
+                                    secret == existing?.secret &&
+                                    clientId == existing?.clientId)
+                                    existing?.authState.orEmpty()
+                                else "",
+                                if (secret == existing?.secret) existing?.expiresAt ?: 0 else 0,
+                                existing?.googleAccount.orEmpty()))
                 }) {
                     Text("Guardar")
                 }

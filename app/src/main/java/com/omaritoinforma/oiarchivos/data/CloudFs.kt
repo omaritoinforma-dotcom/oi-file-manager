@@ -12,6 +12,17 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
     private val http = Http("Bearer ${account.secret}")
     private val drive = "https://www.googleapis.com/drive/v3"
     private val graph = "https://graph.microsoft.com/v1.0/me/drive"
+    private val exports =
+        mapOf(
+            "application/vnd.google-apps.document" to
+                ("application/vnd.openxmlformats-officedocument.wordprocessingml.document" to
+                    ".docx"),
+            "application/vnd.google-apps.spreadsheet" to
+                ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" to ".xlsx"),
+            "application/vnd.google-apps.presentation" to
+                ("application/vnd.openxmlformats-officedocument.presentationml.presentation" to
+                    ".pptx"),
+            "application/vnd.google-apps.drawing" to ("application/pdf" to ".pdf"))
 
     private fun json(url: String, method: String = "GET", body: JSONObject? = null) =
         JSONObject(
@@ -40,10 +51,13 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                     val arr = result.optJSONArray("files") ?: JSONArray()
                     for (i in 0 until arr.length()) {
                         val f = arr.getJSONObject(i)
+                        val suffix = exports[f.getString("mimeType")]?.second.orEmpty()
+                        val originalName = f.getString("name")
                         out +=
                             RemoteEntry(
                                 f.getString("id"),
-                                f.getString("name"),
+                                if (originalName.endsWith(suffix, ignoreCase = true)) originalName
+                                else originalName + suffix,
                                 f.getString("mimeType") == "application/vnd.google-apps.folder",
                                 f.optString("size").toLongOrNull() ?: -1)
                     }
@@ -105,10 +119,17 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
             Protocol.DRIVE -> {
                 val metadata = json("$drive/files/${encode(path)}?fields=mimeType")
                 val mime = metadata.getString("mimeType")
-                if (mime.startsWith("application/vnd.google-apps."))
-                    throw IOException(
-                        "Exporta el documento de Google a PDF o DOCX antes de copiarlo")
-                http.response(http.open("$drive/files/${encode(path)}?alt=media", "GET"))
+                val format = exports[mime]
+                if (format != null)
+                    http.response(
+                        http.open(
+                            "$drive/files/${encode(path)}/export?mimeType=${encode(format.first)}",
+                            "GET"))
+                else {
+                    if (mime.startsWith("application/vnd.google-apps."))
+                        throw IOException("Google no permite exportar este tipo de documento")
+                    http.response(http.open("$drive/files/${encode(path)}?alt=media", "GET"))
+                }
             }
             Protocol.DROPBOX ->
                 http.response(

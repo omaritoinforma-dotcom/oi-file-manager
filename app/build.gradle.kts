@@ -4,11 +4,16 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-val buildNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+val buildNumber =
+    System.getenv("OI_BUILD_NUMBER")?.toIntOrNull()
+        ?: System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
+        ?: 1
+require(buildNumber > 0) { "El número de compilación debe ser positivo" }
 
 android {
     namespace = "com.omaritoinforma.oiarchivos"
     compileSdk = 35
+    buildToolsVersion = "35.0.0"
 
     defaultConfig {
         applicationId = "com.omaritoinforma.oiarchivos"
@@ -16,6 +21,7 @@ android {
         targetSdk = 34
         versionCode = buildNumber
         versionName = "0.2.$buildNumber"
+        manifestPlaceholders["appAuthRedirectScheme"] = "com.omaritoinforma.oiarchivos.oauth"
     }
 
     signingConfigs {
@@ -48,6 +54,7 @@ android {
     }
 
     packaging {
+        jniLibs { useLegacyPackaging = true }
         resources { excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "META-INF/DEPENDENCIES", "META-INF/LICENSE*", "META-INF/NOTICE*", "META-INF/versions/9/OSGI-INF/MANIFEST.MF") }
     }
 
@@ -80,10 +87,12 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.5.1")
     implementation("androidx.media3:media3-transformer:1.5.1")
     implementation("androidx.media3:media3-effect:1.5.1")
+    implementation("androidx.media3:media3-session:1.5.1")
+    implementation("com.google.android.gms:play-services-auth:22.0.0")
+    implementation("net.openid:appauth:0.11.1")
     implementation("net.lingala.zip4j:zip4j:2.11.5")
     implementation("org.apache.commons:commons-compress:1.27.1")
     implementation("org.tukaani:xz:1.10")
-    implementation("com.github.junrar:junrar:7.5.5")
     implementation("commons-net:commons-net:3.11.1")
     implementation("com.github.mwiede:jsch:0.2.21")
     implementation("eu.agno3.jcifs:jcifs-ng:2.1.10")

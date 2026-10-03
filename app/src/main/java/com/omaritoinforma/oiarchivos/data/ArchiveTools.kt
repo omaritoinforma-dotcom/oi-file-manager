@@ -1,6 +1,5 @@
 package com.omaritoinforma.oiarchivos.data
 
-import com.github.junrar.Archive
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -38,17 +37,14 @@ object ArchiveTools {
                     }
                 }
             "7z" ->
-                seven(file, password).use { z ->
-                    z.entries.take(MAX_ENTRIES).map {
-                        ArchiveEntry(it.name, it.size, it.isDirectory)
+                if (NativeArchives.available) NativeArchives.list(file, password)
+                else
+                    seven(file, password).use { z ->
+                        z.entries.take(MAX_ENTRIES).map {
+                            ArchiveEntry(it.name, it.size, it.isDirectory)
+                        }
                     }
-                }
-            "rar" ->
-                Archive(file).use { a ->
-                    a.fileHeaders.take(MAX_ENTRIES).map {
-                        ArchiveEntry(it.fileNameString, it.fullUnpackSize, it.isDirectory)
-                    }
-                }
+            "rar" -> NativeArchives.list(file, password)
             else ->
                 tarOrSingle(file).use { stream ->
                     if (isTar(file)) {
@@ -70,6 +66,10 @@ object ArchiveTools {
         password: String,
         report: (OpProgress) -> Unit
     ) {
+        if (target.extension.lowercase() == "7z" && NativeArchives.available) {
+            NativeArchives.compress(sources, target, password, report)
+            return
+        }
         if (target.extension.lowercase() == "7z" ||
             target.name.lowercase().endsWith(".tar") ||
             target.name.lowercase().endsWith(".tar.gz")) {
@@ -230,62 +230,37 @@ object ArchiveTools {
                             }
                         }
                     }
-                "7z" ->
-                    seven(file, password).use { z ->
-                        while (true) {
-                            val e = z.nextEntry ?: break
-                            if (e.isAntiItem) throw IOException("Entrada 7z no admitida")
-                            val input =
-                                object : InputStream() {
-                                    override fun read() = z.read()
-
-                                    override fun read(b: ByteArray, off: Int, len: Int) =
-                                        z.read(b, off, len)
+                "7z",
+                "rar" -> {
+                    if (NativeArchives.available) {
+                        val contents = NativeArchives.list(file, password)
+                        t.totalBytes = contents.sumOf { it.size }
+                        if (t.totalBytes > MAX_BYTES)
+                            throw IOException("El comprimido supera el límite de extracción")
+                        for (entry in contents) {
+                            if (entry.directory) write(entry.name, true, 0, null)
+                            else
+                                NativeArchives.withEntry(file, password, entry.name) {
+                                    write(entry.name, false, entry.size, it)
                                 }
-                            write(e.name, e.isDirectory, e.size, input)
                         }
-                    }
-                "rar" ->
-                    Archive(file).use { a ->
-                        if (a.isEncrypted)
-                            throw IOException("RAR cifrado: no compatible con este lector")
-                        for (h in a.fileHeaders) {
-                            if (h.isEncrypted) throw IOException("RAR cifrado: no compatible")
-                            val name = h.fileNameString
-                            // Junrar writes to our bounded OutputStream; it never chooses an output
-                            // path.
-                            if (h.isDirectory) write(name, true, 0, null)
-                            else {
-                                if (++entries > MAX_ENTRIES ||
-                                    h.fullUnpackSize > MAX_BYTES - t.doneBytes ||
-                                    h.fullUnpackSize > dest.usableSpace)
-                                    throw IOException("El RAR supera el espacio disponible")
-                                val out = SafeFiles.archiveTarget(dest, name)
-                                if (out.exists()) throw IOException("Entrada repetida")
-                                out.parentFile!!.mkdirs()
-                                t.current = name
-                                out.outputStream().use { raw ->
-                                    val guarded =
-                                        object : OutputStream() {
-                                            override fun write(value: Int) {
-                                                write(byteArrayOf(value.toByte()), 0, 1)
-                                            }
+                    } else if (file.extension.equals("7z", true)) {
+                        seven(file, password).use { z ->
+                            while (true) {
+                                val e = z.nextEntry ?: break
+                                if (e.isAntiItem) throw IOException("Entrada 7z no admitida")
+                                val input =
+                                    object : InputStream() {
+                                        override fun read() = z.read()
 
-                                            override fun write(b: ByteArray, off: Int, len: Int) {
-                                                if (t.doneBytes + len > MAX_BYTES ||
-                                                    Thread.currentThread().isInterrupted)
-                                                    throw IOException("Límite de extracción")
-                                                raw.write(b, off, len)
-                                                t.addBytes(len.toLong())
-                                            }
-                                        }
-                                    a.extractFile(h, guarded)
-                                }
-                                currentCoroutineContext().ensureActive()
-                                t.fileDone()
+                                        override fun read(b: ByteArray, off: Int, len: Int) =
+                                            z.read(b, off, len)
+                                    }
+                                write(e.name, e.isDirectory, e.size, input)
                             }
                         }
-                    }
+                    } else throw IOException("El motor RAR no está instalado")
+                }
                 else ->
                     tarOrSingle(file).use { stream ->
                         if (isTar(file))

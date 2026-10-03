@@ -2,6 +2,7 @@
 
 package com.omaritoinforma.oiarchivos.ui.screens
 
+import android.content.ComponentName
 import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
@@ -21,8 +22,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
@@ -138,36 +142,73 @@ private fun MediaViewer(file: File, modifier: Modifier) {
                 .orEmpty()
                 .ifEmpty { listOf(file) }
         }
-    val player =
-        remember(file) {
-            ExoPlayer.Builder(ctx).build().apply {
-                setMediaItems(
+    var player by remember(file) { mutableStateOf<Player?>(null) }
+    var playbackError by remember(file) { mutableStateOf<String?>(null) }
+    DisposableEffect(file, audio) {
+        var disposed = false
+        val future =
+            if (audio)
+                MediaController.Builder(
+                        ctx,
+                        SessionToken(
+                            ctx,
+                            ComponentName(
+                                ctx,
+                                com.omaritoinforma.oiarchivos.data.AudioPlaybackService::class
+                                    .java)))
+                    .buildAsync()
+            else null
+        fun prepare(p: Player) {
+            if (p.currentMediaItem?.mediaId != file.path || p.mediaItemCount == 0) {
+                p.setMediaItems(
                     files.map {
-                        MediaItem.Builder().setUri(Uri.fromFile(it)).setMediaId(it.path).build()
+                        MediaItem.Builder()
+                            .setUri(Uri.fromFile(it))
+                            .setMediaId(it.path)
+                            .setMediaMetadata(MediaMetadata.Builder().setTitle(it.name).build())
+                            .build()
                     },
                     files.indexOf(file).coerceAtLeast(0),
                     0)
-                prepare()
-                playWhenReady = true
+                p.prepare()
             }
+            p.playWhenReady = true
+            player = p
         }
+        if (future != null)
+            future.addListener(
+                {
+                    if (!disposed)
+                        runCatching { prepare(future.get()) }
+                            .onFailure {
+                                playbackError = it.message ?: "No se pudo reproducir el audio"
+                            }
+                },
+                androidx.core.content.ContextCompat.getMainExecutor(ctx))
+        else prepare(ExoPlayer.Builder(ctx).build())
+        onDispose {
+            disposed = true
+            if (future != null) MediaController.releaseFuture(future) else player?.release()
+            player = null
+        }
+    }
     var title by remember { mutableStateOf(file.name) }
-    var shuffle by remember { mutableStateOf(false) }
-    var repeat by remember { mutableIntStateOf(Player.REPEAT_MODE_OFF) }
+    var shuffle by remember(player) { mutableStateOf(player?.shuffleModeEnabled ?: false) }
+    var repeat by
+        remember(player) { mutableIntStateOf(player?.repeatMode ?: Player.REPEAT_MODE_OFF) }
     DisposableEffect(player) {
+        val currentPlayer = player
         val listener =
             object : Player.Listener {
                 override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
                     title = File(item?.mediaId ?: file.path).name
                 }
             }
-        player.addListener(listener)
-        onDispose {
-            player.removeListener(listener)
-            player.release()
-        }
+        currentPlayer?.addListener(listener)
+        onDispose { currentPlayer?.removeListener(listener) }
     }
     Column(modifier) {
+        playbackError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Text(title, Modifier.padding(16.dp))
         AndroidView(
             factory = {
@@ -177,13 +218,14 @@ private fun MediaViewer(file: File, modifier: Modifier) {
                     setShowPreviousButton(true)
                 }
             },
+            update = { it.player = player },
             modifier = Modifier.weight(1f).fillMaxWidth())
         Row {
             FilterChip(
                 shuffle,
                 onClick = {
                     shuffle = !shuffle
-                    player.shuffleModeEnabled = shuffle
+                    player?.shuffleModeEnabled = shuffle
                 },
                 label = { Text("Aleatorio") })
             Spacer(Modifier.width(12.dp))
@@ -191,7 +233,7 @@ private fun MediaViewer(file: File, modifier: Modifier) {
                 repeat != Player.REPEAT_MODE_OFF,
                 onClick = {
                     repeat = (repeat + 1) % 3
-                    player.repeatMode = repeat
+                    player?.repeatMode = repeat
                 },
                 label = {
                     Text(

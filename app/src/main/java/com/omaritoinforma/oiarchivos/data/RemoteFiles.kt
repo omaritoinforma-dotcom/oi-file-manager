@@ -54,6 +54,9 @@ enum class Protocol(val label: String) {
     BOX("Box"),
     YANDEX("Yandex Disk"),
     S3("Amazon S3"),
+    BAIDU("Baidu Netdisk"),
+    SUGARSYNC("SugarSync"),
+    BLUETOOTH("Bluetooth"),
     ROOT("Root / Magisk")
 }
 
@@ -66,7 +69,12 @@ data class Connection(
     val user: String,
     val secret: String,
     val root: String = "/",
-    val fingerprint: String = ""
+    val fingerprint: String = "",
+    val clientId: String = "",
+    val clientSecret: String = "",
+    val authState: String = "",
+    val expiresAt: Long = 0,
+    val googleAccount: String = ""
 )
 
 data class RemoteEntry(val path: String, val name: String, val directory: Boolean, val size: Long)
@@ -116,7 +124,12 @@ class ConnectionStore(private val ctx: Context) {
                     it.getString("user"),
                     it.getString("secret"),
                     it.getString("root"),
-                    it.optString("fingerprint"))
+                    it.optString("fingerprint"),
+                    it.optString("clientId"),
+                    it.optString("clientSecret"),
+                    it.optString("authState"),
+                    it.optLong("expiresAt"),
+                    it.optString("googleAccount"))
             }
         }
     }
@@ -134,7 +147,12 @@ class ConnectionStore(private val ctx: Context) {
                     .put("user", it.user)
                     .put("secret", it.secret)
                     .put("root", it.root)
-                    .put("fingerprint", it.fingerprint))
+                    .put("fingerprint", it.fingerprint)
+                    .put("clientId", it.clientId)
+                    .put("clientSecret", it.clientSecret)
+                    .put("authState", it.authState)
+                    .put("expiresAt", it.expiresAt)
+                    .put("googleAccount", it.googleAccount))
         }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, key())
@@ -164,21 +182,30 @@ interface RemoteFs : Closeable {
 }
 
 object RemoteFiles {
-    fun connect(c: Connection): RemoteFs =
-        when (c.protocol) {
+    lateinit var appContext: Context
+
+    fun connect(connection: Connection): RemoteFs {
+        val c =
+            if (connection.authState.isBlank()) connection
+            else CloudAuth.fresh(appContext, connection)
+        return when (c.protocol) {
             Protocol.FTP,
             Protocol.FTPS -> FtpFs(c)
             Protocol.SFTP -> SftpFs(c)
             Protocol.SMB -> SmbFs(c)
             Protocol.ROOT -> RootFs()
+            Protocol.BLUETOOTH -> BluetoothFs(c, appContext)
             Protocol.BOX -> BoxFs(c)
             Protocol.YANDEX -> YandexFs(c)
             Protocol.S3 -> S3Fs(c)
+            Protocol.BAIDU -> BaiduFs(c)
+            Protocol.SUGARSYNC -> SugarSyncFs(c)
             Protocol.WEBDAV -> DavFs(c)
             Protocol.DRIVE,
             Protocol.DROPBOX,
             Protocol.ONEDRIVE -> CloudFs(c)
         }
+    }
 
     fun join(parent: String, name: String): String {
         SafeFiles.requireName(name)

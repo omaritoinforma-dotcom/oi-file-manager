@@ -54,7 +54,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -64,6 +67,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.omaritoinforma.oiarchivos.data.Conflict
+import com.omaritoinforma.oiarchivos.data.GestureAction
 import com.omaritoinforma.oiarchivos.data.OpProgress
 import com.omaritoinforma.oiarchivos.ui.screens.*
 import com.omaritoinforma.oiarchivos.ui.screens.AppsScreen
@@ -90,9 +94,15 @@ fun AppRoot(vm: MainViewModel) {
     BackHandler(enabled = drawerState.isOpen) { closeDrawer() }
 
     val screen = vm.screen
+    val customBrowserGestures =
+        screen == Screen.Browser &&
+            (vm.swipeLeft != GestureAction.NONE || vm.swipeRight != GestureAction.NONE)
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = drawerState.isOpen || screen == Screen.Home || screen == Screen.Browser,
+        gesturesEnabled =
+            drawerState.isOpen ||
+                screen == Screen.Home ||
+                (screen == Screen.Browser && !customBrowserGestures),
         drawerContent = { AppDrawer(vm, closeDrawer) },
     ) {
         when (screen) {
@@ -107,6 +117,7 @@ fun AppRoot(vm: MainViewModel) {
             is Screen.Analysis -> AnalysisScreen(vm, screen.root)
             is Screen.AdvancedSearch -> AdvancedSearchScreen(vm, screen.root)
             Screen.Connections -> ConnectionsScreen(vm)
+            Screen.Bluetooth -> BluetoothScreen(vm)
             is Screen.Remote -> RemoteScreen(vm, screen.id)
             is Screen.Documents -> DocumentsScreen(vm, screen.uri)
             Screen.Sharing -> SharingScreen(vm)
@@ -294,7 +305,23 @@ private fun Overlays(vm: MainViewModel) {
     }
 
     val progress by vm.progress.collectAsState()
-    progress?.let { ProgressDialog(it, onCancel = vm::cancelOp) }
+    val paused by com.omaritoinforma.oiarchivos.data.TransferService.paused.collectAsState()
+    val pausable by
+        com.omaritoinforma.oiarchivos.data.TransferService.supportsPause.collectAsState()
+    var hidden by remember { mutableStateOf(false) }
+    LaunchedEffect(progress == null) { if (progress == null) hidden = false }
+    if (!hidden)
+        progress?.let {
+            ProgressDialog(
+                it,
+                onCancel = vm::cancelOp,
+                onHide = { hidden = true },
+                paused = paused,
+                onPause =
+                    if (pausable)
+                        ({ com.omaritoinforma.oiarchivos.data.TransferService.pause(ctx, !paused) })
+                    else null)
+        }
 
     vm.pendingPaste?.let { p ->
         AlertDialog(
@@ -323,11 +350,17 @@ private fun Overlays(vm: MainViewModel) {
 }
 
 @Composable
-private fun ProgressDialog(p: OpProgress, onCancel: () -> Unit) {
+private fun ProgressDialog(
+    p: OpProgress,
+    onCancel: () -> Unit,
+    onHide: () -> Unit,
+    paused: Boolean,
+    onPause: (() -> Unit)?
+) {
     AlertDialog(
         onDismissRequest = {},
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
-        title = { Text(p.title) },
+        title = { Text(p.title + if (paused) " · En pausa" else "") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (p.current.isNotEmpty())
@@ -360,7 +393,15 @@ private fun ProgressDialog(p: OpProgress, onCancel: () -> Unit) {
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onCancel) { Text("Cancelar") } },
+        confirmButton = {
+            Column {
+                onPause?.let {
+                    TextButton(onClick = it) { Text(if (paused) "Reanudar" else "Pausar") }
+                }
+                TextButton(onClick = onHide) { Text("Continuar navegando") }
+            }
+        },
+        dismissButton = { TextButton(onClick = onCancel) { Text("Cancelar") } },
     )
 }
 

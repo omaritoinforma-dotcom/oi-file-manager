@@ -3,12 +3,15 @@
 package com.omaritoinforma.oiarchivos.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -19,9 +22,14 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.omaritoinforma.oiarchivos.BuildConfig
+import com.omaritoinforma.oiarchivos.data.GestureAction
 import com.omaritoinforma.oiarchivos.data.ThemeMode
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
 import com.omaritoinforma.oiarchivos.ui.components.SectionTitle
@@ -67,6 +75,20 @@ fun SettingsScreen(vm: MainViewModel) {
                         steps = 10)
                 }
             }
+            item {
+                SectionTitle("Gestos del explorador", Modifier.padding(start = 16.dp, top = 16.dp))
+            }
+            item {
+                GestureRow("Deslizar a la izquierda", vm.swipeLeft) { vm.updateGesture(true, it) }
+            }
+            item {
+                GestureRow("Deslizar a la derecha", vm.swipeRight) { vm.updateGesture(false, it) }
+            }
+            item {
+                Text(
+                    "Cuando actives un gesto, abre el menú lateral con su botón.",
+                    Modifier.padding(16.dp))
+            }
             item { SectionTitle("Tema", Modifier.padding(start = 16.dp, top = 16.dp)) }
             items(ThemeMode.entries.toList()) { m ->
                 ListItem(
@@ -86,6 +108,27 @@ fun SettingsScreen(vm: MainViewModel) {
                             "Uso personal. Sin anuncios ni rastreo. La red se usa para las conexiones y transferencias que activas.")
                     },
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun GestureRow(title: String, action: GestureAction, onChange: (GestureAction) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        ListItem(
+            headlineContent = { Text(title) },
+            supportingContent = { Text(action.label) },
+            modifier = Modifier.clickable { expanded = true })
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            GestureAction.entries.forEach { choice ->
+                DropdownMenuItem(
+                    text = { Text(choice.label) },
+                    onClick = {
+                        onChange(choice)
+                        expanded = false
+                    })
             }
         }
     }

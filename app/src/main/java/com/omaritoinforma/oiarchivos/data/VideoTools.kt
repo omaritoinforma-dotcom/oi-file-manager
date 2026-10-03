@@ -21,7 +21,13 @@ data class VideoEdit(
     val caption: String = "",
     val music: String = "",
     val join: List<String> = emptyList(),
-    val mute: Boolean = false
+    val mute: Boolean = false,
+    val image: String = "",
+    val subtitles: String = "",
+    val canvasWidth: Int = 0,
+    val canvasHeight: Int = 0,
+    val backgroundColor: Int = android.graphics.Color.BLACK,
+    val backgroundImage: String = ""
 )
 
 @androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
@@ -36,8 +42,17 @@ object VideoTools {
         val part = File.createTempFile(".oi-video-", ".mp4", target.parentFile)
         part.delete()
         try {
+            val cues =
+                if (edit.subtitles.isBlank()) emptyList()
+                else {
+                    val file = File(edit.subtitles)
+                    if (file.length() > 2 * 1024 * 1024)
+                        throw IOException("Subtítulos demasiado grandes")
+                    Subtitles.parseSrt(file.readText(Charsets.UTF_8))
+                }
             withContext(Dispatchers.Main.immediate) {
                 val effects = ArrayList<Effect>()
+                val canvas = ArrayList<Effect>()
                 if (edit.rotation != 0f)
                     effects +=
                         ScaleAndRotateTransformation.Builder()
@@ -45,13 +60,21 @@ object VideoTools {
                             .build()
                 if (edit.crop) effects += Crop(-0.75f, 0.75f, -0.75f, 0.75f)
                 if (edit.speed != 1f) effects += SpeedChangeEffect(edit.speed)
+                if (edit.canvasWidth > 0 && edit.canvasHeight > 0)
+                    canvas +=
+                        VideoCanvasEffect(
+                            edit.canvasWidth,
+                            edit.canvasHeight,
+                            edit.backgroundColor,
+                            edit.backgroundImage)
+                val overlays = ArrayList<TextureOverlay>()
                 if (edit.caption.isNotBlank())
-                    effects +=
-                        OverlayEffect(
-                            listOf(
-                                TextOverlay.createStaticTextOverlay(
-                                    SpannableString(edit.caption),
-                                    OverlaySettings.Builder().build())))
+                    overlays +=
+                        TextOverlay.createStaticTextOverlay(
+                            SpannableString(edit.caption), OverlaySettings.Builder().build())
+                if (cues.isNotEmpty()) overlays += VideoOverlays.subtitles(cues)
+                if (edit.image.isNotBlank()) overlays += VideoOverlays.image(edit.image)
+                if (overlays.isNotEmpty()) canvas += OverlayEffect(overlays)
                 val audio =
                     if (edit.speed != 1f)
                         listOf(SonicAudioProcessor().apply { setSpeed(edit.speed) })
@@ -75,6 +98,7 @@ object VideoTools {
                         edit.join.map { path ->
                             EditedMediaItem.Builder(MediaItem.fromUri(Uri.fromFile(File(path))))
                                 .setRemoveAudio(edit.mute)
+                                .setEffects(Effects(audio, effects))
                                 .build()
                         }
                 val sequences = ArrayList<EditedMediaItemSequence>()
@@ -87,7 +111,11 @@ object VideoTools {
                                         MediaItem.fromUri(Uri.fromFile(File(edit.music))))
                                     .setRemoveVideo(true)
                                     .build()))
-                val composition = Composition.Builder(sequences).build()
+                val composition =
+                    Composition.Builder(sequences)
+                        .setEffects(Effects(emptyList(), canvas))
+                        .setHdrMode(Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL)
+                        .build()
                 val done = CompletableDeferred<Unit>()
                 val transformer =
                     Transformer.Builder(ctx)

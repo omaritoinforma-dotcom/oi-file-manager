@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.omaritoinforma.oiarchivos.data.NativeArchiveTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-03T22:25:07" hostname="1084998424d7" time="0.219">
+  <properties/>
+  <testcase name="encryptedRar5HeadersAndContentsAreRead" classname="com.omaritoinforma.oiarchivos.data.NativeArchiveTest" time="0.111"/>
+  <testcase name="encryptedSevenZRoundTripAndHeaderPrivacy" classname="com.omaritoinforma.oiarchivos.data.NativeArchiveTest" time="0.081"/>
+  <testcase name="wrongRarPasswordRemovesOnlyIncompleteNewFolder" classname="com.omaritoinforma.oiarchivos.data.NativeArchiveTest" time="0.01"/>
+  <testcase name="encryptedClassicRarEntryIsRead" classname="com.omaritoinforma.oiarchivos.data.NativeArchiveTest" time="0.017"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

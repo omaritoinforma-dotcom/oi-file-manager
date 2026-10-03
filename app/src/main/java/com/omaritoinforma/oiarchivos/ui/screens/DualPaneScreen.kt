@@ -12,6 +12,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.omaritoinforma.oiarchivos.data.*
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
+import com.omaritoinforma.oiarchivos.ui.components.FileDragHandle
+import com.omaritoinforma.oiarchivos.ui.components.fileDropTarget
 import com.omaritoinforma.oiarchivos.util.*
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -36,6 +38,7 @@ private fun Pane(vm: MainViewModel, path: String, navigate: (String) -> Unit, mo
     var error by remember(path) { mutableStateOf<String?>(null) }
     val selection = remember(path) { mutableStateMapOf<String, FileItem>() }
     val completed by TransferService.completion.collectAsState()
+    var dropped by remember { mutableStateOf<List<String>?>(null) }
     LaunchedEffect(path, completed) {
         withContext(Dispatchers.IO) {
                 runCatching {
@@ -43,10 +46,13 @@ private fun Pane(vm: MainViewModel, path: String, navigate: (String) -> Unit, mo
                         ?: throw java.io.IOException("Carpeta no disponible")
                 }
             }
-            .onSuccess { entries = Sorter.sort(it, vm.sortBy, vm.ascending) }
+            .onSuccess {
+                entries = Sorter.sort(it, vm.sortBy, vm.ascending)
+                selection.keys.filter { key -> entries.none { it.path == key } }.forEach(selection::remove)
+            }
             .onFailure { error = it.message }
     }
-    Column(modifier) {
+    Column(modifier.then(fileDropTarget { dropped = it })) {
         Text(path, Modifier.padding(8.dp), maxLines = 2, overflow = TextOverflow.Ellipsis)
         TextButton(onClick = { File(path).parent?.let(navigate) }) { Text("Subir") }
         if (vm.clipboard != null)
@@ -82,11 +88,22 @@ private fun Pane(vm: MainViewModel, path: String, navigate: (String) -> Unit, mo
                                 else selection.remove(entry.path)
                             })
                     },
+                    trailingContent = { FileDragHandle(if (entry.path in selection) selection.keys.toList() else listOf(entry.path)) },
                     modifier =
                         Modifier.clickable {
                             if (entry.isDirectory) navigate(entry.path) else vm.openFile(entry.path)
                         })
             }
         }
+    }
+    dropped?.let { paths ->
+        AlertDialog(onDismissRequest = { dropped = null }, title = { Text("${paths.size} elementos") },
+            text = { Text("Destino: $path") },
+            confirmButton = {
+                Row {
+                    TextButton(onClick = { vm.clipboard = Clipboard(paths, false); vm.pasteInto(path); dropped = null }) { Text("Copiar aquí") }
+                    TextButton(onClick = { vm.clipboard = Clipboard(paths, true); vm.pasteInto(path); dropped = null }) { Text("Mover aquí") }
+                }
+            }, dismissButton = { TextButton(onClick = { dropped = null }) { Text("Cancelar") } })
     }
 }

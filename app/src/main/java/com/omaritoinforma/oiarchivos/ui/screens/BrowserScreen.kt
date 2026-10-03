@@ -3,6 +3,7 @@
 package com.omaritoinforma.oiarchivos.ui.screens
 
 import android.content.Context
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -89,7 +90,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -192,22 +195,24 @@ fun BrowserScreen(vm: MainViewModel, openDrawer: () -> Unit) {
             } else {
                 Spacer(Modifier.height(4.dp))
             }
-            if (!tab.loading && tab.items.isEmpty()) {
-                EmptyState(
-                    when (loc) {
-                        is Location.Folder -> "Esta carpeta está vacía"
-                        is Location.Category -> "No hay archivos en esta categoría"
-                        is Location.Search -> "Sin resultados"
-                    },
-                )
-            } else {
-                FileListing(
-                    vm = vm,
-                    tab = tab,
-                    showPath = loc !is Location.Folder,
-                    onClick = { openItem(it) },
-                    onLongClick = { vm.toggleSelect(it) },
-                )
+            Box(Modifier.weight(1f).fillMaxWidth().then(browserSwipeGestures(vm))) {
+                if (!tab.loading && tab.items.isEmpty()) {
+                    EmptyState(
+                        when (loc) {
+                            is Location.Folder -> "Esta carpeta está vacía"
+                            is Location.Category -> "No hay archivos en esta categoría"
+                            is Location.Search -> "Sin resultados"
+                        },
+                    )
+                } else {
+                    FileListing(
+                        vm = vm,
+                        tab = tab,
+                        showPath = loc !is Location.Folder,
+                        onClick = { openItem(it) },
+                        onLongClick = { vm.toggleSelect(it) },
+                    )
+                }
             }
         }
     }
@@ -615,6 +620,31 @@ private fun HeaderText(text: String) {
         overflow = TextOverflow.Ellipsis,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
     )
+}
+
+@Composable
+private fun browserSwipeGestures(vm: MainViewModel): Modifier {
+    val left = vm.swipeLeft
+    val right = vm.swipeRight
+    if (left == GestureAction.NONE && right == GestureAction.NONE) return Modifier
+    val threshold = with(LocalDensity.current) { 96.dp.toPx() }
+    return Modifier.pointerInput(vm, left, right, threshold) {
+        var distance = 0f
+        detectHorizontalDragGestures(
+            onDragStart = { distance = 0f },
+            onDragCancel = { distance = 0f },
+            onDragEnd = {
+                when {
+                    distance <= -threshold -> vm.performGesture(left)
+                    distance >= threshold -> vm.performGesture(right)
+                }
+                distance = 0f
+            },
+            onHorizontalDrag = { change, amount ->
+                distance += amount
+                change.consume()
+            })
+    }
 }
 
 @Composable

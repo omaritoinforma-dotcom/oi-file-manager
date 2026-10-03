@@ -130,39 +130,36 @@ def verify_http():
     tap("Navegador / Wi-Fi")
     _, tree = wait("Detener servidor")
     text = "\n".join(n.get("text", "") for n in tree.iter("node"))
-    port = int(re.search(r"http://[^:]+:(\d+)/", text).group(1))
+    address, port = re.search(r"http://([^:]+):(\d+)/", text).groups()
     password = re.search(r"Contraseña: (\S+)", text).group(1)
-    result = adb("emu", "redir", "add", f"tcp:18080:{port}")
-    assert "OK" in result, result
-    origin = "http://127.0.0.1:18080"
     auth = "Basic " + base64.b64encode(f"oi:{password}".encode()).decode()
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+    # Request the actual selected interface from inside Android. Emulator console
+    # redirection targets eth0; the server may intentionally bind the Wi-Fi IP.
+    def request(path, authorized=True, body=None, content_type=None):
+        method = "POST" if body is not None else "GET"
+        headers = [f"{method} {path} HTTP/1.1", f"Host: {address}:{port}", "Connection: close"]
+        if authorized:
+            headers.append("Authorization: " + auth)
+        if body is not None:
+            headers += [f"Content-Length: {len(body)}", "Content-Type: " + content_type]
+        raw = ("\r\n".join(headers) + "\r\n\r\n").encode() + (body or b"")
+        response = subprocess.run(["adb", "shell", "toybox", "nc", "-w", "10", address, port], input=raw, capture_output=True, timeout=30, check=True).stdout
+        header, payload = response.split(b"\r\n\r\n", 1)
+        return int(header.split(b" ", 2)[1]), payload
+
     try:
-        try:
-            opener.open(origin, timeout=10)
-            raise AssertionError("Unauthenticated request was accepted")
-        except urllib.error.HTTPError as error:
-            assert error.code == 401
-        request = urllib.request.Request(origin + "/smoke.txt", headers={"Authorization": auth})
-        with opener.open(request, timeout=10) as response:
-            assert "_changed" in response.read().decode()
-        request = urllib.request.Request(origin + "/../oi-smoke.xml", headers={"Authorization": auth})
-        try:
-            opener.open(request, timeout=10)
-            raise AssertionError("Parent traversal was accepted")
-        except urllib.error.HTTPError as error:
-            assert error.code in (400, 403, 404)
+        assert request("/", authorized=False)[0] == 401
+        status, payload = request("/smoke.txt")
+        assert status == 200 and b"_changed" in payload
+        assert request("/../oi-smoke.xml")[0] in (400, 403, 404)
         boundary = "OI-Android-Smoke"
         body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"http-upload.txt\"\r\nContent-Type: text/plain\r\n\r\nHTTP upload payload\r\n--{boundary}--\r\n").encode()
-        headers = {"Authorization": auth, "Content-Type": f"multipart/form-data; boundary={boundary}"}
-        request = urllib.request.Request(origin + "/?csrf=" + password, data=body, headers=headers)
-        with opener.open(request, timeout=10) as response:
-            assert response.status == 200
+        assert request("/?csrf=" + password, body=body, content_type=f"multipart/form-data; boundary={boundary}")[0] == 200
         assert adb("shell", "cat", "/sdcard/Download/http-upload.txt") == "HTTP upload payload"
         CHECKS.append("http-auth-download-upload-confinement")
         print("PASS: http-auth-download-upload-confinement", flush=True)
     finally:
-        adb("emu", "redir", "del", "tcp:18080", check=False)
         tap("Detener servidor")
         wait("Navegador / Wi-Fi")
 

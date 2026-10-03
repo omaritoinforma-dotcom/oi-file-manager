@@ -1,0 +1,171 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+WARNING: platform-tools package is not installed.
+> Task :app:clean
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig
+> Task :app:generateDebugResValues
+> Task :app:checkDebugAarMetadata
+> Task :app:mapDebugSourceSetPaths
+> Task :app:generateDebugResources
+> Task :app:packageDebugResources
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug
+> Task :app:parseDebugLocalResources
+> Task :app:mergeDebugResources
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebug
+> Task :app:javaPreCompileDebugUnitTest
+> Task :app:mergeDebugNativeDebugMetadata NO-SOURCE
+> Task :app:mergeDebugShaders
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:desugarDebugFileDependencies
+> Task :app:compressDebugAssets
+> Task :app:mergeDebugJniLibFolders
+> Task :app:processDebugManifestForPackage
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeLibDexDebug
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:mergeDebugNativeLibs
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:preDebugAndroidTestBuild SKIPPED
+> Task :app:generateDebugAndroidTestResValues
+> Task :app:extractProguardFiles
+
+> Task :app:stripDebugDebugSymbols
+Unable to strip the following libraries, packaging them as they are: lib7zz.so, libandroidx.graphics.path.so.
+
+> Task :app:processDebugResources
+> Task :app:mergeExtDexDebug
+> Task :app:compileDebugKotlin
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/data/ArchiveTools.kt:54:45 'val nextTarEntry: TarArchiveEntry!' is deprecated. Deprecated in Java.
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/data/ArchiveTools.kt:269:49 'val nextTarEntry: TarArchiveEntry!' is deprecated. Deprecated in Java.
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/data/CloudAuth.kt:133:28 'fun toGoogleSignInAccount(): GoogleSignInAccount?' is deprecated. Deprecated in Java.
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/data/ShareService.kt:172:29 'val parms: (Mutable)Map<String!, String!>!' is deprecated. Deprecated in Java.
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/data/ShareService.kt:177:29 'val parms: (Mutable)Map<String!, String!>!' is deprecated. Deprecated in Java.
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/data/VideoTools.kt:105:30 'constructor(p0: (Mutable)List<EditedMediaItem>): EditedMediaItemSequence' is deprecated. Deprecated in Java.
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/data/VideoTools.kt:108:25 'constructor(p0: (Mutable)List<EditedMediaItem>): EditedMediaItemSequence' is deprecated. Deprecated in Java.
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/ui/screens/AppsScreen.kt:151:52 'val Icons.Filled.OpenInNew: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.OpenInNew.
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/ui/screens/BrowserDialogs.kt:114:51 'val Icons.Filled.NoteAdd: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.NoteAdd.
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/ui/screens/BrowserDialogs.kt:205:51 'val Icons.Filled.OpenInNew: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.OpenInNew.
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/ui/screens/BrowserDialogs.kt:229:51 'val Icons.Filled.OpenInNew: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.OpenInNew.
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/ui/screens/BrowserScreen.kt:265:58 'val Icons.Filled.ViewList: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ViewList.
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/ui/screens/BrowserScreen.kt:281:55 'val Icons.Filled.Sort: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Sort.
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/ui/screens/BrowserScreen.kt:298:76 'val Icons.Filled.OpenInNew: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.OpenInNew.
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/ui/screens/BrowserScreen.kt:473:57 'val Icons.Filled.OpenInNew: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.OpenInNew.
+
+> Task :app:compileDebugJavaWithJavac
+> Task :app:processDebugJavaRes
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:generateDebugAndroidTestLintModel FAILED
+> Task :app:mergeProjectDexDebug
+> Task :app:mergeDebugJavaResource
+
+> Task :app:compileDebugUnitTestKotlin
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/test/java/com/omaritoinforma/oiarchivos/data/FileSafetyTest.kt:276:50 Java type mismatch: inferred type is 'kotlin.Any?', but 'kotlin.Any' was expected.
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/test/java/com/omaritoinforma/oiarchivos/data/FileSafetyTest.kt:277:50 Java type mismatch: inferred type is 'kotlin.Any?', but 'kotlin.Any' was expected.
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/test/java/com/omaritoinforma/oiarchivos/data/FileSafetyTest.kt:291:50 Java type mismatch: inferred type is 'kotlin.Any?', but 'kotlin.Any' was expected.
+w: file:///workspace/scratch/3d901509ce87/oi-file-manager/app/src/test/java/com/omaritoinforma/oiarchivos/data/FileSafetyTest.kt:292:50 Java type mismatch: inferred type is 'kotlin.Any?', but 'kotlin.Any' was expected.
+
+> Task :app:generateDebugLintReportModel
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+> Task :app:testDebugUnitTest
+> Task :app:generateDebugUnitTestLintModel
+> Task :app:lintAnalyzeDebug FAILED
+> Task :app:lintAnalyzeDebugAndroidTest FAILED
+> Task :app:lintAnalyzeDebugUnitTest FAILED
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
+
+FAILURE: Build completed with 4 failures.
+
+1: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':app:generateDebugAndroidTestLintModel'.
+> Could not resolve all files for configuration ':app:debugAndroidTestCompileClasspath'.
+   > Could not find kotlin-stdlib-jdk8-1.8.21.jar (org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.21).
+     Searched in the following locations:
+         file:/workspace/scratch/3d901509ce87/maven-local/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.21/kotlin-stdlib-jdk8-1.8.21.jar
+   > Could not find kotlin-stdlib-jdk7-1.8.21.jar (org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.21).
+     Searched in the following locations:
+         file:/workspace/scratch/3d901509ce87/maven-local/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.21/kotlin-stdlib-jdk7-1.8.21.jar
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+2: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':app:lintAnalyzeDebug'.
+> Could not resolve all files for configuration ':app:detachedConfiguration1'.
+   > Could not find com.android.tools.lint:lint-gradle:31.7.3.
+     Searched in the following locations:
+       - file:/workspace/scratch/3d901509ce87/maven-local/com/android/tools/lint/lint-gradle/31.7.3/lint-gradle-31.7.3.pom
+     Required by:
+         project :app
+
+* Try:
+> If the artifact you are trying to retrieve can be found in the repository but without metadata in 'Maven POM' format, you need to adjust the 'metadataSources { ... }' of the repository declaration.
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+3: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':app:lintAnalyzeDebugAndroidTest'.
+> Could not resolve all files for configuration ':app:detachedConfiguration1'.
+   > Could not find com.android.tools.lint:lint-gradle:31.7.3.
+     Searched in the following locations:
+       - file:/workspace/scratch/3d901509ce87/maven-local/com/android/tools/lint/lint-gradle/31.7.3/lint-gradle-31.7.3.pom
+     Required by:
+         project :app
+
+* Try:
+> If the artifact you are trying to retrieve can be found in the repository but without metadata in 'Maven POM' format, you need to adjust the 'metadataSources { ... }' of the repository declaration.
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+4: Task failed with an exception.
+-----------
+* What went wrong:
+Execution failed for task ':app:lintAnalyzeDebugUnitTest'.
+> Could not resolve all files for configuration ':app:detachedConfiguration1'.
+   > Could not find com.android.tools.lint:lint-gradle:31.7.3.
+     Searched in the following locations:
+       - file:/workspace/scratch/3d901509ce87/maven-local/com/android/tools/lint/lint-gradle/31.7.3/lint-gradle-31.7.3.pom
+     Required by:
+         project :app
+
+* Try:
+> If the artifact you are trying to retrieve can be found in the repository but without metadata in 'Maven POM' format, you need to adjust the 'metadataSources { ... }' of the repository declaration.
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+==============================================================================
+
+BUILD FAILED in 59s
+52 actionable tasks: 52 executed

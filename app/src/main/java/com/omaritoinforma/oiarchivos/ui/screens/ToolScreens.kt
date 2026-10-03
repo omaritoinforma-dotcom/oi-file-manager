@@ -73,8 +73,49 @@ fun TransfersScreen(vm: MainViewModel) {
     val completion by TransferService.completion.collectAsState()
     val progress by TransferService.progress.collectAsState()
     val records = remember(completion, progress == null) { TransferService.history(ctx) }
+    var refresh by remember { mutableIntStateOf(0) }
+    val queued =
+        remember(completion, progress == null, refresh) {
+            DurableCopy.pending(TransferService.jobsDirectory(ctx))
+        }
+    val paused by TransferService.paused.collectAsState()
+    val pausable by TransferService.supportsPause.collectAsState()
     ToolPage("Transferencias", vm) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad)) {
+            if (pausable && progress != null)
+                item {
+                    TextButton(onClick = { TransferService.pause(ctx, !paused) }) {
+                        Text(if (paused) "Reanudar transferencia" else "Pausar transferencia")
+                    }
+                }
+            if (progress == null)
+                items(queued, key = { it.id }) { job ->
+                    ListItem(
+                        headlineContent = {
+                            Text("${job.title} · ${job.completed} / ${job.count}")
+                        },
+                        supportingContent = { Text(job.destination) },
+                        trailingContent = {
+                            Column {
+                                TextButton(
+                                    onClick = {
+                                        runCatching { TransferService.submitDurable(ctx, job) }
+                                            .onFailure {
+                                                vm.toast(it.message ?: "No se pudo reanudar")
+                                            }
+                                    }) {
+                                        Text("Reanudar")
+                                    }
+                                TextButton(
+                                    onClick = {
+                                        job.discard()
+                                        refresh++
+                                    }) {
+                                        Text("Descartar")
+                                    }
+                            }
+                        })
+                }
             if (records.isEmpty())
                 item {
                     Text(
