@@ -28,7 +28,7 @@ internal class YandexFs(c:Connection):RemoteFs{
 internal class BoxFs(c:Connection):RemoteFs{
     private val api="https://api.box.com/2.0";private val http=Http("Bearer ${c.secret}")
     private fun json(url:String,method:String="GET",body:JSONObject?=null)=JSONObject(http.request(url,method,body?.toString(),mapOf("Content-Type" to "application/json")))
-    override fun list(path:String):List<RemoteEntry>{val out=ArrayList<RemoteEntry>();var offset=0;do{val result=json("$api/folders/${encode(path.ifBlank{"0"})}/items?limit=1000&offset=$offset&fields=id,type,name,size");val entries=result.getJSONArray("entries");for(i in 0 until entries.length()){val f=entries.getJSONObject(i);out+=RemoteEntry(f.getString("type")+":"+f.getString("id"),f.getString("name"),f.getString("type")=="folder",f.optLong("size",-1))};offset+=entries.length();if(offset>=result.getInt("total_count"))break;if(offset>50000)throw IOException("La carpeta supera el límite de 50.000 elementos")}while(true);return out}
+    override fun list(path:String):List<RemoteEntry>{val out=ArrayList<RemoteEntry>();var offset=0;do{val result=json("$api/folders/${encode(id(path.ifBlank{"0"}))}/items?limit=1000&offset=$offset&fields=id,type,name,size");val entries=result.getJSONArray("entries");for(i in 0 until entries.length()){val f=entries.getJSONObject(i);out+=RemoteEntry(f.getString("type")+":"+f.getString("id"),f.getString("name"),f.getString("type")=="folder",f.optLong("size",-1))};offset+=entries.length();if(offset>=result.getInt("total_count"))break;if(offset>50000)throw IOException("La carpeta supera el límite de 50.000 elementos")}while(true);return out}
     private fun id(path:String)=path.substringAfter(':',path)
     override fun read(path:String):InputStream{val c=http.open("$api/files/${encode(id(path))}/content","GET");val code=c.responseCode;if(code in 300..399){val location=c.getHeaderField("Location") ?: throw IOException("No se recibió una descarga");c.disconnect();if(URL(location).protocol!="https")throw IOException("Descarga sin HTTPS");return Http("").response(Http("").open(location,"GET"))};return http.response(c)}
     override fun mkdir(parent:String,name:String):String{SafeFiles.requireName(name);return "folder:"+json("$api/folders","POST",JSONObject().put("name",name).put("parent",JSONObject().put("id",id(parent)))).getString("id")}
@@ -64,7 +64,19 @@ internal class S3Fs(private val account:Connection):RemoteFs{
         val c=Http(auth).open(url,method,headers,size)
         try{if(input!=null)c.outputStream.use{input.copyTo(it)}else if(size!=null)c.outputStream.close();return Http(auth).response(c)}catch(e:Exception){c.disconnect();throw e}
     }
-    private fun xml(input:InputStream):org.w3c.dom.Document=input.use{DocumentBuilderFactory.newInstance().apply{isNamespaceAware=true;setFeature("http://apache.org/xml/features/disallow-doctype-decl",true);setFeature("http://xml.org/sax/features/external-general-entities",false);setFeature("http://xml.org/sax/features/external-parameter-entities",false)}.newDocumentBuilder().parse(it)}
+    private fun xml(input:InputStream):org.w3c.dom.Document {
+        val bytes=input.use { it.readBytes() }
+        if(bytes.size>8*1024*1024)throw IOException("Respuesta XML demasiado grande")
+        val text=String(bytes,Charsets.UTF_8)
+        if(Regex("<!\\s*(DOCTYPE|ENTITY)",RegexOption.IGNORE_CASE).containsMatchIn(text))throw IOException("Declaración XML no permitida")
+        val factory=DocumentBuilderFactory.newInstance().apply {
+            isNamespaceAware=true
+            runCatching { setFeature("http://apache.org/xml/features/disallow-doctype-decl",true) }
+            runCatching { setFeature("http://xml.org/sax/features/external-general-entities",false) }
+            runCatching { setFeature("http://xml.org/sax/features/external-parameter-entities",false) }
+        }
+        return factory.newDocumentBuilder().parse(bytes.inputStream())
+    }
     override fun list(path:String):List<RemoteEntry>{val clean=path.trim('/');val bucket=clean.substringBefore('/');if(bucket.isBlank())throw IOException("Escribe /nombre-del-bucket en la carpeta inicial");val prefix=if(clean.contains('/'))clean.substringAfter('/').trimEnd('/')+"/"else"";val out=ArrayList<RemoteEntry>();var next=""
         do{val query=mutableMapOf("list-type" to "2","delimiter" to "/","prefix" to prefix);if(next.isNotEmpty())query["continuation-token"]=next;val doc=xml(request("/$bucket","GET",query));val common=doc.getElementsByTagNameNS("*","CommonPrefixes");for(i in 0 until common.length){val key=(common.item(i)as Element).getElementsByTagNameNS("*","Prefix").item(0).textContent.trimEnd('/');out+=RemoteEntry("/$bucket/$key",key.substringAfterLast('/'),true,0)};val objects=doc.getElementsByTagNameNS("*","Contents");for(i in 0 until objects.length){val item=objects.item(i)as Element;val key=item.getElementsByTagNameNS("*","Key").item(0).textContent;if(key==prefix||key.endsWith('/'))continue;out+=RemoteEntry("/$bucket/$key",key.substringAfterLast('/'),false,item.getElementsByTagNameNS("*","Size").item(0).textContent.toLong())};next=doc.getElementsByTagNameNS("*","NextContinuationToken").item(0)?.textContent.orEmpty();if(out.size>50000)throw IOException("La carpeta supera el límite de 50.000 elementos")}while(next.isNotEmpty());return out}
     override fun read(path:String)=request(path,"GET")

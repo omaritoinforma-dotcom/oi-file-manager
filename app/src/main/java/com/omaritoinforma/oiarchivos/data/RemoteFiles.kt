@@ -135,13 +135,14 @@ object RemoteFiles {
         }
         sources.forEach { one(it,parent) }
     }
-    suspend fun download(fs: RemoteFs, entry: RemoteEntry, dir: File, report: (OpProgress) -> Unit): File {
+    suspend fun download(fs: RemoteFs, entry: RemoteEntry, dir: File, report: (OpProgress) -> Unit, depth: Int = 0): File {
         currentCoroutineContext().ensureActive(); SafeFiles.requireName(entry.name)
+        if(depth > 128) throw IOException("La carpeta remota supera el límite de profundidad")
         if (!dir.isDirectory && !dir.mkdirs()) throw IOException("No se pudo crear el destino")
         val target = FileOps.uniqueName(dir,entry.name)
         if (entry.directory) {
             if (!target.mkdir()) throw IOException("No se pudo crear el destino")
-            for (child in fs.list(entry.path)) download(fs,child,target,report)
+            for (child in fs.list(entry.path)) download(fs,child,target,report,depth+1)
         } else {
             val temp = File.createTempFile(".oi-remote-", ".tmp", dir)
             try {
@@ -162,7 +163,10 @@ object RemoteFiles {
 }
 
 private class FtpFs(c: Connection) : RemoteFs {
-    private val client: FTPClient = if (c.protocol == Protocol.FTPS) FTPSClient(false).apply { isEndpointCheckingEnabled = true } else FTPClient()
+    private val client: FTPClient = if (c.protocol == Protocol.FTPS) FTPSClient(false).apply {
+        isEndpointCheckingEnabled = true
+        trustManager = javax.net.ssl.TrustManagerFactory.getInstance(javax.net.ssl.TrustManagerFactory.getDefaultAlgorithm()).apply { init(null as java.security.KeyStore?) }.trustManagers.filterIsInstance<javax.net.ssl.X509TrustManager>().first()
+    } else FTPClient()
     init {
         try {
             client.connectTimeout = 15000; client.defaultTimeout = 30000
@@ -245,6 +249,7 @@ private class SmbFs(c: Connection) : RemoteFs {
     private val context: CIFSContext = BaseContext(PropertyConfiguration(Properties().apply {
         setProperty("jcifs.smb.client.minVersion","SMB202"); setProperty("jcifs.smb.client.maxVersion","SMB311")
         setProperty("jcifs.smb.client.responseTimeout","30000")
+        setProperty("jcifs.smb.client.signingEnforced","true")
     })).withCredentials(NtlmPasswordAuthenticator("",c.user,c.secret))
     private val host = c.host
     private fun file(path: String, directory: Boolean = false) = SmbFile("smb://$host/" + path.trimStart('/').let { if (directory) it.trimEnd('/') + "/" else it },context)
@@ -312,9 +317,12 @@ private class DavFs(c: Connection) : RemoteFs {
     private fun url(path: String) = base + "/" + path.trimStart('/').split('/').joinToString("/") { encode(it) }
     override fun list(path: String): List<RemoteEntry> {
         val xml = http.request(url(path),"PROPFIND","<?xml version=\"1.0\"?><d:propfind xmlns:d=\"DAV:\"><d:prop><d:resourcetype/><d:getcontentlength/></d:prop></d:propfind>",mapOf("Depth" to "1","Content-Type" to "application/xml"))
+        if(Regex("<!\\s*(DOCTYPE|ENTITY)",RegexOption.IGNORE_CASE).containsMatchIn(xml))throw IOException("Declaración XML no permitida")
         val factory = DocumentBuilderFactory.newInstance().apply {
-            isNamespaceAware = true; setFeature("http://apache.org/xml/features/disallow-doctype-decl",true)
-            setFeature("http://xml.org/sax/features/external-general-entities",false); setFeature("http://xml.org/sax/features/external-parameter-entities",false)
+            isNamespaceAware = true
+            runCatching { setFeature("http://apache.org/xml/features/disallow-doctype-decl",true) }
+            runCatching { setFeature("http://xml.org/sax/features/external-general-entities",false) }
+            runCatching { setFeature("http://xml.org/sax/features/external-parameter-entities",false) }
         }
         val doc = factory.newDocumentBuilder().parse(xml.byteInputStream())
         val responses = doc.getElementsByTagNameNS("DAV:","response")

@@ -10,7 +10,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import javax.imageio.ImageIO
+import java.io.InputStream
 
 class FileSafetyTest {
     @get:Rule val temp=TemporaryFolder()
@@ -30,6 +30,47 @@ class FileSafetyTest {
     @Test fun cryptoDetectsTampering()=runBlocking{val root=temp.newFolder();val source=file(root,"a","private");val enc=File(root,"enc");CryptoTools.transform(source,enc,"pw".toCharArray(),false){};val bytes=enc.readBytes();bytes[bytes.lastIndex]=(bytes.last().toInt() xor 1).toByte();enc.writeBytes(bytes);val dest=File(root,"restore");try{CryptoTools.transform(enc,dest,"pw".toCharArray(),true){};fail()}catch(_:Exception){};assertFalse(dest.exists())}
     @Test fun duplicatesRequireSameContentsNotOnlySize()=runBlocking{val root=temp.newFolder();file(root,"a","same");file(root,"b","same");file(root,"c","diff");val result=AnalysisTools.analyze(root,true){};assertEquals(1,result.duplicates.size);assertEquals(setOf("a","b"),result.duplicates.single().map{it.name}.toSet());assertEquals(12L,result.bytes)}
     @Test fun advancedSearchCombinesNameSizeExtensionAndContent()=runBlocking{val root=temp.newFolder();file(root,"wanted.txt","hello keyword");file(root,"wanted.csv","hello keyword");file(root,"other.txt","other");val result=AnalysisTools.search(root,SearchFilter("wanted",setOf("txt"),5,100,text="keyword")){};assertEquals(listOf("wanted.txt"),result.map{it.name})}
-    @Test fun gifHasDecodableFrames(){val output=ByteArrayOutputStream();val gif=GifWriter(output,2,1);gif.begin();gif.frame(intArrayOf(0xFFFF0000.toInt(),0xFF00FF00.toInt()),13);gif.frame(intArrayOf(0xFF0000FF.toInt(),0xFFFFFFFF.toInt()),13);gif.end();ImageIO.createImageInputStream(ByteArrayInputStream(output.toByteArray())).use{input->val reader=ImageIO.getImageReadersByFormatName("gif").next();try{reader.input=input;assertEquals(2,reader.getNumImages(true));assertEquals(0xFFFF0000.toInt(),reader.read(0).getRGB(0,0));assertEquals(0xFF0000FF.toInt(),reader.read(1).getRGB(0,0))}finally{reader.dispose()}}}
-    @Test fun gifResetsCodebookForLargeFrames(){val output=ByteArrayOutputStream();val gif=GifWriter(output,40,40);gif.begin();gif.frame(IntArray(1600){if(it%2==0)0xFFFFFFFF.toInt()else 0xFF000000.toInt()},10);gif.end();val bitmap=ImageIO.read(ByteArrayInputStream(output.toByteArray()));assertEquals(40,bitmap.width);assertEquals(0xFFFFFFFF.toInt(),bitmap.getRGB(0,0));assertEquals(0xFF000000.toInt(),bitmap.getRGB(1,0))}
+    @Test fun gifHasDecodableFrames(){
+        val output=ByteArrayOutputStream();val gif=GifWriter(output,2,1);gif.begin()
+        gif.frame(intArrayOf(0xFFFF0000.toInt(),0xFF00FF00.toInt()),13)
+        gif.frame(intArrayOf(0xFF0000FF.toInt(),0xFFFFFFFF.toInt()),13);gif.end()
+        withGifReader(output.toByteArray()) { reader,type ->
+            assertEquals(2,type.getMethod("getNumImages",Boolean::class.javaPrimitiveType).invoke(reader,true))
+            val first=type.getMethod("read",Int::class.javaPrimitiveType).invoke(reader,0)
+            val second=type.getMethod("read",Int::class.javaPrimitiveType).invoke(reader,1)
+            assertEquals(0xFFFF0000.toInt(),rgb(first,0,0))
+            assertEquals(0xFF0000FF.toInt(),rgb(second,0,0))
+        }
+    }
+    @Test fun gifResetsCodebookForLargeFrames(){
+        val output=ByteArrayOutputStream();val gif=GifWriter(output,40,40);gif.begin()
+        gif.frame(IntArray(1600){if(it%2==0)0xFFFFFFFF.toInt()else 0xFF000000.toInt()},10);gif.end()
+        withGifReader(output.toByteArray()) { reader,type ->
+            val bitmap=type.getMethod("read",Int::class.javaPrimitiveType).invoke(reader,0)
+            assertEquals(0xFFFFFFFF.toInt(),rgb(bitmap,0,0))
+            assertEquals(0xFF000000.toInt(),rgb(bitmap,1,0))
+        }
+    }
+    // Android's compile stubs omit java.desktop; the unit-test JVM still provides a real GIF decoder.
+    private fun withGifReader(bytes:ByteArray,block:(Any,Class<*>)->Unit){
+        val io=Class.forName("javax.imageio.ImageIO")
+        val input=io.getMethod("createImageInputStream",Any::class.java).invoke(null,ByteArrayInputStream(bytes))
+        val readers=io.getMethod("getImageReadersByFormatName",String::class.java).invoke(null,"gif") as Iterator<*>
+        val reader=readers.next()!!;val type=Class.forName("javax.imageio.ImageReader")
+        try{type.getMethod("setInput",Any::class.java).invoke(reader,input);block(reader,type)}
+        finally{type.getMethod("dispose").invoke(reader);Class.forName("javax.imageio.stream.ImageInputStream").getMethod("close").invoke(input)}
+    }
+    private fun rgb(bitmap:Any,x:Int,y:Int)=Class.forName("java.awt.image.BufferedImage").getMethod("getRGB",Int::class.javaPrimitiveType,Int::class.javaPrimitiveType).invoke(bitmap,x,y)
+    @Test fun cryptoRejectsTruncatedEnvelope()=runBlocking{
+        val root=temp.newFolder();val source=file(root,"source","private");val enc=File(root,"encrypted")
+        CryptoTools.transform(source,enc,"pw".toCharArray(),false){}
+        val bytes=enc.readBytes();enc.writeBytes(bytes.copyOf(bytes.size-20))
+        val target=File(root,"decrypted");try{CryptoTools.transform(enc,target,"pw".toCharArray(),true){};fail()}catch(_:Exception){}
+        assertFalse(target.exists())
+    }
+    @Test fun cryptoRoundTripsMultipleChunks()=runBlocking{
+        val root=temp.newFolder();val source=File(root,"source").apply{writeBytes(ByteArray(200000){(it%255).toByte()})};val enc=File(root,"encrypted");val dest=File(root,"decrypted")
+        CryptoTools.transform(source,enc,"pw".toCharArray(),false){};CryptoTools.transform(enc,dest,"pw".toCharArray(),true){}
+        assertArrayEquals(source.readBytes(),dest.readBytes())
+    }
 }
