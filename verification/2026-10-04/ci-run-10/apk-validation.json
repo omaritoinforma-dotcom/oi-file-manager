@@ -1,0 +1,19 @@
+{
+  "source_commit": "08ff291d47439a69dd2c8bf1c78daf8949c92c9f",
+  "workflow_run": 37168753282,
+  "workflow_url": "https://github.com/omaritoinforma-dotcom/oi-file-manager/actions/runs/37168753282",
+  "build_attempt": 1,
+  "filename": "OI-Archivos-v0.2.10-dev.apk",
+  "variant": "release",
+  "development_key": true,
+  "package": "com.omaritoinforma.oiarchivos",
+  "version_name": "0.2.10",
+  "version_code": 10,
+  "size_bytes": 26517571,
+  "sha256": "96121c2d2ad9631da34799aac3a43aeffc85f30be019cac49b2a92fe38e6a11f",
+  "zip_integrity": true,
+  "apk_signature_v2": true,
+  "min_sdk": 26,
+  "target_sdk": 34,
+  "compile_sdk": 35
+}

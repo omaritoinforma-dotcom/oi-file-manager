@@ -1,6 +1,6 @@
 # Cobertura de funciones y trabajo pendiente
 
-El mínimo solicitado sigue siendo cubrir ES File Explorer. Esta lista **no convierte código nuevo en funciones probadas en un teléfono**. La versión local 0.2.8 tiene firma válida, pasa 56 pruebas sin fallos ni omisiones y aprueba lint con 21 advertencias y ningún error. Incluye recuperación de copias locales y descargas remotas. La versión 0.2.7 aprobó las comprobaciones existentes en Android 15; la prueba ampliada de recuperación remota debe ejecutarse en este cambio. Faltan pruebas de hardware, servidores y cuentas reales; no se declara equivalencia completa con ES.
+El mínimo solicitado sigue siendo cubrir ES File Explorer. Esta lista **no convierte código nuevo en funciones probadas en un teléfono**. La entrega 0.2.10 tiene firma válida, pasa 56 pruebas sin fallos ni omisiones y aprueba lint con 21 advertencias y ningún error. También aprobó 20 comprobaciones en un emulador Android 15, incluida la recuperación de una descarga WebDAV de 32 MiB tras pausa y muerte del proceso, con SHA-256 verificado. Incluye recuperación de copias locales y descargas remotas. Faltan las comprobaciones específicas de hardware, otros servidores y cuentas reales; no se declara equivalencia completa con ES. Evidencia e informe en `verification/2026-10-04/ci-run-10/` e [INFORME_AVANCE.md](INFORME_AVANCE.md).
 
 Referencia de funciones: ficha del desarrollador de ES en [Xiaomi](https://app.mi.com/details?id=com.estrongs.android.pop&type=pad), versión 4.4.3.7, publicada el 4 de agosto de 2026. Las funciones históricas de navegación de ES se conservan en la lista original de Claude.
 
@@ -29,7 +29,7 @@ Referencia de funciones: ficha del desarrollador de ES en [Xiaomi](https://app.m
 
 ## Pendientes para la equivalencia completa
 
-1. Pausa y recuperación persistente de subidas, movimientos remotos y copias entre servidores. Copias locales y descargas de red/nube ya tienen registro recuperable; comprobación Android ampliada pendiente.
+1. Pausa y recuperación persistente de subidas, movimientos remotos y copias entre servidores. Copias locales y descargas de red/nube ya tienen registro recuperable; el recorrido WebDAV de descarga aprobó la comprobación Android ampliada.
 2. Registrar/configurar OAuth para las nubes y probar cada operación y la renovación con cuentas reales, incluidos Baidu/SugarSync.
 3. Ejecutar el APK nuevo en Android para probar el motor RAR/7z, arrastrar/soltar, gestos, edición de video y audio en segundo plano.
 4. Probar servidores HTTP/FTP y clientes de red con servidores reales; Bluetooth, SD/USB y root en hardware compatible.

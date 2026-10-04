@@ -1,0 +1,33 @@
+{
+  "source_commit": "08ff291d47439a69dd2c8bf1c78daf8949c92c9f",
+  "workflow_run": 37168753282,
+  "run_attempt": 2,
+  "android_api": 35,
+  "emulator_abi": "x86_64",
+  "checks_count": 20,
+  "checks": [
+    "01-storage-permission",
+    "02-home",
+    "03-connections",
+    "04-transfers",
+    "05-history",
+    "06-sharing-controls",
+    "07-dual-pane",
+    "08-advanced-search",
+    "09-editor",
+    "10-pdf",
+    "11-gallery",
+    "12-archive",
+    "13-archive-extracted",
+    "http-auth-download-upload-confinement",
+    "14-resume",
+    "15-remote-paused",
+    "16-remote-journal-restored",
+    "17-remote-process-killed",
+    "18-remote-recovered",
+    "webdav-pause-process-death-recovery-sha256"
+  ],
+  "webdav_payload_bytes": 33554432,
+  "webdav_payload_sha256": "1cbd22e11bc209926b1e050d644779ba4105d7a023109c3b78bb35edf5c7c292",
+  "no_application_anr_detected": true
+}

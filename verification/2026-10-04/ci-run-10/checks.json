@@ -1,0 +1,22 @@
+[
+  "01-storage-permission",
+  "02-home",
+  "03-connections",
+  "04-transfers",
+  "05-history",
+  "06-sharing-controls",
+  "07-dual-pane",
+  "08-advanced-search",
+  "09-editor",
+  "10-pdf",
+  "11-gallery",
+  "12-archive",
+  "13-archive-extracted",
+  "http-auth-download-upload-confinement",
+  "14-resume",
+  "15-remote-paused",
+  "16-remote-journal-restored",
+  "17-remote-process-killed",
+  "18-remote-recovered",
+  "webdav-pause-process-death-recovery-sha256"
+]

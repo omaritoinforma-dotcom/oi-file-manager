@@ -1,0 +1,155 @@
+{
+  "id": 37168753282,
+  "run_number": 10,
+  "run_attempt": 2,
+  "head_sha": "08ff291d47439a69dd2c8bf1c78daf8949c92c9f",
+  "status": "completed",
+  "conclusion": "success",
+  "html_url": "https://github.com/omaritoinforma-dotcom/oi-file-manager/actions/runs/37168753282",
+  "jobs": [
+    {
+      "id": 111339488481,
+      "name": "smoke",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-04T01:56:59Z",
+      "completed_at": "2026-10-04T02:05:23Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-java@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/download-artifact@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Permitir aceleración del emulador",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Verificar la aplicación en Android 15",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Guardar evidencia del emulador",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-java@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 111339488950,
+      "name": "build",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-10-04T01:41:03Z",
+      "completed_at": "2026-10-04T01:45:25Z",
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-java@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run gradle/actions/setup-gradle@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Preparar 7-Zip para las pruebas de RAR cifrado",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Pruebas y compilación",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Guardar informes de pruebas",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Renombrar APK",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/upload-artifact@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run gradle/actions/setup-gradle@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-java@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "id": 111340768294,
+      "name": "release",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-10-04T02:05:23Z",
+      "completed_at": "2026-10-04T02:05:23Z",
+      "steps": []
+    }
+  ]
+}
