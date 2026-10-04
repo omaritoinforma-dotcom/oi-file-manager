@@ -825,6 +825,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             "${paths.size} elemento(s) listos para ${if (move) "mover" else "copiar"}. Ve al destino y toca «Pegar aquí».")
     }
 
+    /** Como en ES: junta en el portapapeles archivos de varias carpetas antes de pegar. */
+    fun addSelectionToClipboard() {
+        val t = currentTab ?: return
+        val clip = clipboard ?: return copySelection(move = false)
+        val paths = t.selected.keys.toList()
+        if (paths.isEmpty()) return
+        clipboard = Clipboard((clip.paths + paths).distinct(), clip.move)
+        t.selected.clear()
+        toast("En el portapapeles: ${clipboard!!.paths.size} elemento(s)")
+    }
+
+    fun removeFromClipboard(path: String) {
+        val clip = clipboard ?: return
+        val rest = clip.paths - path
+        clipboard = if (rest.isEmpty()) null else Clipboard(rest, clip.move)
+    }
+
     fun paste() {
         val dest = currentFolder() ?: return
         pasteInto(dest.path)

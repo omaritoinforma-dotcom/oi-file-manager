@@ -4,6 +4,7 @@ package com.omaritoinforma.oiarchivos.ui.screens
 
 import android.content.Context
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -62,6 +64,7 @@ import androidx.compose.material.icons.filled.ViewHeadline
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -70,6 +73,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -433,6 +437,11 @@ private fun SelectionBottomBar(
         Box(Modifier.weight(1f)) {
             BarAction(Icons.Filled.MoreVert, "Más", Modifier.fillMaxWidth()) { menu = true }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                if (vm.clipboard != null)
+                    MenuItem("Añadir al portapapeles", Icons.Filled.ContentCopy) {
+                        menu = false
+                        vm.addSelectionToClipboard()
+                    }
                 if (files.isNotEmpty()) {
                     MenuItem("Compartir", Icons.Filled.Share) {
                         menu = false
@@ -565,10 +574,12 @@ private fun SelectionBottomBar(
 @Composable
 private fun PasteBar(vm: MainViewModel) {
     val clip = vm.clipboard ?: return
+    var showList by remember { mutableStateOf(false) }
     BottomAppBar {
         Text(
-            "${clip.paths.size} elemento(s) para ${if (clip.move) "mover" else "copiar"}",
-            modifier = Modifier.weight(1f).padding(start = 8.dp),
+            "${clip.paths.size} elemento(s) para ${if (clip.move) "mover" else "copiar"} · Ver",
+            modifier =
+                Modifier.weight(1f).padding(start = 8.dp).clickable { showList = true },
             style = MaterialTheme.typography.bodyMedium,
         )
         TextButton(onClick = { vm.clipboard = null }) { Text("Cancelar") }
@@ -576,6 +587,34 @@ private fun PasteBar(vm: MainViewModel) {
             Text("Pegar aquí")
         }
     }
+    if (showList)
+        AlertDialog(
+            onDismissRequest = { showList = false },
+            title = { Text("Portapapeles") },
+            text = {
+                LazyColumn(Modifier.heightIn(max = 360.dp)) {
+                    items(clip.paths, key = { it }) { path ->
+                        ListItem(
+                            headlineContent = { Text(java.io.File(path).name) },
+                            supportingContent = { Text(java.io.File(path).parent.orEmpty()) },
+                            trailingContent = {
+                                IconButton(onClick = { vm.removeFromClipboard(path) }) {
+                                    Icon(Icons.Filled.Close, "Quitar ${java.io.File(path).name}")
+                                }
+                            })
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showList = false }) { Text("Cerrar") } },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        vm.clipboard = null
+                        showList = false
+                    }) {
+                        Text("Vaciar")
+                    }
+            })
 }
 
 @Composable

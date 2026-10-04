@@ -1203,6 +1203,39 @@ def download_from_url():
             server.shutdown()
 
 
+
+@check("portapapeles-de-varias-carpetas")
+def clipboard_from_several_folders():
+    for path in ("clipA", "clipB", "clipDestino"):
+        sh("rm", "-rf", q(f"{DIR}/{path}"), check=False)
+        sh("mkdir", "-p", q(f"{DIR}/{path}"))
+    push_bytes(b"uno", f"{DIR}/clipA/uno.txt")
+    push_bytes(b"dos", f"{DIR}/clipB/dos.txt")
+    push_bytes(b"tres", f"{DIR}/clipB/tres.txt")
+    open_test_folder()
+    tap(find("clipA").get("text"))
+    long_press("uno.txt")
+    tap("Copiar")
+    adb("shell", "input", "keyevent", "4")
+    tap(find("clipB").get("text"))
+    long_press("dos.txt")
+    tap("tres.txt")
+    more("Añadir al portapapeles")
+    tap(wait("3 elemento(s) para copiar · Ver")[0].get("text"))
+    wait("uno.txt")
+    tap("Quitar tres.txt")
+    wait_text("2 elemento(s) para copiar")
+    tap("Cerrar")
+    adb("shell", "input", "keyevent", "4")
+    tap(find("clipDestino").get("text"))
+    tap("Pegar aquí")
+    until(lambda: exists(f"{DIR}/clipDestino/uno.txt") and exists(f"{DIR}/clipDestino/dos.txt"),
+          "No se pegaron los archivos de las dos carpetas", 30)
+    time.sleep(1)
+    assert not exists(f"{DIR}/clipDestino/tres.txt"), "Se pegó el archivo quitado del portapapeles"
+    assert read(f"{DIR}/clipA/uno.txt") == "uno", "Copiar no debe mover el original"
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()
