@@ -76,7 +76,8 @@ fun TransfersScreen(vm: MainViewModel) {
     var refresh by remember { mutableIntStateOf(0) }
     val queued =
         remember(completion, progress == null, refresh) {
-            DurableCopy.pending(TransferService.jobsDirectory(ctx))
+            DurableCopy.pending(TransferService.jobsDirectory(ctx)) +
+                DurableDownload.pending(TransferService.jobsDirectory(ctx))
         }
     val paused by TransferService.paused.collectAsState()
     val pausable by TransferService.supportsPause.collectAsState()

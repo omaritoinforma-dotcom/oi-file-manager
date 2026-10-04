@@ -47,7 +47,7 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                     val parent = root(path).replace("\\", "\\\\").replace("'", "\\'")
                     val result =
                         json(
-                            "$drive/files?q=${encode("'$parent' in parents and trashed=false")}&pageSize=1000&fields=nextPageToken,files(id,name,mimeType,size)&pageToken=${encode(page)}")
+                            "$drive/files?q=${encode("'$parent' in parents and trashed=false")}&pageSize=1000&fields=nextPageToken,files(id,name,mimeType,size,version)&pageToken=${encode(page)}")
                     val arr = result.optJSONArray("files") ?: JSONArray()
                     for (i in 0 until arr.length()) {
                         val f = arr.getJSONObject(i)
@@ -59,7 +59,8 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                                 if (originalName.endsWith(suffix, ignoreCase = true)) originalName
                                 else originalName + suffix,
                                 f.getString("mimeType") == "application/vnd.google-apps.folder",
-                                f.optString("size").toLongOrNull() ?: -1)
+                                f.optString("size").toLongOrNull() ?: -1,
+                                f.optString("version"))
                     }
                     page = result.optString("nextPageToken")
                 } while (page.isNotEmpty() && out.size < 50000)
@@ -78,7 +79,8 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                                 f.getString("path_display"),
                                 f.getString("name"),
                                 f.getString(".tag") == "folder",
-                                f.optLong("size", -1))
+                                f.optLong("size", -1),
+                                f.optString("rev"))
                     }
                     if (!result.optBoolean("has_more") || out.size >= 50000) break
                     result =
@@ -103,7 +105,8 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                                 f.getString("id"),
                                 f.getString("name"),
                                 f.has("folder"),
-                                f.optLong("size", -1))
+                                f.optLong("size", -1),
+                                f.optString("cTag", f.optString("eTag")))
                     }
                     url = result.optString("@odata.nextLink")
                     if (out.size >= 50000) break

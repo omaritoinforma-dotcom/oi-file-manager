@@ -18,6 +18,10 @@ import com.omaritoinforma.oiarchivos.data.Clipboard
 import com.omaritoinforma.oiarchivos.data.Conflict
 import com.omaritoinforma.oiarchivos.data.CryptoTools
 import com.omaritoinforma.oiarchivos.data.DurableCopy
+import com.omaritoinforma.oiarchivos.data.DurableDownload
+import com.omaritoinforma.oiarchivos.data.Connection
+import com.omaritoinforma.oiarchivos.data.RemoteEntry
+import com.omaritoinforma.oiarchivos.data.RemoteFiles
 import com.omaritoinforma.oiarchivos.data.FileCategory
 import com.omaritoinforma.oiarchivos.data.FileItem
 import com.omaritoinforma.oiarchivos.data.FileOps
@@ -377,6 +381,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun pasteNetwork(folder: String) {
         val clip = com.omaritoinforma.oiarchivos.data.NetworkClipboard.value ?: return
+        if (!clip.move) {
+            downloadRemote(clip.connection, clip.parent, clip.entries, File(folder)) {
+                if (com.omaritoinforma.oiarchivos.data.NetworkClipboard.value === clip)
+                    com.omaritoinforma.oiarchivos.data.NetworkClipboard.value = null
+            }
+            return
+        }
         runTask("Pegando desde red / nube") { report ->
             val out = ArrayList<File>()
             com.omaritoinforma.oiarchivos.data.RemoteFiles.connect(clip.connection).use { fs ->
@@ -780,6 +791,30 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     data class OpResult(val message: String?, val changed: List<File> = emptyList())
+
+    fun downloadRemote(
+        connection: Connection,
+        parent: String,
+        entries: List<RemoteEntry>,
+        destination: File,
+        onPrepared: () -> Unit = {}
+    ) {
+        toast("Preparando descarga recuperable")
+        viewModelScope.launch {
+            runCatching {
+                val job = withContext(Dispatchers.IO) {
+                    RemoteFiles.connect(connection).use { fs ->
+                        DurableDownload.create(TransferService.jobsDirectory(ctx), connection, fs,
+                            parent, entries, destination)
+                    }
+                }
+                onPrepared()
+                if (!TransferService.submitDurable(ctx, job))
+                    toast("Descarga guardada en la cola. Reanúdala desde Transferencias.")
+                goTo(Screen.Transfers)
+            }.onFailure { toast(it.message ?: "No se pudo preparar la descarga") }
+        }
+    }
 
     /** The service owns the operation so leaving the Activity does not cancel it. */
     fun runTask(title: String, block: suspend ((OpProgress) -> Unit) -> OperationResult) {

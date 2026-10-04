@@ -77,7 +77,13 @@ data class Connection(
     val googleAccount: String = ""
 )
 
-data class RemoteEntry(val path: String, val name: String, val directory: Boolean, val size: Long)
+data class RemoteEntry(
+    val path: String,
+    val name: String,
+    val directory: Boolean,
+    val size: Long,
+    val revision: String = ""
+)
 
 /** Credentials are encrypted with a device-bound Android Keystore key; backups are disabled. */
 class ConnectionStore(private val ctx: Context) {
@@ -347,7 +353,10 @@ private class FtpFs(c: Connection) : RemoteFs {
         if (client.replyCode >= 400) throw IOException(client.replyString)
         return entries
             .filter { it.name !in setOf(".", "..") && !it.isSymbolicLink }
-            .map { RemoteEntry(RemoteFiles.join(path, it.name), it.name, it.isDirectory, it.size) }
+            .map {
+                RemoteEntry(RemoteFiles.join(path, it.name), it.name, it.isDirectory, it.size,
+                    it.timestamp?.timeInMillis?.toString().orEmpty())
+            }
     }
 
     override fun read(path: String): InputStream {
@@ -449,7 +458,8 @@ private class SftpFs(c: Connection) : RemoteFs {
             .filter { it.filename !in setOf(".", "..") && !it.attrs.isLink }
             .map {
                 RemoteEntry(
-                    RemoteFiles.join(path, it.filename), it.filename, it.attrs.isDir, it.attrs.size)
+                    RemoteFiles.join(path, it.filename), it.filename, it.attrs.isDir, it.attrs.size,
+                    it.attrs.mTime.toString())
             }
 
     override fun read(path: String) = sftp.get(path)
@@ -513,7 +523,8 @@ private class SmbFs(c: Connection) : RemoteFs {
                         path.trimEnd('/') + "/" + child.name.trimEnd('/'),
                         child.name.trimEnd('/'),
                         child.isDirectory,
-                        if (child.isDirectory) 0 else child.length())
+                        if (child.isDirectory) 0 else child.length(),
+                        child.lastModified().toString())
                 }
             }
         }
@@ -664,7 +675,7 @@ private class DavFs(c: Connection) : RemoteFs {
             http.request(
                 url(path),
                 "PROPFIND",
-                "<?xml version=\"1.0\"?><d:propfind xmlns:d=\"DAV:\"><d:prop><d:resourcetype/><d:getcontentlength/></d:prop></d:propfind>",
+                "<?xml version=\"1.0\"?><d:propfind xmlns:d=\"DAV:\"><d:prop><d:resourcetype/><d:getcontentlength/><d:getetag/></d:prop></d:propfind>",
                 mapOf("Depth" to "1", "Content-Type" to "application/xml"))
         if (Regex("<!\\s*(DOCTYPE|ENTITY)", RegexOption.IGNORE_CASE).containsMatchIn(xml))
             throw IOException("Declaración XML no permitida")
@@ -703,7 +714,8 @@ private class DavFs(c: Connection) : RemoteFs {
                     .getElementsByTagNameNS("DAV:", "getcontentlength")
                     .item(0)
                     ?.textContent
-                    ?.toLongOrNull() ?: 0)
+                    ?.toLongOrNull() ?: 0,
+                item.getElementsByTagNameNS("DAV:", "getetag").item(0)?.textContent.orEmpty())
         }
     }
 

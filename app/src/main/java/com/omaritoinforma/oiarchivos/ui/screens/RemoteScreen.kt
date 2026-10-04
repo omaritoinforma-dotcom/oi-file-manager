@@ -148,7 +148,7 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                         TextButton(
                             onClick = {
                                 NetworkClipboard.value =
-                                    NetworkClip(c, selected.values.toList(), false)
+                                    NetworkClip(c, selected.values.toList(), false, path ?: c.root)
                                 vm.clipboard = null
                                 selected.clear()
                                 vm.toast("Ve a la carpeta de destino y pega los archivos")
@@ -158,7 +158,7 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                         TextButton(
                             onClick = {
                                 NetworkClipboard.value =
-                                    NetworkClip(c, selected.values.toList(), true)
+                                    NetworkClip(c, selected.values.toList(), true, path ?: c.root)
                                 vm.clipboard = null
                                 selected.clear()
                             }) {
@@ -167,18 +167,8 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                         TextButton(
                             onClick = {
                                 val entries = selected.values.toList()
-                                vm.runTask("Descargando archivos") { report ->
-                                    val out = ArrayList<File>()
-                                    RemoteFiles.connect(c).use { fs ->
-                                        for (entry in entries) out +=
-                                            RemoteFiles.download(
-                                                fs,
-                                                entry,
-                                                File(PathUtil.internalRoot, "Download/OI Archivos"),
-                                                report)
-                                    }
-                                    OperationResult("Guardados en Descargas/OI Archivos", out)
-                                }
+                                vm.downloadRemote(c, path ?: c.root, entries,
+                                    File(PathUtil.internalRoot, "Download/OI Archivos"))
                             }) {
                                 Text("Descargar")
                             }

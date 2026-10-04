@@ -1,13 +1,13 @@
 # Cobertura de funciones y trabajo pendiente
 
-El mínimo solicitado sigue siendo cubrir ES File Explorer. Esta lista **no convierte código nuevo en funciones probadas en un teléfono**. La copia local genera el APK v0.2.5 con firma válida y pasa 41 pruebas unitarias, sin fallos ni pruebas omitidas. Estas pruebas incluyen RAR cifrado y recuperación de copias locales. La revisión estática `lintDebug` sigue pendiente: faltan dependencias y la descarga desde Google está bloqueada por la política de red del entorno. La nueva versión todavía necesita validación de interfaz, hardware, servidores y cuentas reales; no se declara equivalencia completa con ES.
+El mínimo solicitado sigue siendo cubrir ES File Explorer. Esta lista **no convierte código nuevo en funciones probadas en un teléfono**. La versión local 0.2.8 tiene firma válida, pasa 56 pruebas sin fallos ni omisiones y aprueba lint con 21 advertencias y ningún error. Incluye recuperación de copias locales y descargas remotas. La versión 0.2.7 aprobó las comprobaciones existentes en Android 15; la prueba ampliada de recuperación remota debe ejecutarse en este cambio. Faltan pruebas de hardware, servidores y cuentas reales; no se declara equivalencia completa con ES.
 
 Referencia de funciones: ficha del desarrollador de ES en [Xiaomi](https://app.mi.com/details?id=com.estrongs.android.pop&type=pad), versión 4.4.3.7, publicada el 4 de agosto de 2026. Las funciones históricas de navegación de ES se conservan en la lista original de Claude.
 
 | Área | Implementado en la copia local | Dependencia o límite |
 |---|---|---|
 | Gestión local | Listar, copiar, cortar, pegar, crear, renombrar, lote, selección/rango, conflictos, papelera, propiedades y hashes | Directorios privados sujetos a permisos de Android |
-| Operaciones | Progreso, cancelación, servicio con notificación e historial; pausa de copias locales y registro persistente para recuperarlas tras un cierre | Recuperación local iniciada desde Transferencias; pausa y recuperación persistente de red/nube pendientes |
+| Operaciones | Progreso, cancelación, servicio con notificación e historial; pausa y recuperación de copias locales y descargas de red/nube desde Transferencias | Las descargas verifican de nuevo el prefijo desde el servidor; subidas, movimientos remotos y copias entre servidores pendientes |
 | Navegación | Pestañas, lista/detalles/cuadrícula, miniaturas, orden, ocultos, marcadores, categorías, historial, doble panel, arrastrar entre paneles, gestos configurables y accesos directos | Arrastrar y gestos necesitan prueba de interfaz en el APK nuevo; el lanzador debe admitir accesos fijados |
 | Búsqueda | Nombre, extensión, rango de tamaño, fecha reciente y contenido de texto | 5.000 resultados; contenido de hasta 8 MB; límite de recorrido 128 niveles |
 | Comprimidos | Crear ZIP/7z/TAR/TAR.GZ; ZIP y 7z con contraseña; navegar listado; extraer ZIP/APK/JAR/APKS, 7z, TAR/GZ/TGZ/BZ2/XZ | 7z cifrado probado con el motor de host; falta comprobar su ejecución dentro de Android; hasta 100.000 entradas y 64 GiB por extracción |
@@ -29,9 +29,9 @@ Referencia de funciones: ficha del desarrollador de ES en [Xiaomi](https://app.m
 
 ## Pendientes para la equivalencia completa
 
-1. Pausa y recuperación persistente de transferencias de red/nube; la implementación actual cubre copias locales.
+1. Pausa y recuperación persistente de subidas, movimientos remotos y copias entre servidores. Copias locales y descargas de red/nube ya tienen registro recuperable; comprobación Android ampliada pendiente.
 2. Registrar/configurar OAuth para las nubes y probar cada operación y la renovación con cuentas reales, incluidos Baidu/SugarSync.
 3. Ejecutar el APK nuevo en Android para probar el motor RAR/7z, arrastrar/soltar, gestos, edición de video y audio en segundo plano.
 4. Probar servidores HTTP/FTP y clientes de red con servidores reales; Bluetooth, SD/USB y root en hardware compatible.
-5. Completar `lintDebug`, resolver sus resultados y cerrar la comparación funcional con ES. Las 41 pruebas unitarias aprobadas no sustituyen estas comprobaciones.
+5. Revisar las 21 advertencias de lint y cerrar la comparación funcional con ES. Las 56 pruebas aprobadas y lint sin errores no sustituyen la validación de integración.
 6. Extras posteriores al mínimo: Shizuku, bóveda con huella, MCP e instalador de paquetes divididos. La pantalla root ya permite trabajar en rutas autorizadas en dispositivos compatibles.

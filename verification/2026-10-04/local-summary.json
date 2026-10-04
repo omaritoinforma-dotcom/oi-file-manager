@@ -1,0 +1,17 @@
+{
+  "version": "0.2.8",
+  "unit": {
+    "tests": 56,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "lint": {
+    "Error": 0,
+    "Fatal": 0,
+    "Warning": 21
+  },
+  "apk_name": "OI-Archivos-v0.2.8-dev.apk",
+  "apk_bytes": 34319855,
+  "apk_sha256": "6d3821dc26814323386ea9c5393115d6f28cba3740270d16c50ba8c22a750c0e"
+}

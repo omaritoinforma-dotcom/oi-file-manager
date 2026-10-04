@@ -5,12 +5,16 @@ need separate device/account verification. Run with an APK in ./apk/ and adb rea
 """
 
 import base64
+import hashlib
+import http.server
 import json
 import pathlib
 import re
 import subprocess
+import shlex
 import tempfile
 import time
+import threading
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -165,6 +169,113 @@ def verify_http():
         wait("Navegador / Wi-Fi")
 
 
+def visible_after_scroll(label):
+    for _ in range(8):
+        found = nodes(label, hierarchy())
+        if found:
+            return found[0]
+        adb("shell", "input", "swipe", "540", "1250", "540", "550", "400")
+    raise AssertionError(f"Scrollable control not found: {label}")
+
+
+def fill_connection(label, value):
+    tap_node(visible_after_scroll(label))
+    adb("shell", "input", "text", value)
+    adb("shell", "input", "keyevent", "4")  # dismiss keyboard
+
+
+def verify_remote_recovery():
+    """Pause a real WebDAV download, restart Android, then kill it while resuming."""
+    size = 32 * 1024 * 1024
+    data = (bytes(range(251)) * (size // 251 + 1))[:size]
+    destination = "/sdcard/Download/OI Archivos"
+    target = destination + "/resume.bin"
+
+    class DavHandler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *_):
+            pass
+
+        def do_PROPFIND(self):
+            self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            body = (f'<?xml version="1.0"?><d:multistatus xmlns:d="DAV:">'
+                    f'<d:response><d:href>/resume.bin</d:href><d:propstat><d:prop>'
+                    f'<d:resourcetype/><d:getcontentlength>{size}</d:getcontentlength>'
+                    f'<d:getetag>"smoke-v1"</d:getetag></d:prop>'
+                    f'<d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>'
+                    f'</d:multistatus>').encode()
+            self.send_response(207)
+            self.send_header("Content-Type", "application/xml")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-Length", str(size))
+            self.end_headers()
+            try:
+                for offset in range(0, size, 65536):
+                    self.wfile.write(data[offset:offset + 65536])
+                    self.wfile.flush()
+                    time.sleep(0.08)
+            except (BrokenPipeError, ConnectionResetError):
+                pass  # expected when the app pauses or its process is killed
+
+    server = http.server.ThreadingHTTPServer(("0.0.0.0", 0), DavHandler)
+    server.daemon_threads = True
+    worker = threading.Thread(target=server.serve_forever, daemon=True)
+    worker.start()
+    try:
+        drawer("Red, nube y USB")
+        tap("Agregar")
+        fill_connection("Nombre de la conexión", "Smoke-WebDAV")
+        tap_node(visible_after_scroll("WebDAV"))
+        fill_connection("URL completa https://…", f"http://10.0.2.2:{server.server_port}")
+        tap("Guardar")
+        tap_node(visible_after_scroll("Smoke-WebDAV"))
+        node = wait("resume.bin")[0]
+        x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds")))
+        x, y = str((x1 + x2) // 2), str((y1 + y2) // 2)
+        adb("shell", "input", "swipe", x, y, x, y, "1000")
+        tap("Descargar")
+        deadline = time.monotonic() + 30
+        while True:
+            parts = adb("shell", "find", shlex.quote(destination), "-maxdepth", "1",
+                        "-type", "f", "-name", "'.oi-download-*.part'", check=False).splitlines()
+            if parts and int(adb("shell", "stat", "-c", "%s", shlex.quote(parts[0]))) > 0:
+                break
+            assert time.monotonic() < deadline, "No persisted partial was created"
+            time.sleep(0.5)
+        tap("Pausar transferencia")
+        checkpoint("15-remote-paused", "Reanudar")
+        assert int(adb("shell", "stat", "-c", "%s", shlex.quote(parts[0]))) < size
+        launch()
+        drawer("Transferencias")
+        checkpoint("16-remote-journal-restored", "Reanudar")
+        tap("Reanudar")
+        wait("Pausar transferencia")
+        # Force-stop without cancelling: the onDestroy callback will not save state.
+        launch()
+        drawer("Transferencias")
+        checkpoint("17-remote-process-killed", "Reanudar")
+        tap("Reanudar")
+        deadline = time.monotonic() + 90
+        while adb("shell", "stat", "-c", "%s", shlex.quote(target), check=False).strip() != str(size):
+            assert time.monotonic() < deadline, "Resumed download did not commit"
+            time.sleep(1)
+        actual = adb("shell", "sha256sum", shlex.quote(target)).split()[0]
+        assert actual == hashlib.sha256(data).hexdigest(), "Recovered download contents differ"
+        checkpoint("18-remote-recovered", "Transferencias")
+        remaining = adb("shell", "find", shlex.quote(destination), "-maxdepth", "1",
+                        "-name", "'.oi-download-*.part'").strip()
+        assert not remaining, "Completed download left a partial"
+        CHECKS.append("webdav-pause-process-death-recovery-sha256")
+        print("PASS: webdav-pause-process-death-recovery-sha256", flush=True)
+    finally:
+        server.shutdown()
+        server.server_close()
+
+
 def main():
     apk = next(pathlib.Path("apk").glob("*.apk"))
     adb("install", "-r", str(apk))
@@ -235,6 +346,7 @@ def main():
     adb("shell", "input", "keyevent", "3")
     adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity")
     checkpoint("14-resume", "smoke.txt")
+    verify_remote_recovery()
     crash = adb("logcat", "-d", "-b", "crash")
     assert f"Process: {PACKAGE}" not in crash, crash
 

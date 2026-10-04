@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.omaritoinforma.oiarchivos.data.DurableDownloadTest" tests="15" skipped="0" failures="0" errors="0" timestamp="2026-10-04T01:15:34" hostname="86533e58a8e3" time="0.166">
+  <properties/>
+  <testcase name="discardDoesNotFollowAReplacedPartialSymlink" classname="com.omaritoinforma.oiarchivos.data.DurableDownloadTest" time="0.02"/>
+  <testcase name="reopeningAfterProcessDeathValidatesAndAppendsThePersistedPrefix" classname="com.omaritoinforma.oiarchivos.data.DurableDownloadTest" time="0.027"/>
+  <testcase name="commitBeforeJournalCompletionIsRecoveredWithoutANetworkConnection" classname="com.omaritoinforma.oiarchivos.data.DurableDownloadTest" time="0.024"/>
+  <testcase name="anUnrelatedNewDestinationIsNeverReplaced" classname="com.omaritoinforma.oiarchivos.data.DurableDownloadTest" time="0.008"/>
+  <testcase name="foldersWithCyclesCannotCreateADownloadJournal" classname="com.omaritoinforma.oiarchivos.data.DurableDownloadTest" time="0.005"/>
+  <testcase name="aSourceChangedDuringTheReadIsNotPublished" classname="com.omaritoinforma.oiarchivos.data.DurableDownloadTest" time="0.009"/>
+  <testcase name="unknownSizeExportsCanResumeWithoutGuessingTheirFinalLength" classname="com.omaritoinforma.oiarchivos.data.DurableDownloadTest" time="0.026"/>
+  <testcase name="shortReadsAreRecoverableInsteadOfBecomingCompletedFiles" classname="com.omaritoinforma.oiarchivos.data.DurableDownloadTest" time="0.012"/>
+  <testcase name="discardingABatchPreservesItsAlreadyCompletedFiles" classname="com.omaritoinforma.oiarchivos.data.DurableDownloadTest" time="0.007"/>
+  <testcase name="corruptedPartialIsPreservedWithoutPublishingMixedContents" classname="com.omaritoinforma.oiarchivos.data.DurableDownloadTest" time="0.007"/>
+  <testcase name="aChangedProviderRevisionRejectsAnOtherwiseIdenticalPrefix" classname="com.omaritoinforma.oiarchivos.data.DurableDownloadTest" time="0.004"/>
+  <testcase name="nestedFoldersAndDuplicateCloudNamesGetDistinctLocalTargets" classname="com.omaritoinforma.oiarchivos.data.DurableDownloadTest" time="0.008"/>
+  <testcase name="changedRemoteWithSameSizeAndNoVersionIsDetectedByItsPrefix" classname="com.omaritoinforma.oiarchivos.data.DurableDownloadTest" time="0.005"/>
+  <testcase name="traversalNamesCannotCreateADownloadJournal" classname="com.omaritoinforma.oiarchivos.data.DurableDownloadTest" time="0.002"/>
+  <testcase name="authenticationRenewalDoesNotChangeTheEndpointIdentity" classname="com.omaritoinforma.oiarchivos.data.DurableDownloadTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

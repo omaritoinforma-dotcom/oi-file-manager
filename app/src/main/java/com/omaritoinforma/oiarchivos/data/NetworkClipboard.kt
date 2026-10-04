@@ -7,7 +7,8 @@ import androidx.compose.runtime.setValue
 data class NetworkClip(
     val connection: Connection,
     val entries: List<RemoteEntry>,
-    val move: Boolean
+    val move: Boolean,
+    val parent: String = connection.root
 )
 
 object NetworkClipboard {

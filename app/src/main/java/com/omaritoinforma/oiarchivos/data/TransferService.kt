@@ -34,17 +34,25 @@ class TransferService : Service() {
     private var job: Job? = null
     private var interruptedDetail = ""
     private var userCanceled = false
+    private var userPaused = false
+    private var activeDurable: DurableTransfer? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "cancel") {
             userCanceled = true
+            userPaused = false
             paused.value = false
             job?.cancel()
             return START_NOT_STICKY
         }
         if (intent?.action == "pause" || intent?.action == "resume") {
+            if (intent.action == "pause" && activeDurable?.disconnectOnPause == true) {
+                userPaused = true
+                job?.cancel()
+                return START_NOT_STICKY
+            }
             if (supportsPause.value) paused.value = intent.action == "pause"
             progress.value?.let {
                 (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(
@@ -57,6 +65,9 @@ class TransferService : Service() {
         if (job?.isActive == true) return START_NOT_STICKY
         val work = pendingWork
         val durable = pendingDurable
+        activeDurable = durable
+        userCanceled = false
+        userPaused = false
         pendingWork = null
         pendingDurable = null
         if (work == null) {
@@ -98,24 +109,33 @@ class TransferService : Service() {
                         this@TransferService,
                         TransferRecord(id, title, System.currentTimeMillis(), "Completado", detail))
                     completion.value = System.nanoTime() to detail
-                } catch (e: CancellationException) {
-                    if (userCanceled)
-                        withContext(NonCancellable + Dispatchers.IO) { durable?.discard() }
-                    record(
-                        this@TransferService,
-                        TransferRecord(
-                            id,
-                            title,
-                            System.currentTimeMillis(),
-                            if (userCanceled) "Cancelado" else "Interrumpido",
-                            "Los originales pendientes se conservan"))
-                    completion.value = System.nanoTime() to "Operación cancelada"
                 } catch (e: Exception) {
-                    val detail = e.message ?: e.javaClass.simpleName
-                    record(
-                        this@TransferService,
-                        TransferRecord(id, title, System.currentTimeMillis(), "Error", detail))
-                    completion.value = System.nanoTime() to "Error: $detail"
+                    if (e is CancellationException || userCanceled || userPaused ||
+                        !currentCoroutineContext().isActive) {
+                        if (userCanceled)
+                            withContext(NonCancellable + Dispatchers.IO) { durable?.discard() }
+                        record(
+                            this@TransferService,
+                            TransferRecord(
+                                id,
+                                title,
+                                System.currentTimeMillis(),
+                                when {
+                                    userCanceled -> "Cancelado"
+                                    userPaused -> "Pausado"
+                                    else -> "Interrumpido"
+                                },
+                                if (userPaused) "Reanuda desde Transferencias; se conserva el parcial"
+                                else "Los originales pendientes se conservan"))
+                        completion.value = System.nanoTime() to
+                            if (userPaused) "Transferencia pausada" else "Operación cancelada"
+                    } else {
+                        val detail = e.message ?: e.javaClass.simpleName
+                        record(
+                            this@TransferService,
+                            TransferRecord(id, title, System.currentTimeMillis(), "Error", detail))
+                        completion.value = System.nanoTime() to "Error: $detail"
+                    }
                 } finally {
                     finish()
                 }
@@ -128,6 +148,7 @@ class TransferService : Service() {
         progress.value = null
         paused.value = false
         supportsPause.value = false
+        activeDurable = null
         busy = false
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -148,7 +169,7 @@ class TransferService : Service() {
         val completion = MutableStateFlow<Pair<Long, String>?>(null)
         val paused = MutableStateFlow(false)
         val supportsPause = MutableStateFlow(false)
-        private var pendingDurable: DurableCopy? = null
+        private var pendingDurable: DurableTransfer? = null
         private var pendingWork: (suspend ((OpProgress) -> Unit) -> OperationResult)? = null
         private var pendingTitle = "Operación"
         @Volatile private var busy = false
@@ -171,6 +192,8 @@ class TransferService : Service() {
                 busy = false
                 pendingWork = null
                 progress.value = null
+                supportsPause.value = false
+                paused.value = false
                 throw e
             }
             return true
@@ -189,7 +212,7 @@ class TransferService : Service() {
         fun jobsDirectory(ctx: Context) = File(ctx.filesDir, "transfer-jobs")
 
         @Synchronized
-        fun submitDurable(ctx: Context, job: DurableCopy): Boolean {
+        fun submitDurable(ctx: Context, job: DurableTransfer): Boolean {
             if (busy) return false
             pendingDurable = job
             return try {
