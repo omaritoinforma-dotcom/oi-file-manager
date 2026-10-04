@@ -31,6 +31,8 @@ fun ConnectionsScreen(vm: MainViewModel) {
     var loadingError by remember { mutableStateOf<String?>(null) }
     var edit by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<Connection?>(null) }
+    var scan by remember { mutableStateOf(false) }
+    var prefilled by remember { mutableStateOf(false) }
     var refresh by remember { mutableIntStateOf(0) }
     var pendingId by rememberSaveable { mutableStateOf<String?>(null) }
     var additionalLogin by remember { mutableStateOf<Connection?>(null) }
@@ -103,6 +105,7 @@ fun ConnectionsScreen(vm: MainViewModel) {
             TextButton(
                 onClick = {
                     selected = null
+                    prefilled = false
                     edit = true
                 }) {
                     Text("Agregar")
@@ -116,6 +119,14 @@ fun ConnectionsScreen(vm: MainViewModel) {
                             Text("Elegir una cuenta y autorizar acceso a sus archivos")
                         },
                         modifier = Modifier.clickable { loginGoogle() })
+                }
+                item {
+                    ListItem(
+                        headlineContent = { Text("Buscar en la red local") },
+                        supportingContent = {
+                            Text("Servidores SMB, FTP, FTPS y SFTP de tu Wi-Fi")
+                        },
+                        modifier = Modifier.clickable { scan = true })
                 }
                 item {
                     ListItem(
@@ -194,9 +205,26 @@ fun ConnectionsScreen(vm: MainViewModel) {
             },
             onDismiss = { additionalLogin = null })
     }
+    if (scan)
+        LanScanDialog(onDismiss = { scan = false }) { host ->
+            scan = false
+            selected =
+                Connection(
+                    label = host.name.ifBlank { "${host.protocol.label} ${host.address}" },
+                    protocol = host.protocol,
+                    host =
+                        if (host.protocol == Protocol.WEBDAV) "http://${host.address}:${host.port}"
+                        else host.address,
+                    port = host.port,
+                    user = "",
+                    secret = "")
+            prefilled = true
+            edit = true
+        }
     if (edit)
         ConnectionDialog(
             selected,
+            isNew = selected == null || prefilled,
             onDismiss = { edit = false },
             onSave = { c ->
                 try {
@@ -215,6 +243,7 @@ fun ConnectionsScreen(vm: MainViewModel) {
 @Composable
 private fun ConnectionDialog(
     existing: Connection?,
+    isNew: Boolean,
     onDismiss: () -> Unit,
     onSave: (Connection) -> Unit,
     onDelete: (Connection) -> Unit
@@ -242,7 +271,7 @@ private fun ConnectionDialog(
                 Protocol.SUGARSYNC)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (existing == null) "Nueva conexión" else "Editar conexión") },
+        title = { Text(if (isNew) "Nueva conexión" else "Editar conexión") },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 item {
@@ -429,7 +458,7 @@ private fun ConnectionDialog(
         },
         dismissButton = {
             Row {
-                if (existing != null)
+                if (existing != null && !isNew)
                     TextButton(onClick = { onDelete(existing) }) { Text("Eliminar") }
                 TextButton(onClick = onDismiss) { Text("Cancelar") }
             }

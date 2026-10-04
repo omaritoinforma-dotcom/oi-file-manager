@@ -131,6 +131,16 @@ jobs:
           else
             echo "OI_REAL_SFTP_FINGERPRINT=$OI_REAL_SFTP_FINGERPRINT" >> "$GITHUB_ENV"
           fi
+      - name: Servidor FTP en el puerto estándar para la búsqueda en la red local
+        run: |
+          # Answers like an FTP server on 21; the emulator reaches it as 10.0.2.2:21.
+          sudo nohup python3 -c 'import socketserver as s
+          class H(s.BaseRequestHandler):
+              def handle(self): self.request.sendall(b"220 OI prueba\r\n")
+          s.ThreadingTCPServer.allow_reuse_address = True
+          s.ThreadingTCPServer(("127.0.0.1", 21), H).serve_forever()' > /dev/null 2>&1 &
+          sleep 1
+          timeout 5 bash -c 'exec 3<>/dev/tcp/127.0.0.1/21 && head -c 3 <&3'
       - name: Permitir aceleración del emulador
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules

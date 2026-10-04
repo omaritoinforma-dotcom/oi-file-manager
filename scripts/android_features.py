@@ -491,6 +491,20 @@ def sort_size():
     tap("Aplicar")
 
 
+@check("red-local-encontrar-servidor")
+def lan_scan():
+    """The runner listens like FTP on 21; the emulator must find it as 10.0.2.2:21."""
+    ui.launch()
+    wait("Categorías")
+    ui.drawer("Red, nube y USB")
+    tap("Buscar en la red local")
+    tap(wait("FTP · 10.0.2.2:21", timeout=120)[0].get("text"))
+    wait("Nueva conexión")
+    texts = ui.field_texts()
+    assert "10.0.2.2" in texts and "21" in texts, f"El formulario no se rellenó: {texts}"
+    tap("Cancelar")
+
+
 if os.environ.get("OI_REAL_SFTP_PASSWORD"):
 
     @check("sftp-servidor-real-desde-android")
