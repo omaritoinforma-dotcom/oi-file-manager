@@ -201,6 +201,24 @@ def brightness():
     return sum(samples) / len(samples) / 3
 
 
+def menu_option(option):
+    """Como more(), pero desplaza el menú si la opción no está a la vista."""
+    tap_last("Más")
+    for _ in range(6):
+        tree = hierarchy()
+        found = nodes(option, tree)
+        if found:
+            x1, y1, x2, y2 = map(int, re.findall(r"\d+", found[0].get("bounds")))
+            if y2 - y1 > 10:
+                tap_node(found[0])
+                return
+        anchor = (nodes("Compartir", tree) or nodes("Abrir con…", tree) or [None])[0]
+        x = (lambda b: (b[0] + b[2]) // 2)(list(map(int, re.findall(r"\d+", anchor.get("bounds"))))) if anchor is not None else 700
+        adb("shell", "input", "swipe", str(x), "1500", str(x), "700", "400")
+        time.sleep(0.5)
+    raise AssertionError(f"Opción del menú no encontrada: {option}")
+
+
 def more(option):
     # With a selection there is a "Más" in the top bar too; the actions are in the bottom one.
     tap_last("Más")
@@ -1145,7 +1163,7 @@ def cast_to_tv():
         open_test_folder()
         find("tono.wav")
         long_press("tono.wav")
-        more("Enviar a la TV")
+        menu_option("Enviar a la TV")
         wait("Añadir por dirección", timeout=30)
         tap("Añadir por dirección")
         fill("Dirección de la TV", "10.0.2.2")
@@ -1220,7 +1238,7 @@ def clipboard_from_several_folders():
     tap(find("clipB").get("text"))
     long_press("dos.txt")
     tap("tres.txt")
-    more("Añadir al portapapeles")
+    menu_option("Añadir al portapapeles")
     tap(wait("3 elemento(s) para copiar · Ver")[0].get("text"))
     wait("uno.txt")
     tap("Quitar tres.txt")
@@ -1234,6 +1252,28 @@ def clipboard_from_several_folders():
     time.sleep(1)
     assert not exists(f"{DIR}/clipDestino/tres.txt"), "Se pegó el archivo quitado del portapapeles"
     assert read(f"{DIR}/clipA/uno.txt") == "uno", "Copiar no debe mover el original"
+
+
+
+@check("poner-como-tono")
+def set_ringtone():
+    adb("shell", "appops", "set", ui.PACKAGE, "WRITE_SETTINGS", "allow")
+    before = sh("settings", "get", "system", "ringtone").strip()
+    try:
+        open_test_folder()
+        find("tono.wav")
+        long_press("tono.wav")
+        menu_option("Poner como tono")
+        tap("Tono de llamada")
+        until(lambda: sh("settings", "get", "system", "ringtone").strip() not in (before, ""),
+              "No cambió el tono de llamada", 30)
+        uri = sh("settings", "get", "system", "ringtone").strip()
+        assert uri.startswith("content://media/"), uri
+        name = sh("content", "query", "--uri", uri.split("?")[0], "--projection", "_display_name", check=False)
+        assert "tono.wav" in name, f"El tono no es tono.wav: {uri} → {name}"
+    finally:
+        if before and before != "null":
+            sh("settings", "put", "system", "ringtone", before, check=False)
 
 
 def main():

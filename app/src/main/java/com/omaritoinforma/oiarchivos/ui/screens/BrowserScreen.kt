@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Cast
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -419,6 +420,27 @@ private fun SelectionBottomBar(
     val single = selectedItems.singleOrNull()
     val files = selectedItems.filter { !it.isDirectory }
     var menu by remember { mutableStateOf(false) }
+    var ringtone by remember { mutableStateOf<java.io.File?>(null) }
+    ringtone?.let { audio ->
+        AlertDialog(
+            onDismissRequest = { ringtone = null },
+            title = { Text("Poner como tono") },
+            text = {
+                Column {
+                    com.omaritoinforma.oiarchivos.util.Ringtones.Kind.entries.forEach { kind ->
+                        ListItem(
+                            headlineContent = { Text(kind.label) },
+                            modifier =
+                                Modifier.clickable {
+                                    ringtone = null
+                                    vm.clearSelection()
+                                    vm.setRingtone(audio, kind)
+                                })
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { ringtone = null }) { Text("Cancelar") } })
+    }
     BottomAppBar {
         BarAction(Icons.Filled.ContentCopy, "Copiar", Modifier.weight(1f)) {
             vm.copySelection(move = false)
@@ -496,6 +518,11 @@ private fun SelectionBottomBar(
                                     ctx, single.file)
                                 OperationResult("Fondo de pantalla actualizado")
                             }
+                        }
+                    if (Kinds.ofExt(single.extension) == FileKind.AUDIO)
+                        MenuItem("Poner como tono", Icons.Filled.Notifications) {
+                            menu = false
+                            ringtone = single.file
                         }
                     MenuItem("Abrir con…", Icons.Filled.OpenInNew) {
                         menu = false

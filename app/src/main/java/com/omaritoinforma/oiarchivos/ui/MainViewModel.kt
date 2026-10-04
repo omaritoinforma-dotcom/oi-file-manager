@@ -825,6 +825,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             "${paths.size} elemento(s) listos para ${if (move) "mover" else "copiar"}. Ve al destino y toca «Pegar aquí».")
     }
 
+    /** «Poner como tono»; si falta el permiso de ajustes del sistema, abre la pantalla para darlo. */
+    fun setRingtone(file: File, kind: com.omaritoinforma.oiarchivos.util.Ringtones.Kind) {
+        val tones = com.omaritoinforma.oiarchivos.util.Ringtones
+        if (!tones.canWrite(ctx)) {
+            toast("Permite a OI Archivos cambiar los ajustes del sistema y vuelve a intentarlo")
+            runCatching { tones.askPermission(ctx) }
+            return
+        }
+        viewModelScope.launch {
+            runCatching { tones.set(ctx, file, kind) }
+                .onSuccess { toast("«${file.name}» es ahora el ${kind.label.lowercase()}") }
+                .onFailure { toast(it.message ?: "No se pudo poner como tono") }
+        }
+    }
+
     /** Como en ES: junta en el portapapeles archivos de varias carpetas antes de pegar. */
     fun addSelectionToClipboard() {
         val t = currentTab ?: return
