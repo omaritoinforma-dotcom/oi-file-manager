@@ -31,7 +31,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | --- | --- | --- |
 | Copiar, cortar, pegar, mover, renombrar, eliminar, crear | ✅ | Emulador Android 15: crear carpeta, copiar, cortar, renombrar y eliminar, verificados en el disco |
 | Selección múltiple, todo, ninguno, por intervalo | 🟡 | |
-| Portapapeles visible, «Pegar todo» y botón flotante cuando hay contenido | ❌ | |
+| Portapapeles visible, «Pegar todo» y botón flotante cuando hay contenido | ✅ | Emulador Android 15: archivos de dos carpetas en el portapapeles, ver la lista, quitar uno y pegar el resto, verificado en el disco |
 | Renombrado por lotes (número inicial, cambiar extensión) | ✅ | Emulador Android 15 (prefijo); numerar y cambiar extensión sin recorrido propio |
 | Propiedades (tamaño, contenido, fechas, permisos, propietario) | ✅ | Emulador Android 15, con SHA-256 comprobado |
 | Copiar ruta completa | 🟡 | |
@@ -74,8 +74,8 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Archivos grandes, recientes, vacíos y duplicados | ✅ | Emulador Android 15 (grandes y duplicados) |
 | Limpieza de basura: caché, restos de apps desinstaladas, APK obsoletos, miniaturas | ✅ | Emulador Android 15: restos de apps desinstaladas, miniaturas y APK ya instalados van a la papelera; también temporales, vacíos y la caché |
 | Analizador de apps (permisos sensibles, tamaño, memoria) | 🟠 | Se muestran los permisos de cada APK; falta el análisis global |
-| Informe diario de archivos nuevos y aviso de archivos nuevos | ❌ | |
-| Aviso de poco espacio | ❌ | |
+| Informe diario de archivos nuevos y aviso de archivos nuevos | 🟠 | Aviso de archivos nuevos (Registrador) por tipo, lanzado por Android al cambiar MediaStore; falta el informe diario |
+| Aviso de poco espacio | 🟡 | Revisión cada hora con umbral elegible; el aviso abre «Limpiar basura» |
 
 ### Multimedia y editores
 
@@ -84,13 +84,13 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Visor de imágenes, zoom, deslizar | ✅ | Emulador |
 | Recortar imagen y fijarla como fondo | 🟠 | Fondo sí; falta recortar |
 | Reproductor de audio y vídeo, aleatorio y repetir | 🟡 | El audio suena en el emulador; faltan vídeo, aleatorio y repetir |
-| Listas de reproducción guardadas | ❌ | Solo cola temporal |
+| Listas de reproducción guardadas | 🟡 | Listas M3U8: crear, añadir desde el explorador, reordenar, quitar, renombrar y reproducir; comprobación en el emulador preparada |
 | Audio en segundo plano con notificación | ✅ | Emulador Android 15: sigue sonando al salir, con notificación |
-| Poner como tono, alarma o notificación | ❌ | |
+| Poner como tono, alarma o notificación | ✅ | Emulador Android 15: el tono de llamada del sistema pasa a ser el archivo elegido |
 | Reproducir desde red sin descargar (streaming) | ✅ | Emulador Android 15: un audio de 19 MB en un SFTP limitado a 256 KB/s suena a los 3 s. Servidor local solo en 127.0.0.1 y con clave por enlace (el de ES estaba abierto a toda la red, CVE-2019-6447) |
 | Visor de PDF | ✅ | Emulador |
 | Editor de texto: codificación, buscar y reemplazar, tamaño de letra | ✅ | Guardado comprobado en el emulador |
-| Editor de texto: resaltado de sintaxis, sangría automática, mayúsculas y minúsculas, duplicar línea, guardado automático | 🟠 | Resaltado sencillo; faltan el resto |
+| Editor de texto: resaltado de sintaxis, sangría automática, mayúsculas y minúsculas, duplicar línea, guardado automático | 🟠 | Sangría automática y guardado automático comprobados en el emulador; resaltado sencillo; faltan mayúsculas/minúsculas y duplicar línea |
 | Editor de vídeo: recortar, rotar, velocidad, recorte de imagen, música, subtítulos, imágenes, fondo, intro/outro | 🟠 | Todo menos intro/outro; sin comprobar en Android |
 | Unir vídeos y convertir vídeo a GIF | 🟡 | |
 
@@ -153,22 +153,20 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 
 | Estado | Funciones |
 | --- | ---: |
-| ✅ Comprobadas en su entorno real | 30 |
-| 🟡 Implementadas, sin comprobar | 15 |
-| 🟠 Parciales | 12 |
-| ❌ Faltan | 22 |
+| ✅ Comprobadas en su entorno real | 32 |
+| 🟡 Implementadas, sin comprobar | 17 |
+| 🟠 Parciales | 13 |
+| ❌ Faltan | 17 |
 | **Total de filas** | **79** |
 
 **OI Archivos no cubre todavía el mínimo.** Las funciones que faltan más grandes, por valor para el usuario:
 
 1. Copia automática a la nube.
 2. Enviar a la TV por Chromecast (DLNA ya está).
-3. Listas de reproducción guardadas.
-4. Instalación y desinstalación por lotes.
-5. Aviso de archivos nuevos y de poco espacio.
-6. Enviar entre teléfonos por punto de acceso o código QR.
-7. Idioma y temas dentro de la app; barra lateral personalizable.
+3. Instalación y desinstalación por lotes.
+4. Enviar entre teléfonos por punto de acceso o código QR.
+5. Idioma y temas dentro de la app; barra lateral personalizable.
 
-Hechos y pendientes de su comprobación en el emulador (CI en curso): portapapeles de varias carpetas, poner como tono y ajustes del editor (en la última pasada la app funcionó, pero fallaron las pruebas; ya están corregidas).
+Hechos y pendientes de su comprobación en el emulador (CI en curso): listas de reproducción, aviso de archivos nuevos y aviso de poco espacio.
 
-Los recuentos son por fila de esta matriz; una fila puede agrupar varias funciones pequeñas. Solo 30 de 79 cumplen ya el criterio de terminación (conectadas y comprobadas en su entorno real).
+Los recuentos son por fila de esta matriz; una fila puede agrupar varias funciones pequeñas. Solo 32 de 79 cumplen ya el criterio de terminación (conectadas y comprobadas en su entorno real).
