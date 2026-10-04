@@ -1276,6 +1276,55 @@ def set_ringtone():
             sh("settings", "put", "system", "ringtone", before, check=False)
 
 
+
+def checkbox_near(text):
+    """Casilla de la fila cuyo texto empieza por [text]."""
+    tree = hierarchy()
+    row = next(n for n in tree.iter("node") if (n.get("text") or "").startswith(text))
+    row_y = int(re.findall(r"\d+", row.get("bounds"))[1])
+    boxes = [n for n in tree.iter("node") if n.get("checkable") == "true"]
+    return min(boxes, key=lambda n: abs(int(re.findall(r"\d+", n.get("bounds"))[1]) - row_y))
+
+
+@check("limpiar-basura")
+def junk_cleaner():
+    leftover = f"/sdcard/Android/media/com.oi.prueba.desinstalada"
+    thumbnail = "/sdcard/DCIM/.thumbnails/mini-prueba.jpg"
+    sh("mkdir", "-p", q(leftover), q("/sdcard/DCIM/.thumbnails"))
+    push_bytes(b"\x02" * 50_000, f"{leftover}/resto.bin")
+    push_bytes(b"\xff\xd8" + b"\x00" * 3000, thumbnail)
+    launch_home()
+    ui.drawer("Limpiar basura")
+    tap("Buscar basura")
+    wait_text("Se pueden liberar", timeout=120)
+    for kind in ("Restos de apps desinstaladas", "Miniaturas guardadas", "APK ya instalados"):
+        find_text = next((n for n in hierarchy().iter("node") if (n.get("text") or "").startswith(kind)), None)
+        if find_text is None:
+            adb("shell", "input", "swipe", "540", "1500", "540", "900", "400")
+            time.sleep(0.5)
+        wait_text(kind)
+    # Los temporales y vacíos de todo el almacenamiento se dejan: pueden ser de otras pruebas.
+    temp_rows = [n for n in hierarchy().iter("node") if (n.get("text") or "").startswith("Temporales y vacíos")]
+    if temp_rows:
+        box = checkbox_near("Temporales y vacíos")
+        if box.get("checked") == "true":
+            tap_node(box)
+            time.sleep(0.5)
+    button = None
+    for _ in range(8):
+        button = next((n for n in hierarchy().iter("node")
+                       if (n.get("text") or "").startswith("Limpiar ") and n.get("text") != "Limpiar basura"), None)
+        if button is not None:
+            break
+        adb("shell", "input", "swipe", "540", "1500", "540", "700", "400")
+        time.sleep(0.5)
+    assert button is not None, "No aparece el botón Limpiar"
+    tap_node(button)
+    tap_last("Limpiar")
+    until(lambda: not exists(leftover) and not exists(thumbnail) and not exists(f"{DIR}/oi.apk"),
+          "No se limpió todo lo elegido", 60)
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()

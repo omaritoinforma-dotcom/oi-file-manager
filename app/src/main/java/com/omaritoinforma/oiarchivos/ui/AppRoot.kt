@@ -158,6 +158,7 @@ private fun MainContent(vm: MainViewModel) {
             is Screen.DualPane -> DualPaneScreen(vm, screen.path)
             is Screen.Stream -> StreamScreen(vm, screen.url, screen.title)
             Screen.Cast -> CastScreen(vm)
+            Screen.Cleaner -> CleanerScreen(vm)
         }
     }
     Overlays(vm)
@@ -394,6 +395,10 @@ private fun AppDrawer(vm: MainViewModel, close: () -> Unit) {
             }
             DrawerItem("Analizar espacio", Icons.Filled.SdCard) {
                 vm.goTo(Screen.Analysis(PathUtil.internalRoot))
+                close()
+            }
+            DrawerItem("Limpiar basura", Icons.Filled.Delete, vm.screen == Screen.Cleaner) {
+                vm.goTo(Screen.Cleaner)
                 close()
             }
             DrawerItem("Transferencias", Icons.Filled.Download, vm.screen == Screen.Transfers) {

@@ -107,6 +107,9 @@ sealed interface Screen {
 
     /** Enviar una foto, música o vídeo a la TV por DLNA. */
     data object Cast : Screen
+
+    /** Limpiar basura. */
+    data object Cleaner : Screen
 }
 
 data class PendingPaste(
