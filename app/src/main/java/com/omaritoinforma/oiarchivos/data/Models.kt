@@ -71,9 +71,16 @@ enum class FileCategory(val label: String) {
 sealed interface Location {
     data class Folder(val path: String) : Location
     data class Category(val category: FileCategory) : Location
-    /** [filter] marca resultados de búsqueda avanzada, que se repiten con el mismo filtro al actualizar. */
-    data class Search(val root: String, val query: String, val filter: SearchFilter? = null) :
-        Location
+    /**
+     * [filter] marca resultados de búsqueda avanzada, que se repiten con el mismo filtro al actualizar.
+     * Con [category], se busca solo entre los archivos de esa categoría (como en ES) y [root] no cuenta.
+     */
+    data class Search(
+        val root: String,
+        val query: String,
+        val filter: SearchFilter? = null,
+        val category: FileCategory? = null
+    ) : Location
 }
 
 data class Clipboard(val paths: List<String>, val move: Boolean)

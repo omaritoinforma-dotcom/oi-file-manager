@@ -749,7 +749,7 @@ private fun LocationHeader(vm: MainViewModel, tab: TabState, loc: Location) {
         is Location.Category -> HeaderText("${loc.category.label} · ${tab.items.size} archivos")
         is Location.Search ->
             HeaderText(
-                "«${loc.query}» en ${PathUtil.displayName(loc.root)} · ${tab.items.size} resultados" +
+                "«${loc.query}» en ${loc.category?.label ?: PathUtil.displayName(loc.root)} · ${tab.items.size} resultados" +
                     (if (tab.loading) " (buscando…)" else ""),
             )
     }

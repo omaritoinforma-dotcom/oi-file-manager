@@ -880,8 +880,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun search(query: String) {
-        val root = (currentTab?.location as? Location.Folder)?.path ?: PathUtil.internalRoot
-        navigate(Location.Search(root, query))
+        val loc = currentTab?.location
+        // Dentro de una categoría (Imágenes, Música…) se busca solo entre sus archivos.
+        val category = (loc as? Location.Category)?.category ?: (loc as? Location.Search)?.category
+        val root = (loc as? Location.Folder)?.path ?: PathUtil.internalRoot
+        navigate(Location.Search(root, query, category = category))
     }
 
     fun addTab(loc: Location = currentTab?.location ?: Location.Folder(PathUtil.internalRoot)) =
@@ -927,6 +930,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         val found =
                             withContext(Dispatchers.IO) {
                                 AnalysisTools.search(File(loc.root), loc.filter) {}
+                            }
+                        tab.items.clear()
+                        tab.items.addAll(sorted(found, loc))
+                    } else if (loc is Location.Search && loc.category != null) {
+                        val found =
+                            withContext(Dispatchers.IO) {
+                                Categories.byName(
+                                    runCatching { Categories.query(ctx, loc.category, showHidden) }
+                                        .getOrDefault(emptyList()),
+                                    loc.query)
                             }
                         tab.items.clear()
                         tab.items.addAll(sorted(found, loc))
@@ -1027,6 +1040,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             t.items.addAll(s)
             t.cache.clear()
         }
+    }
+
+    /** Buscar entre los ocultos pide la misma contraseña que mostrarlos («Proteger los archivos ocultos»). */
+    fun allowHiddenSearch(onAllowed: () -> Unit) {
+        if (showHidden || !AppLock.needsHidden(prefs)) onAllowed()
+        else requestUnlock("Archivos ocultos", onAllowed)
     }
 
     fun toggleHidden() {

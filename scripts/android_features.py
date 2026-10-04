@@ -388,6 +388,53 @@ def search_contents():
     assert not nodes("a.txt", hierarchy()), "La búsqueda devolvió archivos que no coinciden"
 
 
+@check("busqueda-avanzada-tipo-ocultos-y-subcarpetas")
+def search_types_hidden_subfolders():
+    folder = f"{DIR}/buscar-tipo"
+    sh("rm", "-rf", q(folder), check=False)
+    sh("mkdir", "-p", q(f"{folder}/carpeta-bt"))
+    push_bytes(png((0, 0, 255)), f"{folder}/foto-bt.png")
+    push_bytes(b"texto", f"{folder}/nota-bt.txt")
+    push_bytes(b"oculto", f"{folder}/.secreto-bt.txt")
+    push_bytes(b"dentro", f"{folder}/carpeta-bt/profundo-bt.txt")
+
+    def search(types, hidden=False, subfolders=True):
+        """Abre la búsqueda avanzada en la carpeta de prueba, la rellena y devuelve el texto de los resultados."""
+        open_test_folder()
+        tap_node(find("buscar-tipo"))
+        wait("nota-bt.txt")
+        tap("Más opciones")
+        tap("Búsqueda avanzada")
+        for kind in types:
+            tap_node(find(kind))
+        set_switch_found("Buscar en las subcarpetas", subfolders)
+        set_switch_found("Incluir archivos y carpetas ocultos", hidden)
+        tap_node(find("Buscar"))
+        wait("Buscar: Filtros avanzados", 40)
+        return {n.get("text") for n in hierarchy().iter("node") if n.get("text")}
+
+    def set_switch_found(title, on):
+        find(title)
+        set_switch(title, on)
+
+    # Imágenes y carpetas a la vez; el texto no.
+    shown = search(["Imágenes", "Carpetas"])
+    assert {"foto-bt.png", "carpeta-bt"} <= shown, f"Faltan resultados: {shown}"
+    assert "nota-bt.txt" not in shown and "profundo-bt.txt" not in shown, f"Sobran resultados: {shown}"
+    evidence("busqueda-avanzada-tipo-imagenes-y-carpetas")
+    # Texto sin ocultos: el oculto no sale.
+    shown = search(["Texto y código"])
+    assert {"nota-bt.txt", "profundo-bt.txt"} <= shown, f"Faltan resultados: {shown}"
+    assert ".secreto-bt.txt" not in shown and "foto-bt.png" not in shown, f"Sobran resultados: {shown}"
+    # Con ocultos sí.
+    shown = search(["Texto y código"], hidden=True)
+    assert ".secreto-bt.txt" in shown, f"El archivo oculto no apareció: {shown}"
+    evidence("busqueda-avanzada-con-ocultos")
+    # Sin subcarpetas: solo lo que hay en la carpeta elegida.
+    shown = search(["Texto y código"], subfolders=False)
+    assert "nota-bt.txt" in shown and "profundo-bt.txt" not in shown, f"Entró en las subcarpetas: {shown}"
+
+
 @check("analizar-espacio-grandes-y-duplicados")
 def analysis():
     open_test_folder()
@@ -1816,7 +1863,10 @@ def sub_categories():
         "PowerPoint": (f"{DIR}/charla-oi.pptx", b"ppt"),
     }
     sh("mkdir", "-p", q("/sdcard/Pictures/Screenshots"), q("/sdcard/Recordings"))
+    # Un segundo documento Word para comprobar que buscar dentro de la categoría filtra por nombre.
+    other_word = f"{DIR}/ofertas-oi.docx"
     try:
+        push_bytes(b"word2", other_word)
         for tile, (path, data) in seeds.items():
             if data is None:
                 sh("cp", q(f"{DIR}/tono.wav"), q(path))
@@ -1835,7 +1885,21 @@ def sub_categories():
             tree = hierarchy()
             mixed = [o for o in others if nodes(o, tree)]
             assert not mixed, f"«{tile}» muestra archivos de otra categoría: {mixed}"
+            if tile == "Word":
+                wait("ofertas-oi.docx")
+                # Buscar dentro de la categoría: solo entre los documentos Word, por nombre.
+                tap("Buscar")
+                time.sleep(1.5)  # el campo recibe el foco solo
+                adb("shell", "input", "text", "informe")
+                time.sleep(0.5)
+                tap("Buscar")
+                wait_text("«informe» en Word")
+                tree = hierarchy()
+                assert nodes(name, tree) and not nodes("ofertas-oi.docx", tree), "La búsqueda no filtró por nombre"
+                assert not nodes("buscar_me.txt", tree), "La búsqueda salió de la categoría"
+                evidence("busqueda-dentro-de-una-categoria")
     finally:
+        sh("rm", "-f", q(other_word), check=False)
         for path, _ in seeds.values():
             sh("rm", "-f", q(path), check=False)
         sh("content", "call", "--uri", "content://media", "--method", "scan_volume",

@@ -1,5 +1,7 @@
 package com.omaritoinforma.oiarchivos.data
 
+import com.omaritoinforma.oiarchivos.util.FileKind
+import com.omaritoinforma.oiarchivos.util.Kinds
 import java.io.File
 import java.security.MessageDigest
 import kotlinx.coroutines.currentCoroutineContext
@@ -15,14 +17,45 @@ data class SpaceAnalysis(
     val limited: Boolean
 )
 
+/** Tipos que se pueden elegir al buscar (como el «Tipo» de la búsqueda avanzada de ES). */
+enum class SearchKind(val label: String, val kinds: Set<FileKind>) {
+    FOLDERS("Carpetas", setOf(FileKind.FOLDER)),
+    IMAGES("Imágenes", setOf(FileKind.IMAGE)),
+    VIDEOS("Vídeos", setOf(FileKind.VIDEO)),
+    AUDIO("Música", setOf(FileKind.AUDIO)),
+    DOCUMENTS("Documentos", setOf(FileKind.DOC, FileKind.PDF)),
+    TEXT("Texto y código", setOf(FileKind.TEXT, FileKind.CODE)),
+    ARCHIVES("Comprimidos", setOf(FileKind.ARCHIVE)),
+    APK("APK", setOf(FileKind.APK))
+}
+
 data class SearchFilter(
     val name: String = "",
     val extensions: Set<String> = emptySet(),
     val min: Long = 0,
     val max: Long = Long.MAX_VALUE,
     val since: Long = 0,
-    val text: String = ""
-)
+    val text: String = "",
+    /** Vacío: cualquier tipo. */
+    val types: Set<SearchKind> = emptySet(),
+    /** Incluir lo que empieza por punto y lo que hay dentro de las carpetas ocultas. */
+    val hidden: Boolean = true,
+    /** Buscar también dentro de las subcarpetas; si no, solo en la carpeta elegida. */
+    val subfolders: Boolean = true
+) {
+    /** Cumple nombre, extensión, tipo, tamaño y fecha (el texto de dentro se mira aparte, es lo más lento). */
+    fun accepts(f: File): Boolean {
+        if (!f.name.contains(name, ignoreCase = true) || f.lastModified() < since) return false
+        val extension = f.extension.lowercase()
+        if (extensions.isNotEmpty() && extension !in extensions) return false
+        if (types.isNotEmpty()) {
+            val kind = if (f.isDirectory) FileKind.FOLDER else Kinds.ofExt(extension)
+            if (types.none { kind in it.kinds }) return false
+        }
+        if (f.isFile && f.length() !in min..max) return false
+        return true
+    }
+}
 
 object AnalysisTools {
     suspend fun analyze(
@@ -100,15 +133,11 @@ object AnalysisTools {
     ): List<FileItem> {
         val found = ArrayList<FileItem>()
         var checked = 0
-        for (f in SafeFiles.walk(root)) {
+        for (f in SafeFiles.walk(root, skipHidden = !filter.hidden, recursive = filter.subfolders)) {
             currentCoroutineContext().ensureActive()
             if (f == root) continue
             if (++checked % 200 == 0) report(OpProgress("Buscando", f.name, doneFiles = checked))
-            if (!f.name.contains(filter.name, ignoreCase = true) || f.lastModified() < filter.since)
-                continue
-            if (filter.extensions.isNotEmpty() && f.extension.lowercase() !in filter.extensions)
-                continue
-            if (f.isFile && f.length() !in filter.min..filter.max) continue
+            if (!filter.accepts(f)) continue
             if (filter.text.isNotEmpty()) {
                 if (!f.isFile || f.length() > 8L * 1024 * 1024) continue
                 val match =

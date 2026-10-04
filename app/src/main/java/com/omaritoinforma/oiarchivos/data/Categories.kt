@@ -56,6 +56,10 @@ object Categories {
         }
     }
 
+    /** Lo de una categoría cuyo nombre contiene [query] (sin distinguir mayúsculas). */
+    fun byName(items: List<FileItem>, query: String): List<FileItem> =
+        items.filter { it.name.contains(query, ignoreCase = true) }
+
     @Suppress("DEPRECATION")
     fun query(ctx: Context, cat: FileCategory, showHidden: Boolean): List<FileItem> {
         val dataCol = MediaStore.Files.FileColumns.DATA

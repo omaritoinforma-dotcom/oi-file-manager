@@ -69,7 +69,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 
 | Función de ES | OI | Nota |
 | --- | --- | --- |
-| Búsqueda avanzada (tamaño, fecha, tipo, subcarpetas, ocultos) | 🟠 | Búsqueda por contenido comprobada en el emulador, tras corregir un error que borraba los resultados; faltan el filtro de archivos del sistema y la búsqueda dentro de una categoría |
+| Búsqueda avanzada (tamaño, fecha, tipo, subcarpetas, ocultos) | 🟡 | Nombre, extensión, tipo (carpetas, imágenes, vídeos, música, documentos, texto y código, comprimidos, APK; se pueden sumar), tamaño, fecha, texto dentro, buscar o no en las subcarpetas e incluir ocultos (con «Proteger los archivos ocultos» pide la contraseña). Dentro de una categoría (Imágenes, Word…) la búsqueda se limita a ella. Búsqueda por contenido comprobada en el emulador; el resto con pruebas JVM y comprobación en el emulador preparada |
 | Analizador de espacio por tipo y carpeta | ✅ | Emulador Android 15 |
 | Archivos grandes, recientes, vacíos y duplicados | ✅ | Emulador Android 15 (grandes y duplicados) |
 | Limpieza de basura: caché, restos de apps desinstaladas, APK obsoletos, miniaturas | ✅ | Emulador Android 15: restos de apps desinstaladas, miniaturas y APK ya instalados van a la papelera; también temporales, vacíos y la caché |

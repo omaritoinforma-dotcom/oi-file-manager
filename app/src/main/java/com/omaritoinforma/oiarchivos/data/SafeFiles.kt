@@ -17,12 +17,18 @@ object SafeFiles {
         if (!validName(name)) throw IOException("Nombre de archivo no válido")
     }
 
-    fun walk(root: File): Sequence<File> =
-        root
+    /**
+     * Recorre [root] sin seguir enlaces simbólicos. Con [skipHidden] no devuelve ni entra en lo que
+     * empieza por punto; con [recursive] en false solo devuelve [root] y lo que hay justo dentro.
+     */
+    fun walk(root: File, skipHidden: Boolean = false, recursive: Boolean = true): Sequence<File> {
+        fun visible(f: File) = !skipHidden || f == root || !f.name.startsWith(".")
+        return root
             .walkTopDown()
-            .maxDepth(128)
-            .onEnter { !Files.isSymbolicLink(it.toPath()) }
-            .filter { !Files.isSymbolicLink(it.toPath()) }
+            .maxDepth(if (recursive) 128 else 1)
+            .onEnter { !Files.isSymbolicLink(it.toPath()) && visible(it) }
+            .filter { !Files.isSymbolicLink(it.toPath()) && visible(it) }
+    }
 
     fun requireRegular(file: File) {
         if (Files.isSymbolicLink(file.toPath()))

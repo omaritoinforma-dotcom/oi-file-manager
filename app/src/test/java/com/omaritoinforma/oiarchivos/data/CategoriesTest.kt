@@ -56,4 +56,11 @@ class CategoriesTest {
         assertTrue(inCategory(FileCategory.IMAGES, "/a/x.png", "image/png"))
         assertFalse(inCategory(FileCategory.IMAGES, "/a/x.png", "audio/mpeg"))
     }
+
+    @Test
+    fun searchInsideACategoryFiltersByNameIgnoringCase() {
+        val items = listOf("Informe.docx", "ofertas.docx", "INFORME-2.docx").map { java.io.File("/a/$it").toItem() }
+        assertEquals(listOf("Informe.docx", "INFORME-2.docx"), Categories.byName(items, "informe").map { it.name })
+        assertEquals(emptyList<String>(), Categories.byName(items, "zzz").map { it.name })
+    }
 }

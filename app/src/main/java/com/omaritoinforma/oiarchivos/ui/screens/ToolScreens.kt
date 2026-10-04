@@ -1,8 +1,11 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(
+    androidx.compose.material3.ExperimentalMaterial3Api::class,
+    androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
 package com.omaritoinforma.oiarchivos.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -13,7 +16,9 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.omaritoinforma.oiarchivos.data.*
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
@@ -153,13 +158,27 @@ fun AdvancedSearchScreen(vm: MainViewModel, root: String) {
     var max by remember { mutableStateOf("") }
     var days by remember { mutableStateOf("") }
     var contents by remember { mutableStateOf("") }
+    var types by remember { mutableStateOf(emptySet<SearchKind>()) }
+    var hidden by remember { mutableStateOf(vm.showHidden) }
+    var subfolders by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     ToolPage("Búsqueda avanzada", vm) { pad ->
         LazyColumn(
             Modifier.fillMaxSize().padding(pad),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                item { Text("Buscar en $root y sus subcarpetas") }
+                item { Text("Buscar en $root") }
+                item {
+                    Text("Tipo (sin elegir, de cualquier tipo)", style = MaterialTheme.typography.labelLarge)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SearchKind.entries.forEach { kind ->
+                            FilterChip(
+                                selected = kind in types,
+                                onClick = { types = if (kind in types) types - kind else types + kind },
+                                label = { Text(kind.label) })
+                        }
+                    }
+                }
                 item {
                     OutlinedTextField(
                         name,
@@ -203,6 +222,12 @@ fun AdvancedSearchScreen(vm: MainViewModel, root: String) {
                         supportingText = { Text("Archivos de texto de hasta 8 MB") },
                         modifier = Modifier.fillMaxWidth())
                 }
+                item { SwitchRow("Buscar en las subcarpetas", subfolders) { subfolders = it } }
+                item {
+                    SwitchRow("Incluir archivos y carpetas ocultos", hidden) {
+                        if (it) vm.allowHiddenSearch { hidden = true } else hidden = false
+                    }
+                }
                 if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
                 item {
                     Button(
@@ -231,7 +256,10 @@ fun AdvancedSearchScreen(vm: MainViewModel, root: String) {
                                     (lo * 1048576).toLong(),
                                     if (max.isBlank()) Long.MAX_VALUE else (hi * 1048576).toLong(),
                                     if (d == 0L) 0 else System.currentTimeMillis() - d * 86400000,
-                                    contents)
+                                    contents,
+                                    types,
+                                    hidden,
+                                    subfolders)
                             vm.runTask("Búsqueda avanzada") { report ->
                                 val results = AnalysisTools.search(File(root), filter, report)
                                 withContext(Dispatchers.Main) {
@@ -251,6 +279,17 @@ fun AdvancedSearchScreen(vm: MainViewModel, root: String) {
                 }
             }
     }
+}
+
+@Composable
+private fun SwitchRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().toggleable(checked, role = Role.Switch, onValueChange = onChange),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(title, Modifier.weight(1f))
+            Switch(checked, null)
+        }
 }
 
 @Composable
