@@ -10,13 +10,13 @@ import kotlinx.coroutines.ensureActive
 /** A local copy/move journal with a commit record written before replacing a destination. */
 class DurableCopy
 private constructor(
-    val id: String,
-    val destination: String,
+    override val id: String,
+    override val destination: String,
     val move: Boolean,
     private val roots: List<String>,
     private val entries: MutableList<Entry>,
     private val journal: File
-) {
+) : DurableJob {
     private data class Entry(
         val source: String,
         val target: String,
@@ -30,13 +30,13 @@ private constructor(
         var digest: String = ""
     )
 
-    val title
+    override val title
         get() = if (move) "Moviendo" else "Copiando"
 
-    val completed
+    override val completed
         get() = entries.count { it.phase == 3 && !it.directory }
 
-    val count
+    override val count
         get() = entries.count { !it.directory && it.phase != 4 }
 
     private fun partial(index: Int) =
@@ -70,7 +70,7 @@ private constructor(
             }
         }
 
-    fun discard() {
+    override fun discard() {
         entries.indices.forEach { index ->
             val part = partial(index)
             if (!Files.isSymbolicLink(part.toPath())) part.delete()
@@ -114,7 +114,7 @@ private constructor(
         return hash.digest().joinToString("") { "%02x".format(it) }
     }
 
-    suspend fun run(report: (OpProgress) -> Unit): OperationResult {
+    override suspend fun run(report: (OpProgress) -> Unit): OperationResult {
         val tracker = Tracker(title, report)
         tracker.totalFiles = count
         tracker.totalBytes = entries.filter { !it.directory && it.phase != 4 }.sumOf { it.size }

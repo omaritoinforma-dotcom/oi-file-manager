@@ -377,20 +377,63 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun pasteNetwork(folder: String) {
         val clip = com.omaritoinforma.oiarchivos.data.NetworkClipboard.value ?: return
-        runTask("Pegando desde red / nube") { report ->
-            val out = ArrayList<File>()
-            com.omaritoinforma.oiarchivos.data.RemoteFiles.connect(clip.connection).use { fs ->
-                for (entry in clip.entries) {
-                    out +=
-                        com.omaritoinforma.oiarchivos.data.RemoteFiles.download(
-                            fs, entry, File(folder), report)
-                    if (clip.move) fs.delete(entry)
-                }
-            }
-            withContext(Dispatchers.Main) {
-                com.omaritoinforma.oiarchivos.data.NetworkClipboard.value = null
-            }
-            OperationResult("Pegados ${out.size} elementos", out)
+        downloadDurable(clip.connection, clip.entries, clip.parent, File(folder), clip.move) {
+            com.omaritoinforma.oiarchivos.data.NetworkClipboard.value = null
+        }
+    }
+
+    /** Remote → local through a journal that Transferencias can resume after a pause or crash. */
+    fun downloadDurable(
+        connection: com.omaritoinforma.oiarchivos.data.Connection,
+        entries: List<com.omaritoinforma.oiarchivos.data.RemoteEntry>,
+        parent: String,
+        folder: File,
+        move: Boolean,
+        planned: () -> Unit = {}
+    ) {
+        durable(if (move) "Moviendo" else "Descargando") {
+            com.omaritoinforma.oiarchivos.data.RemoteFiles.connect(connection).use { fs ->
+                com.omaritoinforma.oiarchivos.data.DurableRemote.createDownload(
+                    TransferService.jobsDirectory(ctx),
+                    fs,
+                    connection,
+                    entries,
+                    parent,
+                    folder,
+                    move,
+                    com.omaritoinforma.oiarchivos.data.RemoteFiles::connectById)
+            }.also { withContext(Dispatchers.Main) { planned() } }
+        }
+    }
+
+    /** Local → remote through a journal; each original is deleted only after its upload. */
+    fun uploadDurable(
+        connection: com.omaritoinforma.oiarchivos.data.Connection,
+        sources: List<File>,
+        parent: String,
+        move: Boolean
+    ) {
+        durable(if (move) "Moviendo" else "Subiendo") {
+            com.omaritoinforma.oiarchivos.data.DurableRemote.createUpload(
+                    TransferService.jobsDirectory(ctx),
+                    connection,
+                    sources,
+                    parent,
+                    move,
+                    com.omaritoinforma.oiarchivos.data.RemoteFiles::connectById)
+                .also { withContext(Dispatchers.Main) { clipboard = null } }
+        }
+    }
+
+    private fun durable(
+        title: String,
+        plan: suspend () -> com.omaritoinforma.oiarchivos.data.DurableJob
+    ) {
+        try {
+            if (!TransferService.submitDurable(ctx, title, plan))
+                toast("Espera a que termine la operación actual")
+        } catch (e: Exception) {
+            toast(e.message ?: "No se pudo iniciar la operación")
         }
     }
 

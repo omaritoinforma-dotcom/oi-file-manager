@@ -9,6 +9,7 @@ import com.jcraft.jsch.HostKey
 import com.jcraft.jsch.HostKeyRepository
 import com.jcraft.jsch.JSch
 import com.jcraft.jsch.Session
+import com.jcraft.jsch.SftpProgressMonitor
 import com.jcraft.jsch.UserInfo
 import java.io.*
 import java.net.HttpURLConnection
@@ -170,6 +171,9 @@ interface RemoteFs : Closeable {
 
     fun read(path: String): InputStream
 
+    /** Reads from [offset], or returns null when the server cannot resume (restart from zero). */
+    fun readFrom(path: String, offset: Long): InputStream? = null
+
     fun write(parent: String, name: String, input: InputStream, size: Long): String
 
     fun mkdir(parent: String, name: String): String
@@ -206,6 +210,10 @@ object RemoteFiles {
             Protocol.ONEDRIVE -> CloudFs(c)
         }
     }
+
+    /** Resolves a saved connection for a resumed transfer; journals never store credentials. */
+    fun connectById(id: String): RemoteFs =
+        connect(ConnectionStore(appContext).load().first { it.id == id })
 
     fun join(parent: String, name: String): String {
         SafeFiles.requireName(name)
@@ -350,7 +358,13 @@ private class FtpFs(c: Connection) : RemoteFs {
             .map { RemoteEntry(RemoteFiles.join(path, it.name), it.name, it.isDirectory, it.size) }
     }
 
-    override fun read(path: String): InputStream {
+    override fun read(path: String): InputStream = stream(path, 0)
+
+    override fun readFrom(path: String, offset: Long): InputStream? =
+        runCatching { stream(path, offset) }.getOrNull()
+
+    private fun stream(path: String, offset: Long): InputStream {
+        client.restartOffset = offset
         val raw = client.retrieveFileStream(path) ?: throw IOException("No se pudo descargar")
         return object : FilterInputStream(raw) {
             override fun close() {
@@ -453,6 +467,9 @@ private class SftpFs(c: Connection) : RemoteFs {
             }
 
     override fun read(path: String) = sftp.get(path)
+
+    override fun readFrom(path: String, offset: Long): InputStream? =
+        sftp.get(path, null as SftpProgressMonitor?, offset)
 
     override fun write(parent: String, name: String, input: InputStream, size: Long): String {
         val target = RemoteFiles.join(parent, name)
@@ -708,6 +725,18 @@ private class DavFs(c: Connection) : RemoteFs {
     }
 
     override fun read(path: String) = http.response(http.open(url(path), "GET"))
+
+    override fun readFrom(path: String, offset: Long): InputStream? {
+        val c = http.open(url(path), "GET", mapOf("Range" to "bytes=$offset-"))
+        // Only a partial response that starts exactly at the offset can be appended.
+        if (c.responseCode != 206 ||
+            c.getHeaderField("Content-Range")?.startsWith("bytes $offset-") != true) {
+            runCatching { c.inputStream.close() }
+            c.disconnect()
+            return null
+        }
+        return http.response(c)
+    }
 
     override fun write(parent: String, name: String, input: InputStream, size: Long): String {
         val target = RemoteFiles.join(parent, name)

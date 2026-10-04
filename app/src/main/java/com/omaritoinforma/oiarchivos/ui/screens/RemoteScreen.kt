@@ -87,6 +87,10 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                 if (c != null && path != null && (clip != null || remoteClip != null))
                     Button(
                         onClick = {
+                            if (remoteClip == null && clip != null) {
+                                vm.uploadDurable(c, clip.paths.map(::File), path, clip.move)
+                                return@Button
+                            }
                             vm.runTask("Pegando archivos remotos") { report ->
                                 RemoteFiles.connect(c).use { target ->
                                     if (remoteClip != null) {
@@ -148,7 +152,7 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                         TextButton(
                             onClick = {
                                 NetworkClipboard.value =
-                                    NetworkClip(c, selected.values.toList(), false)
+                                    NetworkClip(c, selected.values.toList(), false, path.orEmpty())
                                 vm.clipboard = null
                                 selected.clear()
                                 vm.toast("Ve a la carpeta de destino y pega los archivos")
@@ -158,7 +162,7 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                         TextButton(
                             onClick = {
                                 NetworkClipboard.value =
-                                    NetworkClip(c, selected.values.toList(), true)
+                                    NetworkClip(c, selected.values.toList(), true, path.orEmpty())
                                 vm.clipboard = null
                                 selected.clear()
                             }) {
@@ -167,18 +171,13 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                         TextButton(
                             onClick = {
                                 val entries = selected.values.toList()
-                                vm.runTask("Descargando archivos") { report ->
-                                    val out = ArrayList<File>()
-                                    RemoteFiles.connect(c).use { fs ->
-                                        for (entry in entries) out +=
-                                            RemoteFiles.download(
-                                                fs,
-                                                entry,
-                                                File(PathUtil.internalRoot, "Download/OI Archivos"),
-                                                report)
-                                    }
-                                    OperationResult("Guardados en Descargas/OI Archivos", out)
-                                }
+                                if (path != null)
+                                    vm.downloadDurable(
+                                        c,
+                                        entries,
+                                        path,
+                                        File(PathUtil.internalRoot, "Download/OI Archivos"),
+                                        false)
                             }) {
                                 Text("Descargar")
                             }

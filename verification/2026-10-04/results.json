@@ -1,0 +1,67 @@
+{
+  "apk_version": "0.2.6",
+  "version_code": 6,
+  "debug_apk_sha256": "dbccdbe7462282682ad5bf42c9ec83398bdaee51a1c748e2447d5b90a6c42d1b",
+  "release_apk_sha256": "33e7fb34d7b3fceb014f7c884647df5e6565129fdd0858a96255ca5fb5625567",
+  "command": "OI_BUILD_NUMBER=6 ./gradlew testDebugUnitTest assembleRelease lintDebug assembleDebug (LANG=C.UTF-8)",
+  "suites": [
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.CloudXmlTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "timestamp": "2026-10-04T04:17:34"
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.DurableCopyTest",
+      "tests": "7",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "timestamp": "2026-10-04T04:17:34"
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.DurableRemoteTest",
+      "tests": "7",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "timestamp": "2026-10-04T04:17:35"
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.FileSafetyTest",
+      "tests": "21",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "timestamp": "2026-10-04T04:17:35"
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.NativeArchiveTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "timestamp": "2026-10-04T04:17:38"
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.ProtocolTest",
+      "tests": "4",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "timestamp": "2026-10-04T04:17:38"
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.SubtitleTest",
+      "tests": "2",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "timestamp": "2026-10-04T04:17:38"
+    }
+  ],
+  "lint_status": "Completed: 0 errors, 21 warnings (see lint-results-debug.txt)",
+  "android_integration_status": "Not verified for this checkpoint"
+}

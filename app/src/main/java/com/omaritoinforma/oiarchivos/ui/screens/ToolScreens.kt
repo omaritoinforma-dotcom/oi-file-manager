@@ -76,7 +76,7 @@ fun TransfersScreen(vm: MainViewModel) {
     var refresh by remember { mutableIntStateOf(0) }
     val queued =
         remember(completion, progress == null, refresh) {
-            DurableCopy.pending(TransferService.jobsDirectory(ctx))
+            TransferService.pendingJobs(ctx)
         }
     val paused by TransferService.paused.collectAsState()
     val pausable by TransferService.supportsPause.collectAsState()
@@ -108,7 +108,7 @@ fun TransfersScreen(vm: MainViewModel) {
                                     }
                                 TextButton(
                                     onClick = {
-                                        job.discard()
+                                        runCatching { job.discard() }
                                         refresh++
                                     }) {
                                         Text("Descartar")

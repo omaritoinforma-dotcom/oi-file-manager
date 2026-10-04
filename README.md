@@ -2,7 +2,7 @@
 
 Gestor de archivos Android en Kotlin y Jetpack Compose. El objetivo del proyecto se mantiene: cubrir las funciones de ES File Explorer y añadir herramientas útiles, sin anuncios ni analítica.
 
-**La copia local v0.2.5 genera un APK firmado y pasa 41 pruebas unitarias sin omisiones. La revisión estática y las pruebas de integración de esta versión siguen pendientes; no se declara todavía equivalencia completa con ES.** Consulta [FEATURES.md](FEATURES.md) para distinguir funciones implementadas, dependencias externas y lo que falta.
+**La copia local v0.2.6 genera un APK firmado, pasa 48 pruebas unitarias sin omisiones y completa `lintDebug` sin errores. Las pruebas de integración de esta versión siguen pendientes; no se declara todavía equivalencia completa con ES.** Consulta [FEATURES.md](FEATURES.md) para distinguir funciones implementadas, dependencias externas y lo que falta.
 
 ## Instalar
 
@@ -32,7 +32,7 @@ Java 17, SDK Android 35:
 ```sh
 python3 scripts/build_archives.py --host
 export OI_ARCHIVE_TEST_EXECUTABLE="$PWD/build/native-archives/--host/7zz"
-OI_BUILD_NUMBER=5 ./gradlew testDebugUnitTest assembleRelease lintDebug
+LANG=C.UTF-8 OI_BUILD_NUMBER=6 ./gradlew testDebugUnitTest assembleRelease lintDebug
 ```
 
 Para construir una actualización local, elige un `OI_BUILD_NUMBER` mayor que la versión instalada. En CI se conserva el número de ejecución de GitHub cuando no se especifica ese valor. Las pruebas de RAR fallan si falta el motor de host, en lugar de omitirse.

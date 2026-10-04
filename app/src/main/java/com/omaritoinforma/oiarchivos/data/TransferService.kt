@@ -56,9 +56,8 @@ class TransferService : Service() {
         startForeground(11, notification(this, OpProgress(pendingTitle)))
         if (job?.isActive == true) return START_NOT_STICKY
         val work = pendingWork
-        val durable = pendingDurable
         pendingWork = null
-        pendingDurable = null
+        userCanceled = false
         if (work == null) {
             finish()
             return START_NOT_STICKY
@@ -100,7 +99,7 @@ class TransferService : Service() {
                     completion.value = System.nanoTime() to detail
                 } catch (e: CancellationException) {
                     if (userCanceled)
-                        withContext(NonCancellable + Dispatchers.IO) { durable?.discard() }
+                        withContext(NonCancellable + Dispatchers.IO) { activeDurable?.discard() }
                     record(
                         this@TransferService,
                         TransferRecord(
@@ -125,6 +124,7 @@ class TransferService : Service() {
 
     private fun finish() {
         interruptedDetail = ""
+        activeDurable = null
         progress.value = null
         paused.value = false
         supportsPause.value = false
@@ -148,20 +148,27 @@ class TransferService : Service() {
         val completion = MutableStateFlow<Pair<Long, String>?>(null)
         val paused = MutableStateFlow(false)
         val supportsPause = MutableStateFlow(false)
-        private var pendingDurable: DurableCopy? = null
+        @Volatile private var activeDurable: DurableJob? = null
         private var pendingWork: (suspend ((OpProgress) -> Unit) -> OperationResult)? = null
         private var pendingTitle = "Operación"
         @Volatile private var busy = false
 
-        @Synchronized
         fun submit(
             ctx: Context,
             title: String,
             work: suspend ((OpProgress) -> Unit) -> OperationResult
+        ): Boolean = start(ctx, title, false, work)
+
+        @Synchronized
+        private fun start(
+            ctx: Context,
+            title: String,
+            pausable: Boolean,
+            work: suspend ((OpProgress) -> Unit) -> OperationResult
         ): Boolean {
             if (busy) return false
             busy = true
-            supportsPause.value = pendingDurable != null
+            supportsPause.value = pausable
             pendingWork = work
             pendingTitle = title
             progress.value = OpProgress(title)
@@ -188,17 +195,24 @@ class TransferService : Service() {
 
         fun jobsDirectory(ctx: Context) = File(ctx.filesDir, "transfer-jobs")
 
-        @Synchronized
-        fun submitDurable(ctx: Context, job: DurableCopy): Boolean {
-            if (busy) return false
-            pendingDurable = job
-            return try {
-                submit(ctx, job.title) { job.run(it) }
-            } catch (e: Exception) {
-                pendingDurable = null
-                throw e
+        fun submitDurable(ctx: Context, job: DurableJob): Boolean =
+            submitDurable(ctx, job.title) { job }
+
+        /**
+         * [plan] runs in the service on an IO thread, so remote folders can be listed there. Once
+         * its journal exists the job can be paused, and canceling discards its partial files.
+         */
+        fun submitDurable(ctx: Context, title: String, plan: suspend () -> DurableJob): Boolean =
+            start(ctx, title, true) { report ->
+                val job = plan()
+                activeDurable = job
+                job.run(report)
             }
-        }
+
+        /** Local copies and network/cloud transfers left by a pause, error or process death. */
+        fun pendingJobs(ctx: Context): List<DurableJob> =
+            DurableCopy.pending(jobsDirectory(ctx)) +
+                DurableRemote.pending(jobsDirectory(ctx), RemoteFiles::connectById)
 
         fun createChannel(ctx: Context) {
             (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
