@@ -90,7 +90,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Reproducir desde red sin descargar (streaming) | ✅ | Emulador Android 15: un audio de 19 MB en un SFTP limitado a 256 KB/s suena a los 3 s. Servidor local solo en 127.0.0.1 y con clave por enlace (el de ES estaba abierto a toda la red, CVE-2019-6447) |
 | Visor de PDF | ✅ | Emulador |
 | Editor de texto: codificación, buscar y reemplazar, tamaño de letra | ✅ | Guardado comprobado en el emulador |
-| Editor de texto: resaltado de sintaxis, sangría automática, mayúsculas y minúsculas, duplicar línea, guardado automático | 🟠 | Sangría automática y guardado automático comprobados en el emulador; resaltado sencillo; faltan mayúsculas/minúsculas y duplicar línea |
+| Editor de texto: resaltado de sintaxis, sangría automática, mayúsculas y minúsculas, duplicar línea, guardado automático | 🟡 | Sangría y guardado automáticos comprobados en el emulador; resaltado sencillo. Añadidos mayúsculas/minúsculas, duplicar línea, barra de símbolos con Tab (espacios o tabulador, tamaño 2/4/8), mostrar espacios en blanco y mayúscula automática; comprobación en el emulador preparada |
 | Editor de vídeo: recortar, rotar, velocidad, recorte de imagen, música, subtítulos, imágenes, fondo, intro/outro | 🟠 | Todo menos intro/outro; sin comprobar en Android |
 | Unir vídeos y convertir vídeo a GIF | 🟡 | |
 
@@ -101,7 +101,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Lista de apps, abrir, desinstalar, compartir, información | 🟡 | Lista y búsqueda usadas en el emulador; faltan abrir, desinstalar y compartir |
 | Copia de seguridad de APK (también divididos) | ✅ | Emulador Android 15 (APK simple) |
 | Instalar o desinstalar varias apps a la vez | 🟡 | Varios APK desde el explorador y varias apps desde Aplicaciones (mantener pulsado), de una en una con la confirmación de Android; comprobación en el emulador preparada |
-| Copia antes de desinstalar, limpiar carpetas asociadas | 🟠 | Copia del APK antes de desinstalar comprobada en el emulador; los restos de apps desinstaladas se limpian desde «Limpiar basura» |
+| Copia antes de desinstalar, limpiar carpetas asociadas | 🟠 | Copia del APK antes de desinstalar comprobada en el emulador. Android ya borra Android/data, media y obb de la app al desinstalarla; lo que queda se limpia desde «Limpiar basura». Las carpetas que ES asocia a cada app vienen de su base de datos en línea; adivinarlas por el nombre podría borrar datos del usuario, así que no se hace |
 | Desinstalar apps del sistema (root) | ❌ | |
 | Ver el contenido de un APK | ✅ | Emulador Android 15 |
 
@@ -154,8 +154,8 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | Estado | Funciones |
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 32 |
-| 🟡 Implementadas, sin comprobar | 19 |
-| 🟠 Parciales | 13 |
+| 🟡 Implementadas, sin comprobar | 20 |
+| 🟠 Parciales | 12 |
 | ❌ Faltan | 15 |
 | **Total de filas** | **79** |
 
@@ -165,6 +165,6 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 2. Enviar entre teléfonos por punto de acceso o código QR.
 3. Idioma y temas dentro de la app; barra lateral personalizable.
 
-Hechos y pendientes de su comprobación en el emulador (CI en curso): listas de reproducción, aviso de archivos nuevos, aviso de poco espacio, instalar y desinstalar apps por lotes y copia automática.
+Hechos y pendientes de su comprobación en el emulador (CI en curso): listas de reproducción, aviso de archivos nuevos, aviso de poco espacio, instalar y desinstalar apps por lotes, copia automática y herramientas del editor.
 
 Los recuentos son por fila de esta matriz; una fila puede agrupar varias funciones pequeñas. Solo 32 de 79 cumplen ya el criterio de terminación (conectadas y comprobadas en su entorno real).

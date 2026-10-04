@@ -1671,6 +1671,36 @@ def editor_options():
         set_switch("Guardado automático", False)
 
 
+@check("editor-tabulador-simbolos-mayusculas-duplicar")
+def editor_tools():
+    push_bytes(b"", f"{DIR}/simbolos.txt")
+    try:
+        settings("Editor de texto")
+        set_switch("Usar espacios en lugar de tabuladores", True)
+        set_switch("Barra de símbolos", True)
+        open_test_folder()
+        tap(find("simbolos.txt").get("text"))
+        wait("Tab")
+        field = next(n for n in hierarchy().iter("node") if n.get("class") == "android.widget.EditText")
+        tap_node(field)
+        adb("shell", "input", "text", "abc")
+        time.sleep(0.5)
+        tap("Tab")
+        tap("{")
+        tap("Más")
+        tap("Convertir a mayúsculas")
+        tap("Más")
+        tap("Duplicar línea")
+        time.sleep(0.5)
+        tap("Guardar")
+        expected = "ABC    {\nABC    {"
+        until(lambda: read(f"{DIR}/simbolos.txt") == expected,
+              f"El archivo no quedó como se esperaba: {read(f'{DIR}/simbolos.txt')!r}", 20)
+    finally:
+        settings("Editor de texto")
+        set_switch("Usar espacios en lugar de tabuladores", False)
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()

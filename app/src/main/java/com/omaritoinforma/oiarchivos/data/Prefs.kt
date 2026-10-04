@@ -215,6 +215,31 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("editor_auto_save", false)
         set(v) = sp.edit().putBoolean("editor_auto_save", v).apply()
 
+    var editorSpacesForTab: Boolean
+        get() = sp.getBoolean("editor_spaces_for_tab", false)
+        set(v) = sp.edit().putBoolean("editor_spaces_for_tab", v).apply()
+
+    var editorTabSize: Int
+        get() = sp.getInt("editor_tab_size", 4)
+        set(v) = sp.edit().putInt("editor_tab_size", v.coerceIn(1, 8)).apply()
+
+    var editorAutoCapitalize: Boolean
+        get() = sp.getBoolean("editor_auto_capitalize", false)
+        set(v) = sp.edit().putBoolean("editor_auto_capitalize", v).apply()
+
+    var editorShowWhitespace: Boolean
+        get() = sp.getBoolean("editor_show_whitespace", false)
+        set(v) = sp.edit().putBoolean("editor_show_whitespace", v).apply()
+
+    var editorSymbolBar: Boolean
+        get() = sp.getBoolean("editor_symbol_bar", true)
+        set(v) = sp.edit().putBoolean("editor_symbol_bar", v).apply()
+
+    /** Símbolos de la barra, separados por espacios. */
+    var editorSymbols: String
+        get() = sp.getString("editor_symbols", null) ?: EditorText.DEFAULT_SYMBOLS
+        set(v) = sp.edit().putString("editor_symbols", v).apply()
+
     // ---- Contraseña ----
 
     /** Hash PBKDF2 de la contraseña (ver [AppLock]); vacío si no hay contraseña. */

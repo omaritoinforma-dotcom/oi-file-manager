@@ -310,6 +310,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val editorAutoIndent = PrefState({ prefs.editorAutoIndent }, { prefs.editorAutoIndent = it })
     val editorHighlight = PrefState({ prefs.editorHighlight }, { prefs.editorHighlight = it })
     val editorAutoSave = PrefState({ prefs.editorAutoSave }, { prefs.editorAutoSave = it })
+    val editorSpacesForTab = PrefState({ prefs.editorSpacesForTab }, { prefs.editorSpacesForTab = it })
+    val editorTabSize = PrefState({ prefs.editorTabSize }, { prefs.editorTabSize = it })
+    val editorAutoCapitalize = PrefState({ prefs.editorAutoCapitalize }, { prefs.editorAutoCapitalize = it })
+    val editorShowWhitespace = PrefState({ prefs.editorShowWhitespace }, { prefs.editorShowWhitespace = it })
+    val editorSymbolBar = PrefState({ prefs.editorSymbolBar }, { prefs.editorSymbolBar = it })
+    val editorSymbols = PrefState({ prefs.editorSymbols }, { prefs.editorSymbols = it })
     val lockStart = PrefState({ prefs.lockStart }, { prefs.lockStart = it })
     val lockNetwork = PrefState({ prefs.lockNetwork }, { prefs.lockNetwork = it })
     val lockHidden = PrefState({ prefs.lockHidden }, { prefs.lockHidden = it })
@@ -343,6 +349,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             editorAutoIndent,
             editorHighlight,
             editorAutoSave,
+            editorSpacesForTab,
+            editorTabSize,
+            editorAutoCapitalize,
+            editorShowWhitespace,
+            editorSymbolBar,
+            editorSymbols,
             lockStart,
             lockNetwork,
             lockHidden)

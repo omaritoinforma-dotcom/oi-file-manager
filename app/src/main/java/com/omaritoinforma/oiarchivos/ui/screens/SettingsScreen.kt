@@ -90,7 +90,7 @@ private enum class Section(val group: String, val title: String, val summary: St
     PASSWORD("Seguridad", "Contraseña", "Proteger la app, las conexiones y los archivos ocultos"),
     BACKUP("Seguridad", "Copia de ajustes", "Guardar y restaurar los ajustes"),
     APPS("Herramientas", "Aplicaciones", "Copia del APK y carpeta de copias"),
-    EDITOR("Herramientas", "Editor de texto", "Letra, líneas, sangría, resaltado y guardado"),
+    EDITOR("Herramientas", "Editor de texto", "Letra, líneas, sangría, tabulador, símbolos y guardado"),
     TRASH("Herramientas", "Papelera", "Usar la papelera al eliminar"),
     GESTURES("Herramientas", "Gestos", "Deslizar en el explorador"),
     ABOUT("Sistema", "Acerca de", "Versión de OI Archivos")
@@ -719,6 +719,38 @@ private fun AppSettings(vm: MainViewModel) {
 
 @Composable
 private fun EditorSettings(vm: MainViewModel) {
+    var editingSymbols by remember { mutableStateOf(false) }
+    if (editingSymbols) {
+        var text by remember { mutableStateOf(vm.editorSymbols.value) }
+        AlertDialog(
+            onDismissRequest = { editingSymbols = false },
+            title = { Text("Lista de símbolos") },
+            text = {
+                Column {
+                    OutlinedTextField(text, { text = it.replace("\n", " ").take(300) }, label = { Text("Símbolos") })
+                    Text(
+                        "Separados por espacios. Cada uno es un botón encima del teclado.",
+                        style = MaterialTheme.typography.bodySmall)
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        vm.editorSymbols.value = com.omaritoinforma.oiarchivos.data.EditorText.symbols(text).joinToString(" ")
+                        editingSymbols = false
+                    }) {
+                        Text("Aceptar")
+                    }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        text = com.omaritoinforma.oiarchivos.data.EditorText.DEFAULT_SYMBOLS
+                    }) {
+                        Text("Restablecer")
+                    }
+            })
+    }
     Column {
         Column(Modifier.padding(16.dp)) {
             Text("Tamaño de la letra: ${vm.editorFont.value}")
@@ -745,6 +777,35 @@ private fun EditorSettings(vm: MainViewModel) {
             "Guardado automático",
             "Guardar al salir del editor sin preguntar",
             vm.editorAutoSave)
+        SwitchRow(
+            "Mostrar espacios en blanco",
+            "Dibujar los espacios como · y los tabuladores como →",
+            vm.editorShowWhitespace)
+        SwitchRow(
+            "Mayúscula automática de la primera letra",
+            "El teclado empieza cada frase en mayúscula",
+            vm.editorAutoCapitalize)
+        SwitchRow("Barra de símbolos", "Tab y símbolos encima del teclado", vm.editorSymbolBar)
+        SwitchRow(
+            "Usar espacios en lugar de tabuladores",
+            "La tecla Tab de la barra escribe espacios",
+            vm.editorSpacesForTab)
+        Text(
+            "Tamaño de tabulación:",
+            Modifier.padding(horizontal = 16.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ChipRow {
+            listOf(2, 4, 8).forEach { size ->
+                FilterChip(
+                    vm.editorTabSize.value == size,
+                    onClick = { vm.editorTabSize.value = size },
+                    label = { Text("$size espacios") })
+            }
+        }
+        ListItem(
+            headlineContent = { Text("Lista de símbolos personalizada") },
+            supportingContent = { Text(vm.editorSymbols.value, maxLines = 2) },
+            modifier = Modifier.clickable { editingSymbols = true })
     }
 }
 

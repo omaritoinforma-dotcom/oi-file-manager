@@ -32,6 +32,9 @@ object SettingsBackup {
 
         /** Carpeta dentro de una conexión, relativa a su carpeta inicial. */
         data object RemoteFolder : Kind
+
+        /** Texto de una línea, de hasta [max] caracteres. */
+        data class Text(val max: Int) : Kind
     }
 
     private fun <T : Enum<T>> choice(values: Array<T>) = Kind.Choice(values.map { it.name }.toSet())
@@ -73,6 +76,12 @@ object SettingsBackup {
             "editor_auto_indent" to Kind.Flag,
             "editor_highlight" to Kind.Flag,
             "editor_auto_save" to Kind.Flag,
+            "editor_spaces_for_tab" to Kind.Flag,
+            "editor_tab_size" to Kind.Number(1..8),
+            "editor_auto_capitalize" to Kind.Flag,
+            "editor_show_whitespace" to Kind.Flag,
+            "editor_symbol_bar" to Kind.Flag,
+            "editor_symbols" to Kind.Text(300),
         )
 
     fun export(values: Map<String, Any?>): String {
@@ -125,6 +134,8 @@ object SettingsBackup {
                     value.length <= 255 &&
                     runCatching { AutoBackup.checkFolder(value) }.isSuccess &&
                     value.none { it == '\u0000' || it == '\n' }
+            is Kind.Text ->
+                value is String && value.length <= kind.max && value.none { it == '\u0000' || it == '\n' }
             is Kind.Choices ->
                 value is String && value.split(',').filter { it.isNotEmpty() }.all { it in kind.names }
         }

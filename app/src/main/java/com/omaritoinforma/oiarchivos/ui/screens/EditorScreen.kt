@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -22,6 +24,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.omaritoinforma.oiarchivos.data.EditorText
 import com.omaritoinforma.oiarchivos.data.SafeFiles
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
 import java.io.File
@@ -46,6 +49,7 @@ fun EditorScreen(vm: MainViewModel, path: String) {
     var search by remember { mutableStateOf(false) }
     var numbers by vm.editorLineNumbers
     var charsetMenu by remember { mutableStateOf(false) }
+    var moreMenu by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val modified = value?.text?.let { it != original } ?: false
     LaunchedEffect(path, encoding) {
@@ -99,6 +103,18 @@ fun EditorScreen(vm: MainViewModel, path: String) {
         if (pos < 0) vm.toast("No se encontró el texto")
         else value = current.copy(selection = TextRange(pos, pos + find.length))
     }
+    // Cambios del menú y de la barra de símbolos sobre la selección actual.
+    fun change(edit: (String, Int, Int) -> Triple<String, Int, Int>) {
+        val current = value ?: return
+        val (text, start, end) = edit(current.text, current.selection.start, current.selection.end)
+        value = TextFieldValue(text, TextRange(start, end))
+    }
+    fun type(insert: String) {
+        val current = value ?: return
+        val (text, cursor) =
+            EditorText.insert(current.text, current.selection.start, current.selection.end, insert)
+        value = TextFieldValue(text, TextRange(cursor))
+    }
     // Guardado automático (opción del editor de ES): al salir se guarda sin preguntar.
     val leave = {
         when {
@@ -121,6 +137,31 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                     TextButton(onClick = { search = !search }) { Text("Buscar") }
                     IconButton(onClick = { save() }, enabled = modified && !saving) {
                         Icon(Icons.Filled.Save, "Guardar")
+                    }
+                    Box {
+                        IconButton(onClick = { moreMenu = true }, enabled = value != null && !saving) {
+                            Icon(Icons.Filled.MoreVert, "Más")
+                        }
+                        DropdownMenu(moreMenu, { moreMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Convertir a mayúsculas") },
+                                onClick = {
+                                    moreMenu = false
+                                    change { t, a, b -> EditorText.changeCase(t, a, b, upper = true) }
+                                })
+                            DropdownMenuItem(
+                                text = { Text("Convertir a minúsculas") },
+                                onClick = {
+                                    moreMenu = false
+                                    change { t, a, b -> EditorText.changeCase(t, a, b, upper = false) }
+                                })
+                            DropdownMenuItem(
+                                text = { Text("Duplicar línea") },
+                                onClick = {
+                                    moreMenu = false
+                                    change(EditorText::duplicateLines)
+                                })
+                        }
                     }
                 })
         }) { pad ->
@@ -209,7 +250,9 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                         val wrap = vm.editorWrap.value
                         val highlight =
                             vm.editorHighlight.value &&
-                                current.text.length <= com.omaritoinforma.oiarchivos.data.EditorText.HIGHLIGHT_LIMIT
+                                current.text.length <= EditorText.HIGHLIGHT_LIMIT
+                        val whitespace = vm.editorShowWhitespace.value
+                        val marker = MaterialTheme.colorScheme.outline
                         val style =
                             TextStyle(
                                 fontFamily = FontFamily.Monospace,
@@ -247,13 +290,45 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                                     enabled = !saving,
                                     textStyle = style,
                                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                    keyboardOptions =
+                                        KeyboardOptions(
+                                            capitalization =
+                                                if (vm.editorAutoCapitalize.value)
+                                                    KeyboardCapitalization.Sentences
+                                                else KeyboardCapitalization.None),
                                     visualTransformation =
-                                        if (highlight) remember(current.text.length) { CodeColor() }
+                                        if (highlight || whitespace)
+                                            remember(highlight, whitespace, marker) {
+                                                EditorLook(highlight, whitespace, marker)
+                                            }
                                         else VisualTransformation.None,
                                     modifier =
                                         if (wrap) Modifier.weight(1f).heightIn(min = 300.dp)
                                         else Modifier.widthIn(min = 300.dp).heightIn(min = 300.dp))
                             }
+                        if (vm.editorSymbolBar.value)
+                            Row(
+                                Modifier.fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState())
+                                    .padding(horizontal = 4.dp)) {
+                                    TextButton(
+                                        onClick = {
+                                            type(
+                                                EditorText.tab(
+                                                    vm.editorSpacesForTab.value, vm.editorTabSize.value))
+                                        },
+                                        enabled = !saving) {
+                                            Text("Tab")
+                                        }
+                                    EditorText.symbols(vm.editorSymbols.value).forEach { symbol ->
+                                        TextButton(
+                                            onClick = { type(symbol) },
+                                            enabled = !saving,
+                                            contentPadding = PaddingValues(horizontal = 8.dp)) {
+                                                Text(symbol, fontFamily = FontFamily.Monospace)
+                                            }
+                                    }
+                                }
                         Text(
                             "$lineCount líneas · ${current.text.length} caracteres",
                             Modifier.padding(8.dp),
@@ -288,21 +363,36 @@ fun EditorScreen(vm: MainViewModel, path: String) {
             })
 }
 
-private class CodeColor : VisualTransformation {
+/**
+ * Aspecto del texto sin cambiar sus posiciones: colores del código (resaltado de sintaxis) y, si se
+ * pide, los espacios como «·» y los tabuladores como «→» (ES: «Mostrar espacios en blanco»).
+ */
+private class EditorLook(
+    private val highlight: Boolean,
+    private val whitespace: Boolean,
+    private val marker: Color
+) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
         if (text.length > 100000) return TransformedText(text, OffsetMapping.Identity)
-        val builder = AnnotatedString.Builder(text)
-        Regex(
-                "\\b(val|var|fun|class|object|import|package|if|else|when|return|for|while|def|function|const|let|true|false|null)\\b")
-            .findAll(text.text)
-            .forEach {
+        val raw = text.text
+        val builder = AnnotatedString.Builder(if (whitespace) EditorText.showWhitespace(raw) else raw)
+        if (highlight) {
+            Regex(
+                    "\\b(val|var|fun|class|object|import|package|if|else|when|return|for|while|def|function|const|let|true|false|null)\\b")
+                .findAll(raw)
+                .forEach {
+                    builder.addStyle(
+                        SpanStyle(color = Color(0xFFB26CFF)), it.range.first, it.range.last + 1)
+                }
+            Regex("\"[^\"\\n]*\"").findAll(raw).forEach {
                 builder.addStyle(
-                    SpanStyle(color = Color(0xFFB26CFF)), it.range.first, it.range.last + 1)
+                    SpanStyle(color = Color(0xFF388E3C)), it.range.first, it.range.last + 1)
             }
-        Regex("\"[^\"\\n]*\"").findAll(text.text).forEach {
-            builder.addStyle(
-                SpanStyle(color = Color(0xFF388E3C)), it.range.first, it.range.last + 1)
         }
+        if (whitespace)
+            Regex("[ \\t]+").findAll(raw).forEach {
+                builder.addStyle(SpanStyle(color = marker), it.range.first, it.range.last + 1)
+            }
         return TransformedText(builder.toAnnotatedString(), OffsetMapping.Identity)
     }
 }
