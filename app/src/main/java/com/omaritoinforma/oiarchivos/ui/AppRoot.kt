@@ -122,6 +122,7 @@ fun AppRoot(vm: MainViewModel) {
             is Screen.Documents -> DocumentsScreen(vm, screen.uri)
             Screen.Sharing -> SharingScreen(vm)
             Screen.Transfers -> TransfersScreen(vm)
+            Screen.Nearby -> NearbyScreen(vm)
             Screen.History -> HistoryScreen(vm)
             Screen.RootTools -> RootToolsScreen(vm)
             is Screen.VideoEdit -> VideoEditScreen(vm, screen.path)

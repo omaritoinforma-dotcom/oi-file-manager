@@ -44,7 +44,7 @@ def read(path):
 
 
 def read_bytes(path):
-    return subprocess.check_output(["adb", "exec-out", "cat", path], timeout=30)
+    return subprocess.check_output(["adb", "exec-out", "cat", q(path)], timeout=30)
 
 
 def exists(path):
@@ -503,6 +503,112 @@ def lan_scan():
     texts = ui.field_texts()
     assert "10.0.2.2" in texts and "21" in texts, f"El formulario no se rellenó: {texts}"
     tap("Cancelar")
+
+
+def nearby_peer_server(received):
+    """A receiver on the CI machine speaking OI Archivos' protocol; the emulator sees 10.0.2.2."""
+    import http.server
+    import threading
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def reply(self, code, body):
+            data = json.dumps(body).encode()
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def do_GET(self):
+            if self.path == "/oi-enviar/v1/hola":
+                self.reply(200, {"app": "OI Archivos", "name": "PC de prueba"})
+            else:
+                self.reply(404, {})
+
+        def do_POST(self):
+            offer = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            received["offer"] = offer
+            self.reply(200, {"token": "prueba"})
+
+        def do_PUT(self):
+            data = self.rfile.read(int(self.headers["Content-Length"]))
+            index = int(self.path.split("/")[-1].split("?")[0])
+            received[index] = data
+            self.reply(200, {})
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 42137), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server
+
+
+@check("enviar-a-otro-telefono")
+def nearby_send():
+    received = {}
+    server = nearby_peer_server(received)
+    try:
+        payload = "enviado desde OI Archivos ñ"
+        with tempfile.TemporaryDirectory() as tmp:
+            local = pathlib.Path(tmp) / "enviar_me.txt"
+            local.write_text(payload, encoding="utf-8")
+            adb("push", str(local), f"{DIR}/enviar_me.txt")
+        open_test_folder()
+        long_press(find("enviar_me.txt").get("text"))
+        more("Enviar a otro teléfono")
+        tap("Buscar teléfonos")
+        tap(wait("PC de prueba", timeout=120)[0].get("text"))
+        until(lambda: 0 in received, "El archivo no llegó al otro equipo", 60)
+        offer = received["offer"]["files"][0]
+        data = received[0]
+        assert offer["name"] == "enviar_me.txt", offer
+        assert data == payload.encode("utf-8"), data
+        assert offer["sha256"] == hashlib.sha256(data).hexdigest(), "SHA-256 de la oferta no coincide"
+    finally:
+        server.shutdown()
+
+
+@check("recibir-de-otro-telefono")
+def nearby_receive():
+    import threading
+    import urllib.request
+
+    sh("rm", "-rf", q("/sdcard/Download/OI Archivos/Recibidos"), check=False)
+    ui.launch()
+    wait("Categorías")
+    ui.drawer("Red, nube y USB")
+    tap("Enviar a otro teléfono")
+    tap("Empezar a recibir")
+    wait("Dejar de recibir")
+    subprocess.run(["adb", "forward", "tcp:42199", "tcp:42137"], check=True, timeout=30)
+    data = ("contenido recibido " * 5000).encode()
+    base = "http://127.0.0.1:42199/oi-enviar/v1"
+    offer = {"from": "PC de prueba", "files": [{"name": "recibido ñ.txt", "size": len(data),
+                                                 "sha256": hashlib.sha256(data).hexdigest()}]}
+    result = {}
+
+    def offer_and_send():
+        try:
+            request = urllib.request.Request(f"{base}/oferta", json.dumps(offer).encode(), method="POST")
+            token = json.loads(urllib.request.urlopen(request, timeout=150).read())["token"]
+            put = urllib.request.Request(f"{base}/archivo/0?token={token}", data, method="PUT")
+            result["code"] = urllib.request.urlopen(put, timeout=60).status
+        except Exception as error:
+            result["error"] = repr(error)
+
+    sender = threading.Thread(target=offer_and_send)
+    sender.start()
+    wait("Archivos entrantes", timeout=30)
+    wait_text("PC de prueba")
+    tap("Aceptar")
+    sender.join(90)
+    assert result.get("code") == 200, result
+    target = "/sdcard/Download/OI Archivos/Recibidos/recibido ñ.txt"
+    until(lambda: exists(target), "El archivo recibido no está en Recibidos")
+    assert read_bytes(target) == data, "El archivo recibido no coincide"
+    tap("Dejar de recibir")
+    subprocess.run(["adb", "forward", "--remove", "tcp:42199"], timeout=30)
 
 
 if os.environ.get("OI_REAL_SFTP_PASSWORD"):

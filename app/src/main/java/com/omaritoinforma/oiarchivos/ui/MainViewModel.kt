@@ -89,6 +89,8 @@ sealed interface Screen {
 
     data object Transfers : Screen
 
+    data object Nearby : Screen
+
     data object History : Screen
 
     data object RootTools : Screen
@@ -195,6 +197,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     val volumes = mutableStateListOf<StorageVolumeInfo>()
     var clipboard by mutableStateOf<Clipboard?>(null)
+
+    /** Files chosen in the browser for «Enviar a otro teléfono». */
+    var nearbyFiles by mutableStateOf<List<String>>(emptyList())
     var pendingPaste by mutableStateOf<PendingPaste?>(null)
         private set
 

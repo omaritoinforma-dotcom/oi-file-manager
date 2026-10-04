@@ -122,6 +122,12 @@ fun ConnectionsScreen(vm: MainViewModel) {
                 }
                 item {
                     ListItem(
+                        headlineContent = { Text("Enviar a otro teléfono") },
+                        supportingContent = { Text("Enviar o recibir archivos por la misma Wi-Fi") },
+                        modifier = Modifier.clickable { vm.goTo(Screen.Nearby) })
+                }
+                item {
+                    ListItem(
                         headlineContent = { Text("Buscar en la red local") },
                         supportingContent = {
                             Text("Servidores SMB, FTP, FTPS y SFTP de tu Wi-Fi")

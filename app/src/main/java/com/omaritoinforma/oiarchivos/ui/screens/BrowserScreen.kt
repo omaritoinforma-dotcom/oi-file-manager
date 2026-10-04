@@ -436,6 +436,12 @@ private fun SelectionBottomBar(
                         menu = false
                         Opener.share(ctx, files.map { it.file })
                     }
+                    MenuItem("Enviar a otro teléfono", Icons.Filled.Share) {
+                        menu = false
+                        vm.nearbyFiles = files.map { it.path }
+                        vm.clearSelection()
+                        vm.goTo(Screen.Nearby)
+                    }
                 }
                 MenuItem("Comprimir en ZIP", Icons.Filled.Archive) {
                     menu = false
