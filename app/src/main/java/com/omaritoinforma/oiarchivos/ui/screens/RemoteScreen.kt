@@ -246,16 +246,20 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                                             }
                                         } else if (c != null) {
                                             vm.runTask("Abriendo archivo remoto") { report ->
+                                                // Cada apertura tiene su carpeta: así se sabe qué copia es de qué archivo.
                                                 val preview =
-                                                    File(ctx.cacheDir, "remote-preview").apply {
-                                                        mkdirs()
-                                                    }
+                                                    File(
+                                                            ctx.cacheDir,
+                                                            "remote-edit/${java.util.UUID.randomUUID()}")
+                                                        .apply { mkdirs() }
                                                 val local =
                                                     RemoteFiles.connect(c).use { fs ->
                                                         RemoteFiles.download(
                                                             fs, entry, preview, report)
                                                     }
                                                 withContext(Dispatchers.Main) {
+                                                    // Si se edita en otra app, se sube sola al volver.
+                                                    vm.trackRemoteEdit(c, path.orEmpty(), entry, local)
                                                     vm.openFile(local.path)
                                                 }
                                                 OperationResult(null)

@@ -70,6 +70,7 @@ object SettingsBackup {
             "new_files_notify" to Kind.Flag,
             "daily_report" to Kind.Flag,
             "new_files_kinds" to Kind.Choices(NewFileKind.entries.map { it.name }.toSet()),
+            "remote_sync" to Kind.Flag,
             "auto_backup" to Kind.Flag,
             "auto_backup_folder" to Kind.RemoteFolder,
             "auto_backup_kinds" to Kind.Choices(BackupKind.entries.map { it.name }.toSet()),

@@ -117,7 +117,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | MediaFire, Flickr, Instagram, Facebook, Nutstore (坚果云), China Mobile Cloud (中国移动云盘) | ❌ | |
 | Varias cuentas por servicio | 🟡 | |
 | Copia automática a la nube (fotos, música, vídeo; solo con Wi-Fi; carpetas) | 🟡 | A cualquier conexión guardada (SFTP, FTP, WebDAV, SMB o nube): fotos, vídeos, música y carpetas elegidas, solo con Wi-Fi si se quiere; se lanza al aparecer archivos nuevos y cada 6 h, y sigue donde iba si se corta. Comprobación en el emulador contra el SFTP real de CI preparada |
-| Subir automáticamente un archivo remoto editado en otra app | ❌ | |
+| Subir automáticamente un archivo remoto editado en otra app | 🟡 | Al abrir un archivo de un servidor se baja una copia y, si cambia (en otra app o en el editor propio), se sube sola al volver a OI Archivos; si el servidor también cambió, se pregunta (sustituir, subir como copia o descartar). Subida segura: nunca se pierde el original aunque falle a medias. Pruebas locales con un servidor en memoria; en el emulador contra el SFTP de CI con el editor propio (otras apps usan el mismo mecanismo, no se pueden manejar desde la prueba) |
 | Servidor FTP para gestionar el teléfono desde el PC | 🟡 | Solo modo pasivo; faltan modo activo, elegir codificación y acceso directo |
 | Servidor HTTP desde el navegador | ✅ | Emulador |
 | Enviar archivos entre teléfonos (ES Sender: misma Wi-Fi, punto de acceso, código QR) | 🟠 | Misma Wi-Fi: enviar y recibir comprobados en el emulador, con aceptación y SHA-256 por archivo; faltan punto de acceso y código QR |
@@ -154,9 +154,9 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | Estado | Funciones |
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 32 |
-| 🟡 Implementadas, sin comprobar | 26 |
+| 🟡 Implementadas, sin comprobar | 27 |
 | 🟠 Parciales | 10 |
-| ❌ Faltan | 11 |
+| ❌ Faltan | 10 |
 | **Total de filas** | **79** |
 
 **OI Archivos no cubre todavía el mínimo.** Las funciones que faltan más grandes, por valor para el usuario:

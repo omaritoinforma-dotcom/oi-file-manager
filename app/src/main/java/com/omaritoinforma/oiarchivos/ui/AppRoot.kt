@@ -492,6 +492,39 @@ private fun Overlays(vm: MainViewModel) {
 
     vm.unlockRequest?.let { UnlockDialog(vm, it) }
 
+    vm.remoteConflict?.let { edit ->
+        AlertDialog(
+            onDismissRequest = { vm.resolveRemoteConflict(null) },
+            title = { Text("«${edit.name}» cambió en el servidor") },
+            text = {
+                Text(
+                    "Mientras lo editabas, el archivo cambió en el servidor. ¿Qué hago con tu versión?")
+            },
+            confirmButton = {
+                Column(horizontalAlignment = Alignment.End) {
+                    TextButton(
+                        onClick = {
+                            vm.resolveRemoteConflict(
+                                com.omaritoinforma.oiarchivos.data.RemoteSync.Mode.OVERWRITE)
+                        }) {
+                            Text("Sustituir el del servidor")
+                        }
+                    TextButton(
+                        onClick = {
+                            vm.resolveRemoteConflict(
+                                com.omaritoinforma.oiarchivos.data.RemoteSync.Mode.COPY)
+                        }) {
+                            Text("Subir como copia")
+                        }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { vm.resolveRemoteConflict(null) }) {
+                    Text("Descartar mis cambios")
+                }
+            })
+    }
+
     vm.pendingPaste?.let { p ->
         AlertDialog(
             onDismissRequest = { vm.resolvePaste(null) },

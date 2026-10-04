@@ -32,6 +32,7 @@ import com.omaritoinforma.oiarchivos.data.OpProgress
 import com.omaritoinforma.oiarchivos.data.OperationResult
 import com.omaritoinforma.oiarchivos.data.Prefs
 import com.omaritoinforma.oiarchivos.data.RecycleBin
+import com.omaritoinforma.oiarchivos.data.RemoteEntry
 import com.omaritoinforma.oiarchivos.data.RenameRules
 import com.omaritoinforma.oiarchivos.data.SafeFiles
 import com.omaritoinforma.oiarchivos.data.SearchFilter
@@ -285,6 +286,81 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     // Copia automática: los cambios que afectan a cuándo se copia vuelven a programar el trabajo.
+    val remoteSync = PrefState({ prefs.remoteSync }, { prefs.remoteSync = it })
+
+    private val remoteEdits by lazy {
+        com.omaritoinforma.oiarchivos.data.RemoteSync.Store(File(ctx.filesDir, "archivos-remotos-abiertos.json"))
+    }
+
+    /** Edición con conflicto a la espera de que se elija qué hacer. */
+    var remoteConflict by mutableStateOf<com.omaritoinforma.oiarchivos.data.RemoteSync.Edit?>(null)
+        private set
+
+    private var syncing = false
+
+    /** Apunta una copia local de un archivo remoto para subirla si se edita. */
+    fun trackRemoteEdit(connection: com.omaritoinforma.oiarchivos.data.Connection, parent: String, entry: RemoteEntry, local: File) {
+        runCatching {
+            remoteEdits.prune()
+            remoteEdits.put(
+                com.omaritoinforma.oiarchivos.data.RemoteSync.Edit(
+                    connection.id, parent, entry.name, local.path, entry.size, local.length(), local.lastModified()))
+        }
+    }
+
+    /**
+     * Sube las copias de archivos remotos que se editaron (en otra app o en el editor propio). Se
+     * llama al volver a la app y al salir del editor.
+     */
+    fun checkRemoteEdits() {
+        if (!remoteSync.value || syncing || remoteConflict != null) return
+        val pending =
+            remoteEdits.all().filter { com.omaritoinforma.oiarchivos.data.RemoteSync.changed(it) }
+        val edit = pending.firstOrNull() ?: return
+        syncUpload(edit, com.omaritoinforma.oiarchivos.data.RemoteSync.Mode.SAFE)
+    }
+
+    fun resolveRemoteConflict(mode: com.omaritoinforma.oiarchivos.data.RemoteSync.Mode?) {
+        val edit = remoteConflict ?: return
+        remoteConflict = null
+        if (mode == null) remoteEdits.remove(edit.local) else syncUpload(edit, mode)
+    }
+
+    private fun syncUpload(edit: com.omaritoinforma.oiarchivos.data.RemoteSync.Edit, mode: com.omaritoinforma.oiarchivos.data.RemoteSync.Mode) {
+        syncing = true
+        toast("Subiendo «${edit.name}» al servidor…")
+        viewModelScope.launch {
+            val result =
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        com.omaritoinforma.oiarchivos.data.RemoteFiles.connectById(edit.connectionId).use {
+                            com.omaritoinforma.oiarchivos.data.RemoteSync.upload(it, edit, mode)
+                        }
+                    }
+                }
+            syncing = false
+            result
+                .onSuccess { outcome ->
+                    when (outcome) {
+                        is com.omaritoinforma.oiarchivos.data.RemoteSync.Outcome.Updated -> {
+                            // Una copia («editado») deja de seguirse; si no, se sigue con lo nuevo.
+                            if (mode == com.omaritoinforma.oiarchivos.data.RemoteSync.Mode.COPY)
+                                remoteEdits.remove(edit.local)
+                            else remoteEdits.put(outcome.edit)
+                            toast("«${outcome.edit.name}» actualizado en el servidor")
+                            tabs.forEach { it.cache.clear() }
+                        }
+                        com.omaritoinforma.oiarchivos.data.RemoteSync.Outcome.Conflict ->
+                            remoteConflict = edit
+                        com.omaritoinforma.oiarchivos.data.RemoteSync.Outcome.Gone -> remoteEdits.remove(edit.local)
+                    }
+                    // Si había más ediciones pendientes, sigue con la siguiente.
+                    if (remoteConflict == null) checkRemoteEdits()
+                }
+                .onFailure { toast("No se pudo subir «${edit.name}»: ${it.message}") }
+        }
+    }
+
     val autoBackup =
         PrefState({ prefs.autoBackup }, {
             prefs.autoBackup = it
@@ -373,6 +449,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             newFilesNotify,
             newFilesKinds,
             dailyReport,
+            remoteSync,
             autoBackup,
             autoBackupFolder,
             autoBackupKinds,
@@ -531,6 +608,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             if (incoming != null) importIncoming()
             if (had && screen == Screen.Browser) refresh()
         }
+        checkRemoteEdits()
     }
 
     fun toast(text: String) {
@@ -580,7 +658,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
         }
+        val leaving = screen
         if (screens.size > 1) screens.removeAt(screens.lastIndex)
+        if (leaving is Screen.Editor) checkRemoteEdits()
     }
 
     fun navigate(loc: Location, newTab: Boolean = false) {

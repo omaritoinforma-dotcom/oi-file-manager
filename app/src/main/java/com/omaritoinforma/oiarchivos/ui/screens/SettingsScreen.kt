@@ -97,6 +97,7 @@ private enum class Section(val group: String, val title: String, val summary: St
     START("General", "Ventana inicial", "Qué se abre al iniciar la app"),
     DRAWER("General", "Barra lateral", "Ocultar y ordenar las opciones del menú lateral"),
     NOTIFICATIONS("General", "Notificaciones", "Aviso al terminar, espacio bajo y archivos nuevos"),
+    REMOTE("Red y nube", "Archivos remotos", "Subir lo que edites en otra app"),
     AUTO_BACKUP("Red y nube", "Copia automática", "Subir fotos, vídeos, música y carpetas a una conexión"),
     PASSWORD("Seguridad", "Contraseña", "Proteger la app, las conexiones y los archivos ocultos"),
     BACKUP("Seguridad", "Copia de ajustes", "Guardar y restaurar los ajustes"),
@@ -137,6 +138,15 @@ fun SettingsScreen(vm: MainViewModel) {
                 Section.START -> item { StartSettings(vm) }
                 Section.DRAWER -> item { DrawerSettings(vm) }
                 Section.NOTIFICATIONS -> item { NotificationSettings(vm) }
+                Section.REMOTE ->
+                    item {
+                        Column {
+                            SwitchRow(
+                                "Subir los cambios automáticamente",
+                                "Al abrir un archivo de un servidor con otra app y editarlo, los cambios se suben solos al volver a OI Archivos. Si el archivo cambió en el servidor, se pregunta antes de sustituirlo.",
+                                vm.remoteSync)
+                        }
+                    }
                 Section.AUTO_BACKUP -> item { AutoBackupSettings(vm) }
                 Section.PASSWORD -> item { PasswordSettings(vm) }
                 Section.BACKUP -> item { BackupSettings(vm) }

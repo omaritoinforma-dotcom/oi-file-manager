@@ -189,6 +189,11 @@ class Prefs(context: Context) {
         get() = sp.getString("app_backup_folder", null) ?: defaultAppBackupFolder
         set(v) = sp.edit().putString("app_backup_folder", v).apply()
 
+    /** Subir solos los archivos remotos editados en otra app («Enable remote synchronize» de ES). */
+    var remoteSync: Boolean
+        get() = sp.getBoolean("remote_sync", true)
+        set(v) = sp.edit().putBoolean("remote_sync", v).apply()
+
     // ---- Copia automática ----
 
     var autoBackup: Boolean

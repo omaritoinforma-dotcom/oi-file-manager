@@ -1981,6 +1981,74 @@ def dual_pane_drag():
     until(lambda: not exists(f"{origin}/mover.txt"), "Al mover, el original debe desaparecer", 15)
 
 
+if os.environ.get("OI_REMOTE_TEST_ROOT"):
+
+    @check("archivo-remoto-editado-se-sube-solo")
+    def remote_edit_syncs_back():
+        """Abre un archivo del SFTP de CI, lo edita y comprueba en el disco del servidor que el cambio
+        subió solo; después provoca un conflicto (el servidor cambia mientras se edita) y elige «Subir como copia»."""
+        server = pathlib.Path(os.environ["OI_REMOTE_TEST_ROOT"])
+        remote = server / "editar-oi.txt"
+        for leftover in server.glob("editar-oi*"):
+            leftover.unlink()
+        remote.write_text("original")
+
+        def open_and_edit(text):
+            launch_home()
+            ui.drawer("Red, nube y USB")
+            tap("SFTP prueba")
+            tap(find("editar-oi.txt").get("text"))
+            field, _ = wait_any_node("original", "cambiado en el servidor")
+            tap_node(field)
+            adb("shell", "input", "keyevent", "KEYCODE_MOVE_END")
+            adb("shell", "input", "text", text)
+            time.sleep(1)
+            for _ in range(4):
+                if nodes("Cambios sin guardar", hierarchy()):
+                    break
+                adb("shell", "input", "keyevent", "4")
+                time.sleep(1)
+            tap_last("Guardar")
+
+        def wait_any_node(*texts):
+            deadline = time.monotonic() + 40
+            while time.monotonic() < deadline:
+                for n in hierarchy().iter("node"):
+                    if n.get("class") == "android.widget.EditText" and any(t in (n.get("text") or "") for t in texts):
+                        return n, None
+                time.sleep(0.5)
+            raise AssertionError(f"El editor no mostró el archivo remoto: {texts}")
+
+        open_and_edit("-editado")
+        until(lambda: remote.read_text() == "original-editado", "El cambio no subió solo al servidor", 90)
+        assert not list(server.glob("editar-oi (*")), "Quedó un archivo temporal en el servidor"
+        # Conflicto: el servidor cambia mientras se edita.
+        launch_home()
+        ui.drawer("Red, nube y USB")
+        tap("SFTP prueba")
+        tap(find("editar-oi.txt").get("text"))
+        wait_any_node("original-editado")
+        remote.write_text("cambiado en el servidor por otra persona")
+        field, _ = wait_any_node("original-editado")
+        tap_node(field)
+        adb("shell", "input", "keyevent", "KEYCODE_MOVE_END")
+        adb("shell", "input", "text", "-v2")
+        time.sleep(1)
+        for _ in range(4):
+            if nodes("Cambios sin guardar", hierarchy()):
+                break
+            adb("shell", "input", "keyevent", "4")
+            time.sleep(1)
+        tap_last("Guardar")
+        wait_text("cambió en el servidor", timeout=60)
+        evidence("archivo-remoto-conflicto")
+        assert remote.read_text() == "cambiado en el servidor por otra persona", "Se pisó el archivo sin preguntar"
+        tap("Subir como copia")
+        copy = server / "editar-oi (editado).txt"
+        until(lambda: copy.exists() and copy.read_text() == "original-editado-v2", "No se subió la copia", 90)
+        assert remote.read_text() == "cambiado en el servidor por otra persona", "La copia no debe tocar el original"
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()
