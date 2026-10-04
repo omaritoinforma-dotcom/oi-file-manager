@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.pm.PackageInfoCompat
 import com.omaritoinforma.oiarchivos.data.CacheCleaner
 import com.omaritoinforma.oiarchivos.data.JunkScanner
 import com.omaritoinforma.oiarchivos.data.toItem
@@ -30,7 +31,7 @@ private fun installedVersion(ctx: Context, packageName: String): Long? =
                 if (Build.VERSION.SDK_INT >= 33)
                     ctx.packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0L))
                 else @Suppress("DEPRECATION") ctx.packageManager.getPackageInfo(packageName, 0)
-            info.longVersionCode
+            PackageInfoCompat.getLongVersionCode(info)
         }
         .getOrNull()
 
@@ -45,7 +46,7 @@ private fun apkInfo(ctx: Context, file: File): JunkScanner.ApkInfo? {
             it.publicSourceDir = file.path
             runCatching { it.loadLabel(pm).toString() }.getOrNull()
         } ?: info.packageName
-    return JunkScanner.ApkInfo(info.packageName, info.longVersionCode, label)
+    return JunkScanner.ApkInfo(info.packageName, PackageInfoCompat.getLongVersionCode(info), label)
 }
 
 /** «Limpiar basura», como el limpiador de ES: se revisa y lo elegido va a la papelera. */
