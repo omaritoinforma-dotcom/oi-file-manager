@@ -39,7 +39,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | «Abrir como» (elegir tipo) y gestión de apps predeterminadas | 🟡 | Abrir como texto (editor propio), imagen, audio, vídeo, PDF o cualquier tipo. Los predeterminados se cambian en la pantalla de Android (una app no puede borrar los de otras); comprobación en el emulador preparada |
 | Fijar elementos arriba | 🟡 | Archivos y carpetas, con alfiler; se conserva al reabrir, sigue al renombrar y va en la copia de ajustes; comprobación en el emulador preparada |
 | Papelera de reciclaje (activar, restaurar, vaciar) | ✅ | Emulador Android 15 |
-| Ocultar archivos y lista de ocultos protegida con contraseña | 🟠 | Mostrar los ocultos puede pedir contraseña (comprobado en el emulador); falta la lista de ocultos propia de ES |
+| Ocultar archivos y lista de ocultos protegida con contraseña | 🟡 | «Ocultar» (pone un punto al nombre, no pisa nada) y «Dejar de ocultar»; «Lista de ocultos» en el menú lateral con lo ocultado desde la app, protegida con contraseña si se activa «Proteger los archivos ocultos». Mostrar los ocultos con contraseña está comprobado en el emulador; la lista tiene su comprobación preparada |
 | Accesos directos en el escritorio | 🟡 | |
 | Comprimir ZIP/7z con nivel de compresión | 🟡 | Sin compresión, rápida, normal o máxima en ZIP, 7z y tar.gz; se recuerda el último. Pruebas locales de tamaños y contenido; comprobación en el emulador preparada |
 | Extraer ZIP | ✅ | Emulador |
@@ -154,8 +154,8 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | Estado | Funciones |
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 32 |
-| 🟡 Implementadas, sin comprobar | 28 |
-| 🟠 Parciales | 9 |
+| 🟡 Implementadas, sin comprobar | 29 |
+| 🟠 Parciales | 8 |
 | ❌ Faltan | 10 |
 | **Total de filas** | **79** |
 

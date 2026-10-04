@@ -116,6 +116,9 @@ sealed interface Screen {
     /** Listas de reproducción guardadas. */
     data object Playlists : Screen
 
+    /** Lo que se ocultó desde la app; se abre con contraseña si así se eligió. */
+    data object HiddenList : Screen
+
     /** Qué apps piden permisos delicados. */
     data object AppAnalysis : Screen
 
@@ -620,7 +623,60 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- Navegación ----------------
 
+    // ---------------- Ocultar archivos ----------------
+
+    /** Lo ocultado desde la app que sigue existiendo; quita de la lista lo que ya no está. */
+    fun hiddenList(): List<File> {
+        val all = prefs.hiddenItems
+        val alive = all.filter { File(it).exists() }
+        if (alive.size != all.size) prefs.hiddenItems = alive
+        return alive.map(::File)
+    }
+
+    fun hideItems(items: List<FileItem>) {
+        viewModelScope.launch {
+            val done = ArrayList<File>()
+            var failed: String? = null
+            withContext(Dispatchers.IO) {
+                for (item in items) {
+                    runCatching { com.omaritoinforma.oiarchivos.data.HiddenFiles.hide(item.file) }
+                        .onSuccess { done += it }
+                        .onFailure { failed = it.message }
+                }
+            }
+            prefs.hiddenItems = (prefs.hiddenItems + done.map { it.absolutePath }).distinct()
+            currentTab?.selected?.clear()
+            afterQuickChange(done + items.map { it.file })
+            toast(
+                failed?.let { "${done.size} oculto(s). $it" }
+                    ?: "${done.size} oculto(s): se ven en la «Lista de ocultos»")
+        }
+    }
+
+    fun unhideFiles(files: List<File>) {
+        viewModelScope.launch {
+            val shown = ArrayList<File>()
+            var failed: String? = null
+            withContext(Dispatchers.IO) {
+                for (file in files) {
+                    runCatching { com.omaritoinforma.oiarchivos.data.HiddenFiles.show(file) }
+                        .onSuccess { shown += it }
+                        .onFailure { failed = it.message }
+                }
+            }
+            val removed = files.filter { f -> shown.any { it.name == f.name.removePrefix(".") && it.parentFile == f.parentFile } }
+            prefs.hiddenItems = prefs.hiddenItems - removed.map { it.absolutePath }.toSet()
+            currentTab?.selected?.clear()
+            afterQuickChange(shown + files)
+            toast(failed?.let { "${shown.size} visible(s). $it" } ?: "${shown.size} visible(s) otra vez")
+        }
+    }
+
     fun goTo(s: Screen) {
+        if (s == Screen.HiddenList && AppLock.needsHidden(prefs)) {
+            requestUnlock("Lista de ocultos") { goTo(s) }
+            return
+        }
         if (s is Screen.Remote && needsNetworkUnlock(s.id)) {
             requestUnlock("Conexiones de red") { goTo(s) }
             return

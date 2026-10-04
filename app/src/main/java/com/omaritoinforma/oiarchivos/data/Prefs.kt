@@ -87,6 +87,11 @@ class Prefs(context: Context) {
         get() = sp.getString("drawer_hidden", "").orEmpty().split(',').filter { it.isNotBlank() }.toSet()
         set(v) = sp.edit().putString("drawer_hidden", v.joinToString(",")).apply()
 
+    /** Rutas (ya con el punto) de lo que se ocultó desde la app, para la «Lista de ocultos». */
+    var hiddenItems: List<String>
+        get() = sp.getString("hidden_items", "").orEmpty().split('\n').filter { it.isNotBlank() }
+        set(v) = sp.edit().putString("hidden_items", v.joinToString("\n")).apply()
+
     // ---- Pantalla ----
 
     var thumbnails: Boolean

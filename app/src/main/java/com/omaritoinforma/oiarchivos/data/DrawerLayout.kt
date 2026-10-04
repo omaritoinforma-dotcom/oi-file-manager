@@ -12,6 +12,7 @@ enum class DrawerEntry(val label: String) {
     CLEANER("Limpiar basura"),
     TRANSFERS("Transferencias"),
     HISTORY("Historial"),
+    HIDDEN("Lista de ocultos"),
     ROOT_TOOLS("Root con Magisk")
 }
 

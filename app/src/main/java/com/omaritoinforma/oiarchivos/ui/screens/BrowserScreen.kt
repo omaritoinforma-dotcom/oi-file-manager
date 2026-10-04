@@ -494,6 +494,16 @@ private fun SelectionBottomBar(
                             menu = false
                             vm.togglePin(selectedItems)
                         }
+                if (selectedItems.isNotEmpty()) {
+                    val allHidden = selectedItems.all { it.name.startsWith(".") }
+                    MenuItem(
+                        if (allHidden) "Dejar de ocultar" else "Ocultar",
+                        Icons.Filled.VisibilityOff) {
+                            menu = false
+                            if (allHidden) vm.unhideFiles(selectedItems.map { it.file })
+                            else vm.hideItems(selectedItems.filter { !it.name.startsWith(".") })
+                        }
+                }
                 if (vm.clipboard != null)
                     MenuItem("Añadir al portapapeles", Icons.Filled.ContentCopy) {
                         menu = false

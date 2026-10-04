@@ -167,6 +167,7 @@ private fun MainContent(vm: MainViewModel) {
             Screen.Cleaner -> CleanerScreen(vm)
             Screen.Playlists -> PlaylistsScreen(vm)
             Screen.AppAnalysis -> AppAnalysisScreen(vm)
+            Screen.HiddenList -> HiddenListScreen(vm)
             is Screen.Playlist -> PlaylistScreen(vm, screen.name)
             is Screen.PlayPlaylist -> PlaylistPlayerScreen(vm, screen.name, screen.start)
         }
@@ -440,6 +441,8 @@ private fun DrawerEntryItem(vm: MainViewModel, entry: DrawerEntry, close: () -> 
             }
         DrawerEntry.HISTORY ->
             DrawerItem(entry.label, Icons.Filled.Folder, vm.screen == Screen.History) { go(Screen.History) }
+        DrawerEntry.HIDDEN ->
+            DrawerItem(entry.label, Icons.Filled.Lock, vm.screen == Screen.HiddenList) { go(Screen.HiddenList) }
         DrawerEntry.ROOT_TOOLS ->
             DrawerItem(entry.label, Icons.Filled.Dns, vm.screen == Screen.RootTools) { go(Screen.RootTools) }
     }

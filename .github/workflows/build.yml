@@ -58,7 +58,8 @@ jobs:
   smoke:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # Cada comprobación del emulador tarda 1-2 min y hay más de 50: 60 min cortaban la ejecución al final.
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

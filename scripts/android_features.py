@@ -154,7 +154,8 @@ def open_test_folder():
     launch_home()
     ui.drawer("Descargas")
     tap("OIPrueba")
-    wait("a.txt")
+    # Las carpetas de otras pruebas van antes en la lista: a.txt puede estar más abajo.
+    find("a.txt")
 
 
 def long_press(label):
@@ -1372,16 +1373,17 @@ def playlists():
         ui.drawer("Listas de reproducción")
         wait("2 pista(s)")
         tap("Viaje")
-        assert top("uno.wav") < top("dos.wav"), "Las pistas no están en el orden en que se añadieron"
-        tap("Bajar")
-        until(lambda: top("dos.wav") < top("uno.wav"), "«Bajar» no cambió el orden", 10)
+        # Las pistas entran en el orden en que salen en el explorador (por nombre).
+        assert top("dos.wav") < top("uno.wav"), "Las pistas no están en el orden del explorador"
+        tap("Bajar")  # el botón de la primera fila, dos.wav
+        until(lambda: top("uno.wav") < top("dos.wav"), "«Bajar» no cambió el orden", 10)
         adb("shell", "input", "keyevent", "4")
         tap("Viaje")
-        assert top("dos.wav") < top("uno.wav"), "El nuevo orden no se guardó"
+        assert top("uno.wav") < top("dos.wav"), "El nuevo orden no se guardó"
         tap("Reproducir")
         until(media_playing, "La lista no empezó a reproducirse", 20)
-        # Empieza por la primera pista de la lista, que ahora es dos.wav.
-        wait("dos.wav")
+        # Empieza por la primera pista de la lista, que ahora es uno.wav.
+        wait("uno.wav")
         evidence("listas-de-reproduccion-sonando")
     finally:
         adb("shell", "am", "force-stop", ui.PACKAGE)
@@ -2082,6 +2084,50 @@ def app_analysis():
         wait("Prueba permisos")
     finally:
         sh("pm", "uninstall", package, check=False)
+
+
+@check("ocultar-y-lista-de-ocultos-con-contrasena")
+def hide_and_hidden_list():
+    for name in ("ocultar-oi.txt", ".ocultar-oi.txt"):
+        sh("rm", "-f", q(f"{DIR}/{name}"), check=False)
+    push_bytes(b"secreto", f"{DIR}/ocultar-oi.txt")
+    try:
+        open_test_folder()
+        find("ocultar-oi.txt")
+        long_press("ocultar-oi.txt")
+        menu_option("Ocultar")
+        until(lambda: exists(f"{DIR}/.ocultar-oi.txt") and not exists(f"{DIR}/ocultar-oi.txt"),
+              "El archivo no se ocultó (nombre con punto)", 20)
+        assert read(f"{DIR}/.ocultar-oi.txt") == "secreto", "Ocultar no debe cambiar el contenido"
+        # Ya no sale en el explorador, pero sí en la lista de ocultos, con su nombre de siempre.
+        open_test_folder()
+        assert not nodes("ocultar-oi.txt", hierarchy()) and not nodes(".ocultar-oi.txt", hierarchy()), \
+            "Un archivo oculto sigue saliendo en el explorador"
+        launch_home()
+        ui.drawer("Lista de ocultos")
+        wait("ocultar-oi.txt")
+        # Con «Proteger los archivos ocultos», la lista pide la contraseña.
+        settings("Contraseña")
+        tap("Proteger los archivos ocultos")
+        create_password()
+        launch_home()
+        ui.drawer("Lista de ocultos")
+        wait_text("«Lista de ocultos» está protegido con contraseña")
+        assert not nodes("ocultar-oi.txt", hierarchy()), "La lista de ocultos se veía sin la contraseña"
+        fill("Contraseña", "equivocada", verify=False)
+        tap("Aceptar")
+        wait_text("Contraseña incorrecta")
+        fill("Contraseña", PASSWORD_APP, current="equivocada", verify=False)
+        tap("Aceptar")
+        wait("ocultar-oi.txt")
+        # Mostrar de nuevo.
+        tap("Mostrar")
+        until(lambda: exists(f"{DIR}/ocultar-oi.txt") and not exists(f"{DIR}/.ocultar-oi.txt"),
+              "«Mostrar» no devolvió el nombre", 20)
+    finally:
+        remove_password()
+        for name in ("ocultar-oi.txt", ".ocultar-oi.txt"):
+            sh("rm", "-f", q(f"{DIR}/{name}"), check=False)
 
 
 def main():
