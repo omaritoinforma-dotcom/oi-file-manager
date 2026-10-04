@@ -2797,6 +2797,35 @@ def storage_notification():
         time.sleep(2)
 
 
+@check("boton-de-pestanas-en-la-barra")
+def tabs_button():
+    def close_buttons():
+        return [n for n in hierarchy().iter("node")
+                if (n.get("content-desc") or "").startswith("Cerrar la pestaña")]
+
+    try:
+        settings("Pantalla")
+        set_switch("Mostrar el botón de pestañas", True)
+        open_test_folder()
+        tap("Pestañas")
+        wait("Pestañas abiertas")
+        assert len(close_buttons()) == 1, "Con una sola pestaña, la lista debía tener una"
+        tap("Nueva pestaña")
+        until(lambda: nodes("Pestañas", hierarchy()), "No volvió la pantalla tras abrir otra pestaña", 15)
+        tap("Pestañas")
+        wait("Pestañas abiertas")
+        assert len(close_buttons()) == 2, "Tras «Nueva pestaña» la lista debía tener dos"
+        evidence("boton-de-pestanas-dos")
+        tap_node(close_buttons()[0])
+        time.sleep(1)
+        assert len(close_buttons()) == 1, "La X no cerró la pestaña"
+        tap("Cerrar")
+    finally:
+        settings("Pantalla")
+        set_switch("Mostrar el botón de pestañas", False)
+        time.sleep(2)
+
+
 @check("informe-diario-de-archivos-nuevos")
 def daily_report():
     folder = "/sdcard/DCIM/OIInforme"

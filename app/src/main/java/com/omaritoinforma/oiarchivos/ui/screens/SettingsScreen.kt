@@ -222,6 +222,10 @@ private fun DisplaySettings(vm: MainViewModel) {
             "El título de la carpeta o categoría que se ve arriba",
             vm.toolbarShowName)
         SwitchRow(
+            "Mostrar el botón de pestañas",
+            "Un botón con el número de pestañas abiertas, para cambiar de una a otra o abrir otra",
+            vm.showWindowsButton)
+        SwitchRow(
             "Mostrar botón de selección",
             "Un botón en la barra para empezar a marcar archivos sin mantener pulsado",
             vm.showSelectButton)

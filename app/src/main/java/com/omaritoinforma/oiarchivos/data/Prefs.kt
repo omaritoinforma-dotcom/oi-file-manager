@@ -316,6 +316,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("storage_notification", false)
         set(v) = sp.edit().putBoolean("storage_notification", v).apply()
 
+    /** Botón con el número de pestañas en la barra («Mostrar el botón de Windows» de ES). */
+    var showWindowsButton: Boolean
+        get() = sp.getBoolean("show_windows_button", false)
+        set(v) = sp.edit().putBoolean("show_windows_button", v).apply()
+
     var folderStyle: FolderStyle
         get() = enumOr(sp.getString("folder_style", null), FolderStyle.CLASSIC)
         set(v) = sp.edit().putString("folder_style", v.name).apply()

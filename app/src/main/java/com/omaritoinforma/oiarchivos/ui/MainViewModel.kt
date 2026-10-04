@@ -290,6 +290,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun documentTypeSet(): Set<DocumentType> =
         documentTypes.value.mapNotNull { name -> DocumentType.entries.firstOrNull { it.name == name } }.toSet()
     val appPermissionNotify = PrefState({ prefs.appPermissionNotify }, { prefs.appPermissionNotify = it })
+    val showWindowsButton = PrefState({ prefs.showWindowsButton }, { prefs.showWindowsButton = it })
     val homeSearch = PrefState({ prefs.homeSearch }, { prefs.homeSearch = it })
     val ftpPassword = PrefState({ prefs.ftpPassword }, { prefs.ftpPassword = it })
     val ftpStopOnExit = PrefState({ prefs.ftpStopOnExit }, { prefs.ftpStopOnExit = it })
@@ -496,6 +497,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             ftpEncoding,
             toolbarActions,
             documentTypes,
+            showWindowsButton,
             appPermissionNotify,
             homeSearch,
             ftpStopOnExit,

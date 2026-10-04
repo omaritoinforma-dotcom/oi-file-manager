@@ -41,6 +41,9 @@ import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.CheckBox
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Badge
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentCut
@@ -253,6 +256,15 @@ private fun BrowserTopBar(
                 IconButton(onClick = vm::startSelecting) {
                     Icon(Icons.Filled.CheckBox, "Seleccionar")
                 }
+            if (vm.showWindowsButton.value) {
+                var tabsDialog by remember { mutableStateOf(false) }
+                IconButton(onClick = { tabsDialog = true }) {
+                    BadgedBox(badge = { Badge { Text("${vm.tabs.size}") } }) {
+                        Icon(Icons.Filled.Tab, "Pestañas")
+                    }
+                }
+                if (tabsDialog) TabsDialog(vm) { tabsDialog = false }
+            }
             IconButton(onClick = { vm.cycleViewMode() }) {
                 @Suppress("DEPRECATION")
                 val icon =
@@ -784,6 +796,47 @@ private fun TabsRow(vm: MainViewModel) {
         }
         item { IconButton(onClick = { vm.addTab() }) { Icon(Icons.Filled.Add, "Nueva pestaña") } }
     }
+}
+
+/** Las pestañas abiertas: tocar una cambia a ella, la X la cierra y «Nueva pestaña» abre otra. */
+@Composable
+private fun TabsDialog(vm: MainViewModel, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Pestañas abiertas") },
+        text = {
+            Column {
+                vm.tabs.toList().forEachIndexed { i, t ->
+                    ListItem(
+                        headlineContent = {
+                            Text(locationTitle(t.location), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        },
+                        leadingContent = {
+                            if (i == vm.activeTab) Icon(Icons.Filled.Check, "Pestaña actual")
+                        },
+                        trailingContent = {
+                            IconButton(onClick = { vm.closeTab(i) }) {
+                                Icon(Icons.Filled.Close, "Cerrar la pestaña ${locationTitle(t.location)}")
+                            }
+                        },
+                        modifier =
+                            Modifier.clickable {
+                                vm.selectTab(i)
+                                onDismiss()
+                            })
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    vm.addTab()
+                    onDismiss()
+                }) {
+                    Text("Nueva pestaña")
+                }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } })
 }
 
 @Composable

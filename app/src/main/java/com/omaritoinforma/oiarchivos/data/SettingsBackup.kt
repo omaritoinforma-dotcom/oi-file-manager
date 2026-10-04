@@ -61,6 +61,7 @@ object SettingsBackup {
             "home_hidden_tiles" to Kind.Choices(HomeLayout.tileKeys),
             "document_types" to Kind.Choices(DocumentType.entries.map { it.name }.toSet()),
             "home_search" to Kind.Flag,
+            "show_windows_button" to Kind.Flag,
             "storage_notification" to Kind.Flag,
             "app_permission_notify" to Kind.Flag,
             "ftp_stop_on_exit" to Kind.Flag,
