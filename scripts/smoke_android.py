@@ -160,7 +160,7 @@ def field_texts():
     return [n.get("text") for n in hierarchy().iter("node") if n.get("class") == "android.widget.EditText"]
 
 
-def fill(label, value, current=None, clear=False):
+def fill(label, value, current=None, clear=False, verify=True):
     """Types into the dialog field found by label, hint or current value, scrolling if needed."""
     for _ in range(6):
         tree = hierarchy()
@@ -176,6 +176,11 @@ def fill(label, value, current=None, clear=False):
                 for _ in range(40 if clear else 8):
                     adb("shell", "input", "keyevent", "KEYCODE_DEL")
             adb("shell", "input", "text", "'" + value + "'")
+            # Password fields hide their text, so only visible values can be confirmed.
+            if verify:
+                time.sleep(0.5)
+                texts = field_texts()
+                assert any(value in (t or "") for t in texts), f"«{value}» no quedó en el campo {label}: {texts}"
             return
         adb("shell", "input", "swipe", "540", "1300", "540", "700", "300")
     raise AssertionError(f"Field not found: {label}")
@@ -203,7 +208,7 @@ def verify_network_resume():
     fill("Servidor", "10.0.2.2")
     fill("Puerto", os.environ["OI_REMOTE_TEST_SFTP_PORT"], current="22")
     fill("Usuario", "oi")
-    fill("Contraseña", os.environ["OI_REMOTE_TEST_PASSWORD"])
+    fill("Contraseña", os.environ["OI_REMOTE_TEST_PASSWORD"], verify=False)
     fill("Huella del servidor SHA256:…", os.environ["OI_REMOTE_TEST_SFTP_FINGERPRINT"])
     texts = field_texts()
     for expected_text in (

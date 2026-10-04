@@ -79,6 +79,9 @@ def check(name):
                 print(f"FAIL: {name}: {error}", flush=True)
                 traceback.print_exc()
             evidence(name)
+            # Saved after every check so a CI time limit still leaves the results.
+            (OUTPUT / "results.json").write_text(
+                json.dumps(RESULTS, indent=2, ensure_ascii=False), encoding="utf-8")
 
         CHECKS.append(run)
         return function
@@ -281,14 +284,14 @@ def encrypt_decrypt():
     open_test_folder()
     long_press("a.txt")
     more("Cifrar con contraseña")
-    fill("Contraseña", PASSWORD)
+    fill("Contraseña", PASSWORD, verify=False)
     tap("Continuar")
     until(lambda: exists(f"{DIR}/a.txt.oienc"), "No se creó el archivo cifrado")
     assert b"contenido a" not in read_bytes(f"{DIR}/a.txt.oienc"), "El cifrado contiene el texto"
     open_test_folder()
     long_press("a.txt.oienc")
     more("Descifrar con contraseña")
-    fill("Contraseña", PASSWORD)
+    fill("Contraseña", PASSWORD, verify=False)
     tap("Continuar")
     until(lambda: read(f"{DIR}/a (1).txt") == "contenido a", "El descifrado no coincide")
 
@@ -299,14 +302,14 @@ def seven_zip():
     long_press("a.txt")
     more("Comprimir en ZIP")
     fill("Nombre: .zip, .7z, .tar o .tar.gz", "prueba.7z", clear=True)
-    fill("Contraseña opcional (AES)", PASSWORD)
+    fill("Contraseña opcional (AES)", PASSWORD, verify=False)
     tap("Comprimir")
     until(lambda: exists(f"{DIR}/prueba.7z"), "No se creó el 7z", timeout=60)
     head = sh("head", "-c", "6", q(f"{DIR}/prueba.7z"), "|", "od", "-An", "-tx1").split()
     assert head == ["37", "7a", "bc", "af", "27", "1c"], f"No es un 7z: {head}"
     open_test_folder()
     tap("prueba.7z")
-    fill("Contraseña (si corresponde)", PASSWORD)
+    fill("Contraseña (si corresponde)", PASSWORD, verify=False)
     tap("Abrir")
     wait("a.txt")
     tap("Extraer en carpeta nueva")
@@ -317,7 +320,7 @@ def seven_zip():
 def rar():
     open_test_folder()
     tap("cifrado.rar")
-    fill("Contraseña (si corresponde)", "password")
+    fill("Contraseña (si corresponde)", "password", verify=False)
     tap("Abrir")
     wait("d.txt")
     tap("Extraer en carpeta nueva")
@@ -334,6 +337,7 @@ def search_contents():
     tap("Más opciones")
     tap("Búsqueda avanzada")
     fill("Texto dentro del archivo", "aguja-unica-oi")
+    evidence("busqueda-avanzada-formulario")
     tap("Buscar")
     wait("buscar_me.txt")
     assert not nodes("a.txt", hierarchy()), "La búsqueda devolvió archivos que no coinciden"
@@ -357,6 +361,10 @@ def bookmarks():
     open_test_folder()
     long_press("Nueva")
     more("Agregar a marcadores")
+    tap("Menú")
+    wait("Nueva")
+    # A bookmark must survive the app being closed.
+    time.sleep(2)
     ui.launch()
     wait("Categorías")
     tap("Menú")
