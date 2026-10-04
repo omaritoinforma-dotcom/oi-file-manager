@@ -75,6 +75,8 @@ import com.omaritoinforma.oiarchivos.data.FileCategory
 import com.omaritoinforma.oiarchivos.data.FolderStyle
 import com.omaritoinforma.oiarchivos.data.HomeLayout
 import com.omaritoinforma.oiarchivos.data.QuickTile
+import com.omaritoinforma.oiarchivos.data.ToolbarAction
+import com.omaritoinforma.oiarchivos.data.ToolbarLayout
 import com.omaritoinforma.oiarchivos.data.ScreenOrientation
 import com.omaritoinforma.oiarchivos.data.GestureAction
 import com.omaritoinforma.oiarchivos.data.NewFileKind
@@ -101,6 +103,7 @@ private enum class Section(val group: String, val title: String, val summary: St
     FOLDERS("General", "Carpetas", "Carpeta de inicio y carpeta de descargas"),
     START("General", "Ventana inicial", "Qué se abre al iniciar la app"),
     HOME("General", "Pantalla de inicio", "Ocultar y ordenar las secciones y los iconos de Inicio"),
+    TOOLBAR("General", "Barra de herramientas", "Elegir y ordenar los botones de la barra al seleccionar"),
     DRAWER("General", "Barra lateral", "Ocultar y ordenar las opciones del menú lateral"),
     NOTIFICATIONS("General", "Notificaciones", "Aviso al terminar, espacio bajo y archivos nuevos"),
     REMOTE("Red y nube", "Archivos remotos", "Subir lo que edites en otra app"),
@@ -143,6 +146,7 @@ fun SettingsScreen(vm: MainViewModel) {
                 Section.FOLDERS -> item { FolderSettings(vm) }
                 Section.START -> item { StartSettings(vm) }
                 Section.HOME -> item { HomeSettings(vm) }
+                Section.TOOLBAR -> item { ToolbarSettings(vm) }
                 Section.DRAWER -> item { DrawerSettings(vm) }
                 Section.NOTIFICATIONS -> item { NotificationSettings(vm) }
                 Section.REMOTE ->
@@ -470,6 +474,71 @@ private fun HomeSettings(vm: MainViewModel) {
                 },
                 modifier = Modifier.padding(horizontal = 8.dp)) {
                     Text("Restablecer Inicio")
+                }
+    }
+}
+
+@Composable
+private fun ToolbarSettings(vm: MainViewModel) {
+    val chosen = ToolbarLayout.actions(vm.toolbarActions.value)
+    val rest = ToolbarAction.entries.filter { it !in chosen }
+    Column {
+        Text(
+            "Elige qué botones salen en la barra de abajo al seleccionar archivos (hasta " +
+                "${ToolbarLayout.MAX}) y en qué orden. Lo demás sigue en «Más».",
+            Modifier.padding(16.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        chosen.forEachIndexed { index, action ->
+            ListItem(
+                headlineContent = { Text(action.label) },
+                leadingContent = {
+                    Switch(
+                        checked = true,
+                        onCheckedChange = {
+                            vm.toolbarActions.value = ToolbarLayout.toggle(vm.toolbarActions.value, action)
+                        })
+                },
+                trailingContent = {
+                    Row {
+                        IconButton(
+                            onClick = {
+                                vm.toolbarActions.value =
+                                    ToolbarLayout.move(vm.toolbarActions.value, action, -1)
+                            },
+                            enabled = index > 0) {
+                                Icon(Icons.Filled.ArrowUpward, "Subir ${action.label}")
+                            }
+                        IconButton(
+                            onClick = {
+                                vm.toolbarActions.value =
+                                    ToolbarLayout.move(vm.toolbarActions.value, action, 1)
+                            },
+                            enabled = index < chosen.lastIndex) {
+                                Icon(Icons.Filled.ArrowDownward, "Bajar ${action.label}")
+                            }
+                    }
+                })
+        }
+        rest.forEach { action ->
+            ListItem(
+                headlineContent = { Text(action.label) },
+                supportingContent = {
+                    if (chosen.size >= ToolbarLayout.MAX) Text("Quita otro botón para poder añadir este")
+                },
+                leadingContent = {
+                    Switch(
+                        checked = false,
+                        enabled = chosen.size < ToolbarLayout.MAX,
+                        onCheckedChange = {
+                            vm.toolbarActions.value = ToolbarLayout.toggle(vm.toolbarActions.value, action)
+                        })
+                })
+        }
+        if (chosen != ToolbarLayout.DEFAULT)
+            TextButton(
+                onClick = { vm.toolbarActions.value = ToolbarLayout.defaultNames },
+                modifier = Modifier.padding(horizontal = 8.dp)) {
+                    Text("Restablecer barra")
                 }
     }
 }

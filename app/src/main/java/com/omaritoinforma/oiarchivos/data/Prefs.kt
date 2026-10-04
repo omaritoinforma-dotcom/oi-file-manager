@@ -266,6 +266,14 @@ class Prefs(context: Context) {
         get() = sp.getInt("editor_font", 14)
         set(v) = sp.edit().putInt("editor_font", v.coerceIn(10, 28)).apply()
 
+    /** Botones de la barra inferior al seleccionar (nombres de [ToolbarAction], en orden); sin guardar = los de fábrica. */
+    var toolbarActions: List<String>
+        get() =
+            if (sp.contains("toolbar_actions"))
+                sp.getString("toolbar_actions", "").orEmpty().split(',').filter { it.isNotBlank() }
+            else ToolbarLayout.defaultNames
+        set(v) = sp.edit().putString("toolbar_actions", v.joinToString(",")).apply()
+
     var folderStyle: FolderStyle
         get() = enumOr(sp.getString("folder_style", null), FolderStyle.CLASSIC)
         set(v) = sp.edit().putString("folder_style", v.name).apply()

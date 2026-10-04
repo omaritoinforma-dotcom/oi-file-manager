@@ -60,6 +60,7 @@ object SettingsBackup {
             "home_hidden" to Kind.Choices(HomeSection.entries.map { it.name }.toSet()),
             "home_hidden_tiles" to Kind.Choices(HomeLayout.tileKeys),
             "folder_style" to choice(FolderStyle.entries.toTypedArray()),
+            "toolbar_actions" to Kind.Choices(ToolbarAction.entries.map { it.name }.toSet()),
             "toolbar_show_name" to Kind.Flag,
             "show_select_button" to Kind.Flag,
             "screen_orientation" to choice(ScreenOrientation.entries.toTypedArray()),

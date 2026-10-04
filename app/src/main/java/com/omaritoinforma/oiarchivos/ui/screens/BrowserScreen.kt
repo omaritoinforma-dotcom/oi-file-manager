@@ -476,25 +476,41 @@ private fun SelectionBottomBar(
             },
             confirmButton = { TextButton(onClick = { ringtone = null }) { Text("Cancelar") } })
     }
+    val barActions = ToolbarLayout.actions(vm.toolbarActions.value)
+    fun perform(action: ToolbarAction) {
+        when (action) {
+            ToolbarAction.COPY -> vm.copySelection(move = false)
+            ToolbarAction.CUT -> vm.copySelection(move = true)
+            ToolbarAction.DELETE -> setDialog(BrowserDialog.Delete(selectedItems))
+            ToolbarAction.RENAME ->
+                setDialog(
+                    if (single != null) BrowserDialog.Rename(single)
+                    else BrowserDialog.BatchRename(selectedItems))
+            ToolbarAction.SHARE ->
+                if (files.isEmpty()) vm.toast("Solo se pueden compartir archivos, no carpetas")
+                else Opener.share(ctx, files.map { it.file })
+            ToolbarAction.COMPRESS -> setDialog(BrowserDialog.Compress(selectedItems))
+            ToolbarAction.PIN -> vm.togglePin(selectedItems)
+            ToolbarAction.PROPERTIES -> setDialog(BrowserDialog.Properties(selectedItems))
+        }
+    }
     BottomAppBar {
-        BarAction(Icons.Filled.ContentCopy, "Copiar", Modifier.weight(1f)) {
-            vm.copySelection(move = false)
-        }
-        BarAction(Icons.Filled.ContentCut, "Cortar", Modifier.weight(1f)) {
-            vm.copySelection(move = true)
-        }
-        BarAction(Icons.Filled.Delete, "Eliminar", Modifier.weight(1f)) {
-            setDialog(BrowserDialog.Delete(selectedItems))
-        }
-        BarAction(Icons.Filled.Edit, "Renombrar", Modifier.weight(1f)) {
-            setDialog(
-                if (single != null) BrowserDialog.Rename(single)
-                else BrowserDialog.BatchRename(selectedItems))
+        barActions.forEach { action ->
+            BarAction(barIcon(action), action.label, Modifier.weight(1f)) { perform(action) }
         }
         Box(Modifier.weight(1f)) {
             BarAction(Icons.Filled.MoreVert, "Más", Modifier.fillMaxWidth()) { menu = true }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                if (selectedItems.isNotEmpty())
+                // Lo que se quitó de la barra no se pierde: pasa a este menú.
+                listOf(ToolbarAction.COPY, ToolbarAction.CUT, ToolbarAction.DELETE, ToolbarAction.RENAME)
+                    .filter { it !in barActions }
+                    .forEach { action ->
+                        MenuItem(action.label, barIcon(action)) {
+                            menu = false
+                            perform(action)
+                        }
+                    }
+                if (selectedItems.isNotEmpty() && ToolbarAction.PIN !in barActions)
                     MenuItem(
                         if (selectedItems.all { it.path in vm.pinned }) "Quitar de fijados"
                         else "Fijar arriba",
@@ -518,10 +534,11 @@ private fun SelectionBottomBar(
                         vm.addSelectionToClipboard()
                     }
                 if (files.isNotEmpty()) {
-                    MenuItem("Compartir", Icons.Filled.Share) {
-                        menu = false
-                        Opener.share(ctx, files.map { it.file })
-                    }
+                    if (ToolbarAction.SHARE !in barActions)
+                        MenuItem("Compartir", Icons.Filled.Share) {
+                            menu = false
+                            Opener.share(ctx, files.map { it.file })
+                        }
                     MenuItem("Enviar a otro teléfono", Icons.Filled.Share) {
                         menu = false
                         vm.nearbyFiles = files.map { it.path }
@@ -551,10 +568,11 @@ private fun SelectionBottomBar(
                                 com.omaritoinforma.oiarchivos.data.StreamServer.LocalSource(media.file))
                         }
                 }
-                MenuItem("Comprimir en ZIP", Icons.Filled.Archive) {
-                    menu = false
-                    setDialog(BrowserDialog.Compress(selectedItems))
-                }
+                if (ToolbarAction.COMPRESS !in barActions)
+                    MenuItem("Comprimir en ZIP", Icons.Filled.Archive) {
+                        menu = false
+                        setDialog(BrowserDialog.Compress(selectedItems))
+                    }
                 if (single != null && ArchiveTools.supports(single.file)) {
                     MenuItem("Extraer aquí", Icons.Filled.Unarchive) {
                         menu = false
@@ -663,14 +681,27 @@ private fun SelectionBottomBar(
                     Opener.copyText(ctx, selectedItems.joinToString("\n") { it.path })
                     vm.toast("Ruta copiada")
                 }
-                MenuItem("Propiedades", Icons.Filled.Info) {
-                    menu = false
-                    setDialog(BrowserDialog.Properties(selectedItems))
-                }
+                if (ToolbarAction.PROPERTIES !in barActions)
+                    MenuItem("Propiedades", Icons.Filled.Info) {
+                        menu = false
+                        setDialog(BrowserDialog.Properties(selectedItems))
+                    }
             }
         }
     }
 }
+
+private fun barIcon(action: ToolbarAction) =
+    when (action) {
+        ToolbarAction.COPY -> Icons.Filled.ContentCopy
+        ToolbarAction.CUT -> Icons.Filled.ContentCut
+        ToolbarAction.DELETE -> Icons.Filled.Delete
+        ToolbarAction.RENAME -> Icons.Filled.Edit
+        ToolbarAction.SHARE -> Icons.Filled.Share
+        ToolbarAction.COMPRESS -> Icons.Filled.Archive
+        ToolbarAction.PIN -> Icons.Filled.PushPin
+        ToolbarAction.PROPERTIES -> Icons.Filled.Info
+    }
 
 @Composable
 private fun PasteBar(vm: MainViewModel) {

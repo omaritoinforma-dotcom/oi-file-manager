@@ -2553,6 +2553,50 @@ def folder_style():
         time.sleep(2)
 
 
+@check("barra-de-herramientas-elegir-y-ordenar")
+def toolbar_customize():
+    folder = f"{DIR}/barra"
+    sh("mkdir", "-p", q(folder))
+    push_bytes(b"x", f"{folder}/barra.txt")
+    try:
+        settings("Barra de herramientas")
+        # Se quita Renombrar, se añade Compartir y se sube hasta el segundo puesto.
+        set_switch("Renombrar", False)
+        find("Compartir")
+        set_switch("Compartir", True)
+        tap("Subir Compartir")
+        time.sleep(0.5)
+        tap("Subir Compartir")
+        time.sleep(1)
+        open_test_folder()
+        tap_node(find("barra"))
+        wait("barra.txt")
+        long_press("barra.txt")
+        wait("Compartir")
+        evidence("barra-de-herramientas-personalizada")
+        tree = hierarchy()
+        assert not [n for n in nodes("Renombrar", tree) if center(n)[1] > 1800], "Renombrar sigue en la barra"
+        x = {label: center(nodes(label, tree)[-1])[0] for label in ("Copiar", "Compartir", "Cortar", "Eliminar")}
+        assert x["Copiar"] < x["Compartir"] < x["Cortar"] < x["Eliminar"], f"Orden de los botones: {x}"
+        # Renombrar no se perdió: está en «Más» y abre su diálogo.
+        more("Renombrar")
+        time.sleep(1.5)
+        evidence("barra-renombrar-desde-mas")
+        adb("shell", "input", "keyevent", "4")
+        wait("Compartir")
+        # El botón Compartir de la barra abre el selector del sistema.
+        tap_last("Compartir")
+        until(lambda: any(word in focused_window().lower() for word in ("chooser", "resolver")),
+              f"El botón Compartir no abrió el selector: {focused_window()}", 20)
+        adb("shell", "input", "keyevent", "4")
+    finally:
+        ui.launch()
+        settings("Barra de herramientas")
+        if nodes("Restablecer barra", hierarchy()):
+            tap("Restablecer barra")
+        time.sleep(2)
+
+
 @check("informe-diario-de-archivos-nuevos")
 def daily_report():
     folder = "/sdcard/DCIM/OIInforme"
