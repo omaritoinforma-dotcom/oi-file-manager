@@ -67,6 +67,15 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.omaritoinforma.oiarchivos.data.FileCategory
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import com.omaritoinforma.oiarchivos.data.FileItem
+import com.omaritoinforma.oiarchivos.data.Categories
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import com.omaritoinforma.oiarchivos.data.HomeLayout
 import com.omaritoinforma.oiarchivos.data.HomeSection
 import com.omaritoinforma.oiarchivos.data.QuickTile
@@ -104,6 +113,19 @@ fun HomeScreen(vm: MainViewModel, openDrawer: () -> Unit) {
             )
         },
     ) { padding ->
+        val ctx = LocalContext.current
+        var newFiles by remember { mutableStateOf<List<FileItem>>(emptyList()) }
+        val showNew = HomeSection.NEW_FILES.name !in vm.homeHidden.value
+        LaunchedEffect(showNew, vm.volumes.size) {
+            newFiles =
+                if (!showNew) emptyList()
+                else
+                    withContext(Dispatchers.IO) {
+                        HomeLayout.newFiles(
+                            runCatching { Categories.query(ctx, FileCategory.RECENT, false) }
+                                .getOrDefault(emptyList()))
+                    }
+        }
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
@@ -136,6 +158,32 @@ fun HomeScreen(vm: MainViewModel, openDrawer: () -> Unit) {
                             item(key = "tiles:quick") { TileGrid(tiles) }
                         }
                     }
+                    HomeSection.NEW_FILES ->
+                        if (newFiles.isNotEmpty()) {
+                            item(key = "title:new") { SectionTitle("Archivos nuevos") }
+                            items(newFiles, key = { "new:" + it.path }) { f ->
+                                ListItem(
+                                    headlineContent = {
+                                        Text(f.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    },
+                                    supportingContent = {
+                                        Text(
+                                            "${formatSize(f.size)} · ${f.file.parent.orEmpty()}",
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis)
+                                    },
+                                    leadingContent = {
+                                        Icon(
+                                            Icons.Filled.History,
+                                            null,
+                                            tint = MaterialTheme.colorScheme.primary)
+                                    },
+                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                    modifier =
+                                        Modifier.clip(RoundedCornerShape(12.dp)).clickable { vm.openFile(f.path) },
+                                )
+                            }
+                        }
                     HomeSection.BOOKMARKS ->
                         if (vm.bookmarks.isNotEmpty()) {
                             item(key = "title:bm") { SectionTitle("Marcadores") }

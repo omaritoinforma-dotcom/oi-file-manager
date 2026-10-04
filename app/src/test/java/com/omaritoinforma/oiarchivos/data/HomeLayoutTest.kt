@@ -41,7 +41,7 @@ class HomeLayoutTest {
         assertEquals(listOf("CATEGORIES", "STORAGE"), down.take(2))
         val factory = HomeLayout.order(emptyList()).map { it.name }
         assertEquals(factory, HomeLayout.move(emptyList(), HomeSection.STORAGE, -1))
-        assertEquals(factory, HomeLayout.move(emptyList(), HomeSection.BOOKMARKS, 1))
+        assertEquals(factory, HomeLayout.move(emptyList(), HomeSection.entries.last(), 1))
     }
 
     @Test
@@ -62,5 +62,37 @@ class HomeLayoutTest {
         assertEquals("cat:MUSIC,quick:ROOT", parsed["home_hidden_tiles"])
         assertThrows(java.io.IOException::class.java) { SettingsBackup.parse(ok.replace("BOOKMARKS", "AJUSTES")) }
         assertThrows(java.io.IOException::class.java) { SettingsBackup.parse(ok.replace("cat:MUSIC", "cat:NADA")) }
+    }
+
+    private fun item(path: String, dir: Boolean = false) =
+        FileItem(java.io.File(path), path.substringAfterLast('/'), path, dir, 1, 0, path.substringAfterLast('/').startsWith("."), -1)
+
+    @Test
+    fun newFilesSkipFoldersHiddenAndOtherAppsData() {
+        val recent =
+            listOf(
+                item("/sdcard/Download", dir = true),
+                item("/sdcard/Android/data/com.otra/cache/x.tmp"),
+                item("/sdcard/Android/obb/com.otra/main.obb"),
+                item("/sdcard/.thumbnails/a.jpg"),
+                item("/sdcard/Download/.oculto.txt"),
+                item("/sdcard/Download/uno.txt"),
+                item("/sdcard/DCIM/dos.jpg"),
+                item("/sdcard/Music/tres.mp3"))
+        assertEquals(listOf("uno.txt", "dos.jpg", "tres.mp3"), HomeLayout.newFiles(recent).map { it.name })
+    }
+
+    @Test
+    fun newFilesAreLimitedKeepingTheMostRecentFirst() {
+        val recent = (1..20).map { item("/sdcard/Download/f$it.txt") }
+        assertEquals(HomeLayout.NEW_FILES_COUNT, HomeLayout.newFiles(recent).size)
+        assertEquals("f1.txt", HomeLayout.newFiles(recent).first().name)
+        assertEquals(2, HomeLayout.newFiles(recent, 2).size)
+    }
+
+    @Test
+    fun theNewFilesSectionCanBeHiddenLikeAnyOther() {
+        assertTrue(HomeSection.NEW_FILES in HomeLayout.visible(emptyList(), emptySet()))
+        assertFalse(HomeSection.NEW_FILES in HomeLayout.visible(emptyList(), setOf("NEW_FILES")))
     }
 }

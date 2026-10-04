@@ -5,7 +5,10 @@ enum class HomeSection(val label: String) {
     STORAGE("Almacenamiento"),
     CATEGORIES("Categorías"),
     QUICK("Accesos rápidos"),
-    BOOKMARKS("Marcadores")
+    BOOKMARKS("Marcadores"),
+
+    /** Los últimos archivos que aparecieron («Mostrar nuevos archivos en la página de inicio» de ES). */
+    NEW_FILES("Archivos nuevos")
 }
 
 /** Iconos de «Accesos rápidos». El nombre es la clave que se guarda; la etiqueta, lo que se ve. */
@@ -59,6 +62,21 @@ object HomeLayout {
         list.add(to, list.removeAt(from))
         return list.map { it.name }
     }
+
+    /** Cuántos archivos nuevos se muestran en Inicio. */
+    const val NEW_FILES_COUNT = 5
+
+    /** Los más recientes que interesan: sin carpetas, sin ocultos y sin datos internos de otras apps. */
+    fun newFiles(recent: List<FileItem>, limit: Int = NEW_FILES_COUNT): List<FileItem> =
+        recent
+            .filter {
+                !it.isDirectory &&
+                    !it.name.startsWith(".") &&
+                    "/Android/data/" !in it.path &&
+                    "/Android/obb/" !in it.path &&
+                    "/." !in it.path
+            }
+            .take(limit)
 
     fun categories(hiddenTiles: Set<String>): List<FileCategory> =
         FileCategory.entries.filter { categoryKey(it) !in hiddenTiles }

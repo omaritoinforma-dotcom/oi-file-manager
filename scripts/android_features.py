@@ -2633,6 +2633,23 @@ def background_image():
         time.sleep(2)
 
 
+@check("inicio-muestra-los-archivos-nuevos")
+def home_new_files():
+    name = "llegado-hoy-oi.txt"
+    push_bytes(b"recien llegado", f"{DIR}/{name}")
+    sh("content", "call", "--uri", "content://media", "--method", "scan_volume",
+       "--arg", "external_primary", check=False)
+    time.sleep(3)
+    launch_home()
+    wait("Categorías")
+    find(name)
+    evidence("inicio-archivos-nuevos")
+    assert nodes("Archivos nuevos", hierarchy()) or find("Archivos nuevos"), "Falta el título de la sección"
+    tap_node(find(name))
+    wait_text("recien llegado")
+    adb("shell", "input", "keyevent", "4")
+
+
 @check("informe-diario-de-archivos-nuevos")
 def daily_report():
     folder = "/sdcard/DCIM/OIInforme"
