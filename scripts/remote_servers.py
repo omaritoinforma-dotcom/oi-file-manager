@@ -77,7 +77,9 @@ def start():
     data.mkdir(parents=True)
     password = secrets.token_urlsafe(16)
     fingerprint = host_key(WORK / "host_rsa")
-    common = ["--user", "oi", "--pass", password, "--log-file", None]
+    # Sin caché de carpetas: las pruebas también crean archivos directamente en el disco y el
+    # servidor debe verlos al momento (con la caché de 5 minutos de rclone no aparecían).
+    common = ["--user", "oi", "--pass", password, "--dir-cache-time", "0s", "--log-file", None]
     pids = []
     for name, extra in (
         ("sftp", ["--key", str(WORK / "host_rsa")]),
@@ -87,7 +89,7 @@ def start():
         args = [rclone, "serve", name, str(data), "--addr", f"127.0.0.1:{PORTS[name]}", *extra]
         args += [a if a is not None else str(WORK / f"{name}.log") for a in common]
         if os.environ.get("OI_REMOTE_BWLIMIT"):
-            # Slow transfers let the Android test interrupt a download halfway.
+            # Con transferencias lentas, la prueba de Android puede interrumpir una descarga a medias.
             args += ["--bwlimit", os.environ["OI_REMOTE_BWLIMIT"]]
         pids.append(subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True).pid)
     for port in PORTS.values():
