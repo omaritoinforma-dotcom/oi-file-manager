@@ -9,6 +9,7 @@ smoke_android.py with the APK installed and storage permission granted.
 import hashlib
 import json
 import math
+import os
 import re
 import struct
 import wave
@@ -488,6 +489,50 @@ def sort_size():
     tap("Nombre")
     tap("Ascendente (A→Z, antiguo→nuevo)")
     tap("Aplicar")
+
+
+if os.environ.get("OI_REAL_SFTP_PASSWORD"):
+
+    @check("sftp-servidor-real-desde-android")
+    def real_sftp():
+        """The owner's Internet SFTP server: connect, list, create and delete a folder from the app."""
+        name = f"oi-prueba-android-{int(time.time())}"
+        ui.launch()
+        wait("Categorías")
+        ui.drawer("Red, nube y USB")
+        tap("Agregar")
+        fill("Nombre de la conexión", "SFTP real")
+        fill("Servidor", os.environ["OI_REAL_SFTP_HOST"])
+        fill("Puerto", os.environ["OI_REAL_SFTP_PORT"], current="22")
+        fill("Usuario", os.environ["OI_REAL_SFTP_USER"])
+        fill("Contraseña", os.environ["OI_REAL_SFTP_PASSWORD"], verify=False)
+        folder = os.environ.get("OI_REAL_SFTP_DIR") or ""
+        if folder:
+            fill("Carpeta inicial", folder, clear=True)
+        fill("Huella del servidor SHA256:…", os.environ["OI_REAL_SFTP_FINGERPRINT"])
+        tap("Guardar")
+        tap("SFTP real")
+        wait("Nueva carpeta")
+        time.sleep(3)
+        errors = [n.get("text") for n in hierarchy().iter("node") if "huella" in (n.get("text") or "").lower()
+                  or "rechaz" in (n.get("text") or "").lower() or "Error" in (n.get("text") or "")]
+        assert not errors, f"La conexión falló en Android: {errors}"
+        tap("Nueva carpeta")
+        wait("Nombre")
+        adb("shell", "input", "text", name)
+        tap("Guardar")
+        node, _ = wait(name, timeout=60)
+        # Select it with its checkbox, then delete it so nothing is left on the server.
+        boxes = [n for n in hierarchy().iter("node") if n.get("checkable") == "true"]
+        row_y = int(re.findall(r"\d+", node.get("bounds"))[1])
+        box = min(boxes, key=lambda b: abs(int(re.findall(r"\d+", b.get("bounds"))[1]) - row_y))
+        tap_node(box)
+        tap("Eliminar")
+        tap_last("Eliminar")
+        deadline = time.monotonic() + 60
+        while nodes(name, hierarchy()):
+            assert time.monotonic() < deadline, "La carpeta de prueba no se borró del servidor"
+            time.sleep(1)
 
 
 def main():
