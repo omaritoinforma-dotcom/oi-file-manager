@@ -1175,6 +1175,34 @@ def cast_to_tv():
         tv.close()
 
 
+
+@check("descargar-desde-una-url")
+def download_from_url():
+    """El equipo de CI sirve un archivo por HTTP (10.0.2.2 para el emulador)."""
+    import functools
+    import http.server
+    import threading
+
+    data = os.urandom(2 * 1024 * 1024)
+    target = "/sdcard/Download/OI Archivos/descarga-prueba.bin"
+    sh("rm", "-f", q(target), check=False)
+    with tempfile.TemporaryDirectory() as tmp:
+        (pathlib.Path(tmp) / "descarga-prueba.bin").write_bytes(data)
+        handler = functools.partial(http.server.SimpleHTTPRequestHandler, directory=tmp)
+        server = http.server.ThreadingHTTPServer(("0.0.0.0", 8099), handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        try:
+            launch_home()
+            ui.drawer("Red, nube y USB")
+            tap(find("Descargar desde una URL").get("text"))
+            fill("Dirección (URL)", "http://10.0.2.2:8099/descarga-prueba.bin")
+            tap("Descargar")
+            until(lambda: exists(target), "La descarga no llegó a la carpeta de descargas", 60)
+            assert device_sha256(target) == hashlib.sha256(data).hexdigest(), "El archivo descargado no coincide"
+        finally:
+            server.shutdown()
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()

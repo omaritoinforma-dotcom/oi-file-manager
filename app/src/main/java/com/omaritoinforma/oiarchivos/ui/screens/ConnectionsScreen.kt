@@ -32,6 +32,7 @@ fun ConnectionsScreen(vm: MainViewModel) {
     var edit by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf<Connection?>(null) }
     var scan by remember { mutableStateOf(false) }
+    var downloadUrl by remember { mutableStateOf(false) }
     var prefilled by remember { mutableStateOf(false) }
     var refresh by remember { mutableIntStateOf(0) }
     var pendingId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -128,6 +129,12 @@ fun ConnectionsScreen(vm: MainViewModel) {
                 }
                 item {
                     ListItem(
+                        headlineContent = { Text("Descargar desde una URL") },
+                        supportingContent = { Text("Gestor de descargas; si se corta, continúa donde iba") },
+                        modifier = Modifier.clickable { downloadUrl = true })
+                }
+                item {
+                    ListItem(
                         headlineContent = { Text("Enviar a la TV") },
                         supportingContent = { Text("Fotos, música y vídeos en un televisor DLNA") },
                         modifier = Modifier.clickable { vm.goTo(Screen.Cast) })
@@ -217,6 +224,7 @@ fun ConnectionsScreen(vm: MainViewModel) {
             },
             onDismiss = { additionalLogin = null })
     }
+    if (downloadUrl) DownloadUrlDialog(vm) { downloadUrl = false }
     if (scan)
         LanScanDialog(onDismiss = { scan = false }) { host ->
             scan = false
@@ -475,4 +483,49 @@ private fun ConnectionDialog(
                 TextButton(onClick = onDismiss) { Text("Cancelar") }
             }
         })
+}
+
+/** «Descargar desde una URL»: el archivo va a la carpeta de descargas de Ajustes → Carpetas. */
+@Composable
+private fun DownloadUrlDialog(vm: MainViewModel, onDismiss: () -> Unit) {
+    var url by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Descargar desde una URL") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    url,
+                    {
+                        url = it
+                        error = null
+                    },
+                    label = { Text("Dirección (URL)") },
+                    singleLine = true,
+                    isError = error != null,
+                    supportingText = { Text(error ?: "Se guarda en ${vm.downloadFolder.value}") })
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = url.isNotBlank(),
+                onClick = {
+                    val problem = UrlDownloader.problem(url)
+                    if (problem != null) {
+                        error = problem
+                        return@TextButton
+                    }
+                    val link = url.trim()
+                    val folder = java.io.File(vm.downloadFolder.value)
+                    onDismiss()
+                    vm.runTask("Descargando") { report ->
+                        val file = UrlDownloader.download(link, folder, report)
+                        OperationResult("Descargado: ${file.name}", listOf(file))
+                    }
+                }) {
+                    Text("Descargar")
+                }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
 }
