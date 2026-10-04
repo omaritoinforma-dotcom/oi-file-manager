@@ -788,7 +788,8 @@ def start_window():
         settings("Ventana inicial")
         tap("Carpeta de inicio")
         ui.launch()
-        wait("buscar_me.txt")
+        # El título muestra la carpeta abierta (la lista puede no mostrar todos los archivos).
+        wait("OIPrueba")
         assert not nodes("Categorías", hierarchy()), "Se abrió Inicio en vez de la carpeta de inicio"
         settings("Ventana inicial")
         tap("Última carpeta abierta")
@@ -918,6 +919,8 @@ def cleanup_on_exit():
         open_test_folder()
         ui.drawer("Historial")
         wait("OIPrueba")
+        # Desde Historial no hay botón de menú: se vuelve a Inicio para abrir el menú lateral.
+        ui.back_home()
         ui.drawer("Salir")
         time.sleep(2)
         adb("shell", "am", "start", "-W", "-n", f"{ui.PACKAGE}/.MainActivity")
