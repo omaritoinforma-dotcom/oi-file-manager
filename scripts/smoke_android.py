@@ -30,11 +30,11 @@ CHECKS = []
 TRANSPORT_ERRORS = ("device offline", "error: closed", "no devices/emulators found", "protocol fault", "device not found")
 
 
-def adb(*args, check=True):
+def adb(*args, check=True, timeout=30):
     """Ejecuta adb. Si se corta la conexión con el emulador, reintenta; si falla de verdad, el
     error incluye lo que adb respondió (antes solo se veía el código de salida)."""
     for attempt in range(4):
-        result = subprocess.run(["adb", *args], capture_output=True, text=True, timeout=30)
+        result = subprocess.run(["adb", *args], capture_output=True, text=True, timeout=timeout)
         transport = any(e in (result.stderr or "") for e in TRANSPORT_ERRORS)
         if result.returncode == 0 or not transport or attempt == 3:
             break
@@ -110,12 +110,21 @@ def checkpoint(name, label):
 
 
 def launch():
-    adb("shell", "am", "force-stop", PACKAGE)
-    adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity")
+    # Con el emulador cargado, «am start -W» (espera a que la pantalla esté dibujada) puede tardar más de 30 s.
+    adb("shell", "am", "force-stop", PACKAGE, timeout=90)
+    adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity", timeout=120)
 
 
 def drawer(label):
     tap("Menú")
+    # Hay que esperar a que el menú esté abierto: si no, la pantalla de debajo puede tener un texto
+    # igual («Ajustes» o «Descargas» en Inicio) y el toque cae, mientras el menú se abre, en otra opción.
+    deadline = time.monotonic() + 15
+    while not nodes("Inicio", hierarchy()):
+        if time.monotonic() > deadline:
+            raise AssertionError("El menú lateral no se abrió")
+        time.sleep(0.5)
+    time.sleep(0.5)  # que termine la animación antes de tocar
     for _ in range(5):
         tree = hierarchy()
         found = nodes(label, tree)

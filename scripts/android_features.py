@@ -158,6 +158,33 @@ def open_test_folder():
     find("a.txt")
 
 
+def drawer_find(label, swipes=6):
+    """Busca [label] en el menú lateral abierto, desplazándolo hacia abajo dentro del propio menú."""
+    for _ in range(swipes):
+        found = nodes(label, hierarchy())
+        if found:
+            return found[0]
+        adb("shell", "input", "swipe", "280", "1600", "280", "600", "400")
+        time.sleep(0.5)
+    raise AssertionError(f"No está en el menú lateral: {label}")
+
+
+def selected(label):
+    """Si la ficha o botón con el texto [label] está marcado: el estado lo lleva el nodo pulsable, que
+    suele ser el padre del texto, así que se mira el nodo y sus antepasados."""
+    tree = hierarchy()
+    parents = {child: parent for parent in tree.iter("node") for child in parent}
+    for node in tree.iter("node"):
+        if node.get("text") != label:
+            continue
+        current = node
+        while current is not None:
+            if current.get("checked") == "true" or current.get("selected") == "true":
+                return True
+            current = parents.get(current)
+    return False
+
+
 def long_press(label):
     node = find(label)
     import re
@@ -762,12 +789,13 @@ def bookmarks():
     more("Agregar a marcadores")
     tap("Cancelar selección")
     tap("Menú")
-    wait("Nueva")
+    # El menú lateral es largo: los marcadores están al final.
+    drawer_find("Nueva")
     # Un marcador debe seguir ahí tras cerrar la app.
     time.sleep(2)
     launch_home()
     tap("Menú")
-    wait("Nueva")
+    drawer_find("Nueva")
 
 
 @check("pestañas")
@@ -839,7 +867,7 @@ def apps_info_share_open():
     # Información: abre los ajustes de Android de esa app.
     tap("Opciones")
     tap("Información de la app")
-    until(lambda: "settings" in focused_window().lower(),
+    until(lambda: any(n.get("package") == "com.android.settings" for n in hierarchy().iter("node")),
           f"No se abrió la información de la app: {focused_window()}", 20)
     evidence("apps-informacion-de-android")
     adb("shell", "input", "keyevent", "4")
@@ -861,7 +889,8 @@ def apps_info_share_open():
     options = min(nodes("Opciones", hierarchy()), key=lambda n: abs(center(n)[1] - label_y))
     tap_node(options)
     tap("Abrir")
-    until(lambda: "com.android.settings" in focused_window(), f"No se abrió Ajustes: {focused_window()}", 20)
+    until(lambda: any(n.get("package") == "com.android.settings" for n in hierarchy().iter("node")),
+          f"No se abrió Ajustes: {focused_window()}", 20)
     ui.launch()
 
 
@@ -983,7 +1012,13 @@ def nearby_send():
         long_press(find("enviar_me.txt").get("text"))
         more("Enviar a otro teléfono")
         tap("Buscar teléfonos")
-        tap(wait("PC de prueba", timeout=120)[0].get("text"))
+        wait("PC de prueba", timeout=120)
+        # Mientras busca hay una barra de progreso encima de la lista; al terminar desaparece y la lista
+        # sube: un toque en ese momento cae fuera de la fila.
+        until(lambda: not [n for n in hierarchy().iter("node") if n.get("class") == "android.widget.ProgressBar"],
+              "La búsqueda de teléfonos no terminó", 120)
+        time.sleep(1)
+        tap("PC de prueba")
         until(lambda: 0 in received, "El archivo no llegó al otro equipo", 60)
         offer = received["offer"]["files"][0]
         data = received[0]
@@ -2258,7 +2293,9 @@ def pin_and_open_as():
 def default_apps():
     settings("Aplicaciones")
     tap("Apps predeterminadas")
-    until(lambda: "settings" in focused_window().lower(),
+    # Según la versión, la pantalla es de Ajustes o del controlador de permisos de Android.
+    system = ("com.android.settings", "com.google.android.permissioncontroller", "com.android.permissioncontroller")
+    until(lambda: any(n.get("package") in system for n in hierarchy().iter("node")),
           f"No se abrieron los ajustes de apps predeterminadas de Android: {focused_window()}", 20)
     evidence("apps-predeterminadas-ajustes-de-android")
     ui.launch()
@@ -2306,9 +2343,8 @@ def compression_levels():
     long_press("datos.bin")
     more("Comprimir en ZIP")
     wait("Nivel de compresión")
-    tree = hierarchy()
-    chip = next(n for n in tree.iter("node") if n.get("text") == "Máxima")
-    assert chip.get("selected") == "true" or chip.get("checked") == "true", "El último nivel no se recordó"
+    assert selected("Máxima"), "El último nivel no se recordó"
+    assert not selected("Sin compresión"), "Hay dos niveles marcados a la vez"
     tap("Cancelar")
 
 
@@ -2930,8 +2966,16 @@ if os.environ.get("OI_REMOTE_TEST_ROOT"):
                 time.sleep(0.5)
             raise AssertionError(f"El editor no mostró el archivo remoto: {texts}")
 
+        def remote_text(path):
+            # La app sustituye el archivo del servidor sin perderlo nunca (sube aparte, borra y renombra):
+            # justo entre medias el nombre no existe un instante.
+            try:
+                return path.read_text()
+            except FileNotFoundError:
+                return None
+
         open_and_edit("-editado")
-        until(lambda: remote.read_text() == "original-editado", "El cambio no subió solo al servidor", 90)
+        until(lambda: remote_text(remote) == "original-editado", "El cambio no subió solo al servidor", 90)
         assert not list(server.glob("editar-oi (*")), "Quedó un archivo temporal en el servidor"
         # Conflicto: el servidor cambia mientras se edita.
         launch_home()
@@ -2956,7 +3000,7 @@ if os.environ.get("OI_REMOTE_TEST_ROOT"):
         assert remote.read_text() == "cambiado en el servidor por otra persona", "Se pisó el archivo sin preguntar"
         tap("Subir como copia")
         copy = server / "editar-oi (editado).txt"
-        until(lambda: copy.exists() and copy.read_text() == "original-editado-v2", "No se subió la copia", 90)
+        until(lambda: remote_text(copy) == "original-editado-v2", "No se subió la copia", 90)
         assert remote.read_text() == "cambiado en el servidor por otra persona", "La copia no debe tocar el original"
 
 
