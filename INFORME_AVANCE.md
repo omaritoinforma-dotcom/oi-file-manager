@@ -81,7 +81,7 @@ be58a167b31d49752f399c33ba46bcb23606f307475b45ef745bf5e4053e257b  app-release.ap
 3. **APK nuevo en Android:** verificar las transferencias de red/nube reanudables, RAR/7z nativo, arrastrar entre paneles, gestos, edición/exportación de video con imágenes/fondos/SRT y audio en segundo plano. Las pruebas previas de versiones anteriores no sustituyen esta comprobación.
 4. **Red y hardware:** probar servidores HTTP/FTP y clientes con servidores reales; Bluetooth OBEX, SD/USB y root en dispositivos compatibles y autorizados.
 5. **Revisión estática:** `lintDebug` ya se completa sin errores. Queda decidir sobre sus 21 advertencias, en especial actualizar dependencias y la API objetivo, lo que exige repetir las pruebas en Android.
-6. **Comparación final con ES:** cerrar la matriz de funciones y sus evidencias, incluida cualquier función adicional detectada durante la comparación. No hay un porcentaje fiable de terminación y no se declara el proyecto completo.
+6. **Comparación con ES:** la matriz está en [COMPARACION_ES.md](COMPARACION_ES.md), hecha a partir del APK oficial de ES 4.4.2.2.1 con firma verificada. De 79 filas: 7 comprobadas, 31 implementadas sin comprobar, 10 parciales y 31 que faltan. No se declara el proyecto completo.
 
 Shizuku, bóveda con huella, MCP e instalador propio de paquetes divididos quedan como posibles ampliaciones posteriores; no sustituyen los pendientes del mínimo.
 
