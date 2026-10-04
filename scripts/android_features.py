@@ -787,12 +787,17 @@ def start_window():
         pick_folder("Carpeta de inicio", DIR)
         settings("Ventana inicial")
         tap("Carpeta de inicio")
+        # Android guarda los ajustes en disco en segundo plano; se espera antes de cerrar la app a la fuerza.
+        time.sleep(2)
         ui.launch()
+        time.sleep(2)
+        evidence("ajustes-ventana-inicial-al-abrir")
         # El título muestra la carpeta abierta (la lista puede no mostrar todos los archivos).
         wait("OIPrueba")
         assert not nodes("Categorías", hierarchy()), "Se abrió Inicio en vez de la carpeta de inicio"
         settings("Ventana inicial")
         tap("Última carpeta abierta")
+        time.sleep(2)
         open_test_folder()
         tap(find("ultima").get("text"))
         wait("dentro.txt")
@@ -919,8 +924,8 @@ def cleanup_on_exit():
         open_test_folder()
         ui.drawer("Historial")
         wait("OIPrueba")
-        # Desde Historial no hay botón de menú: se vuelve a Inicio para abrir el menú lateral.
-        ui.back_home()
+        # Desde Historial no hay botón de menú y «Atrás» vuelve a la carpeta: se abre la app en Inicio.
+        launch_home()
         ui.drawer("Salir")
         time.sleep(2)
         adb("shell", "am", "start", "-W", "-n", f"{ui.PACKAGE}/.MainActivity")

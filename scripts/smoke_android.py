@@ -26,10 +26,26 @@ OUTPUT.mkdir(exist_ok=True)
 CHECKS = []
 
 
+# Mensajes de adb cuando se corta la conexión con el emulador (no son fallos de la app).
+TRANSPORT_ERRORS = ("device offline", "error: closed", "no devices/emulators found", "protocol fault", "device not found")
+
+
 def adb(*args, check=True):
-    return subprocess.run(
-        ["adb", *args], capture_output=True, text=True, check=check, timeout=30
-    ).stdout
+    """Ejecuta adb. Si se corta la conexión con el emulador, reintenta; si falla de verdad, el
+    error incluye lo que adb respondió (antes solo se veía el código de salida)."""
+    for attempt in range(4):
+        result = subprocess.run(["adb", *args], capture_output=True, text=True, timeout=30)
+        transport = any(e in (result.stderr or "") for e in TRANSPORT_ERRORS)
+        if result.returncode == 0 or not transport or attempt == 3:
+            break
+        print(f"  adb sin conexión ({result.stderr.strip()[:80]}); reintento", flush=True)
+        time.sleep(2 + attempt * 2)
+        subprocess.run(["adb", "wait-for-device"], timeout=60)
+    if check and result.returncode != 0:
+        raise AssertionError(
+            f"adb {' '.join(args)} terminó con {result.returncode}: "
+            f"{(result.stderr or result.stdout).strip()[:300]}")
+    return result.stdout
 
 
 def hierarchy():
