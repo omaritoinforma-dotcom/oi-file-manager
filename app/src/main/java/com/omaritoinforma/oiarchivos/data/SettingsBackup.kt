@@ -54,6 +54,8 @@ object SettingsBackup {
             "pinned" to Kind.Folders,
             "compression_level" to choice(CompressionLevel.entries.toTypedArray()),
             "accent" to choice(AccentColor.entries.toTypedArray()),
+            "drawer_order" to Kind.Choices(DrawerEntry.entries.map { it.name }.toSet()),
+            "drawer_hidden" to Kind.Choices(DrawerEntry.entries.map { it.name }.toSet()),
             "pure_black" to Kind.Flag,
             "thumbnails" to Kind.Flag,
             "history_folders_only" to Kind.Flag,

@@ -57,7 +57,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Categorías (imágenes, música, vídeo, documentos, APK, comprimidos) | ✅ | Emulador Android 15 (Documentos; el resto usa la misma consulta) |
 | Subcategorías de ES: libros electrónicos, capturas, grabaciones, Office separado (DOC/XLS/PPT), «último abierto o creado» | 🟡 | Libros, Capturas, Grabaciones, Word, Excel y PowerPoint en Inicio, por carpeta y tipo; «Recientes» muestra lo último modificado o creado y lo último abierto está en Historial. Reglas con pruebas locales; comprobación en el emulador preparada |
 | Gestos configurables | ✅ | Emulador Android 15 |
-| Barra lateral personalizable y diseño de la barra de herramientas | ❌ | |
+| Barra lateral personalizable y diseño de la barra de herramientas | 🟠 | Menú lateral: ocultar y reordenar cada opción (Inicio, Ajustes y Salir siempre se ven), con comprobación en el emulador preparada; falta el diseño de la barra de herramientas |
 | Temas: claro y oscuro | ✅ | Emulador Android 15 (brillo de pantalla medido) |
 | Temas: colores, fondo, estilo de carpetas | 🟠 | Color de la app (azul, rojo, verde, naranja, morado, turquesa, rosa o los del sistema) y fondo negro puro con el tema oscuro, con comprobación en el emulador preparada; faltan el fondo con imagen y el estilo de carpetas |
 | Idioma dentro de la app | ❌ | Hoy sigue el idioma del sistema |
@@ -155,8 +155,8 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 32 |
 | 🟡 Implementadas, sin comprobar | 24 |
-| 🟠 Parciales | 11 |
-| ❌ Faltan | 12 |
+| 🟠 Parciales | 12 |
+| ❌ Faltan | 11 |
 | **Total de filas** | **79** |
 
 **OI Archivos no cubre todavía el mínimo.** Las funciones que faltan más grandes, por valor para el usuario:

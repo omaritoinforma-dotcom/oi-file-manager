@@ -1891,6 +1891,33 @@ def theme_color_and_black():
         time.sleep(1)
 
 
+@check("barra-lateral-ocultar-y-reordenar")
+def drawer_customize():
+    try:
+        settings("Barra lateral")
+        set_switch("Historial", False)
+        tap("Bajar Descargas")
+        time.sleep(1)
+        # Lo elegido se aplica en el menú lateral (también tras reiniciar la app).
+        launch_home()
+        tap("Menú")
+        wait("Descargas")
+        wait("Raíz del sistema")
+        assert row_top("Raíz del sistema") < row_top("Descargas"), "El orden elegido no se aplicó al menú"
+        for _ in range(4):
+            adb("shell", "input", "swipe", "280", "1600", "280", "500", "400")
+            time.sleep(0.4)
+        tree = hierarchy()
+        assert not nodes("Historial", tree), "«Historial» sigue en el menú aunque se ocultó"
+        assert nodes("Ajustes", tree) and nodes("Salir", tree), "«Ajustes» y «Salir» deben verse siempre"
+        evidence("barra-lateral-personalizada")
+    finally:
+        settings("Barra lateral")
+        if nodes("Restablecer", hierarchy()):
+            tap("Restablecer")
+        time.sleep(2)
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()

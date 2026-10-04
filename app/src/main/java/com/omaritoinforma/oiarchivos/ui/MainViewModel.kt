@@ -219,6 +219,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val compressionLevel =
         PrefState({ prefs.compressionLevel }, { prefs.compressionLevel = it })
     val accent = PrefState({ prefs.accent }, { prefs.accent = it })
+    val drawerOrder = PrefState({ prefs.drawerOrder }, { prefs.drawerOrder = it })
+    val drawerHidden = PrefState({ prefs.drawerHidden }, { prefs.drawerHidden = it })
     val pureBlack = PrefState({ prefs.pureBlack }, { prefs.pureBlack = it })
 
     /** Rutas fijadas arriba en las listas de archivos. */
@@ -384,6 +386,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             compressionLevel,
             accent,
             pureBlack,
+            drawerOrder,
+            drawerHidden,
             lockStart,
             lockNetwork,
             lockHidden)

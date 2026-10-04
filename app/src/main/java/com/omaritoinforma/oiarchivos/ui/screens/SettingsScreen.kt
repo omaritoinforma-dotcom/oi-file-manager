@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -29,6 +30,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -67,6 +70,7 @@ import com.omaritoinforma.oiarchivos.BuildConfig
 import com.omaritoinforma.oiarchivos.data.AccentColor
 import com.omaritoinforma.oiarchivos.data.AutoBackup
 import com.omaritoinforma.oiarchivos.data.BackupKind
+import com.omaritoinforma.oiarchivos.data.DrawerLayout
 import com.omaritoinforma.oiarchivos.data.GestureAction
 import com.omaritoinforma.oiarchivos.data.NewFileKind
 import com.omaritoinforma.oiarchivos.data.Prefs
@@ -91,6 +95,7 @@ private enum class Section(val group: String, val title: String, val summary: St
     CLEANUP("General", "Limpieza", "Borrar el historial y la caché"),
     FOLDERS("General", "Carpetas", "Carpeta de inicio y carpeta de descargas"),
     START("General", "Ventana inicial", "Qué se abre al iniciar la app"),
+    DRAWER("General", "Barra lateral", "Ocultar y ordenar las opciones del menú lateral"),
     NOTIFICATIONS("General", "Notificaciones", "Aviso al terminar, espacio bajo y archivos nuevos"),
     AUTO_BACKUP("Red y nube", "Copia automática", "Subir fotos, vídeos, música y carpetas a una conexión"),
     PASSWORD("Seguridad", "Contraseña", "Proteger la app, las conexiones y los archivos ocultos"),
@@ -130,6 +135,7 @@ fun SettingsScreen(vm: MainViewModel) {
                 Section.CLEANUP -> item { CleanupSettings(vm) }
                 Section.FOLDERS -> item { FolderSettings(vm) }
                 Section.START -> item { StartSettings(vm) }
+                Section.DRAWER -> item { DrawerSettings(vm) }
                 Section.NOTIFICATIONS -> item { NotificationSettings(vm) }
                 Section.AUTO_BACKUP -> item { AutoBackupSettings(vm) }
                 Section.PASSWORD -> item { PasswordSettings(vm) }
@@ -295,6 +301,61 @@ private fun FolderSettings(vm: MainViewModel) {
                 setting.value = it
                 picking = null
             })
+    }
+}
+
+@Composable
+private fun DrawerSettings(vm: MainViewModel) {
+    val order = DrawerLayout.order(vm.drawerOrder.value)
+    Column {
+        Text(
+            "Elige qué opciones salen en el menú lateral y en qué orden. «Inicio», «Ajustes» y " +
+                "«Salir» siempre se ven.",
+            Modifier.padding(16.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        order.forEachIndexed { index, entry ->
+            val shown = entry.name !in vm.drawerHidden.value
+            ListItem(
+                headlineContent = { Text(entry.label) },
+                leadingContent = {
+                    Switch(
+                        checked = shown,
+                        onCheckedChange = { on ->
+                            vm.drawerHidden.value =
+                                if (on) vm.drawerHidden.value - entry.name
+                                else vm.drawerHidden.value + entry.name
+                        })
+                },
+                trailingContent = {
+                    Row {
+                        IconButton(
+                            onClick = {
+                                vm.drawerOrder.value =
+                                    DrawerLayout.move(vm.drawerOrder.value, entry, -1)
+                            },
+                            enabled = index > 0) {
+                                Icon(Icons.Filled.ArrowUpward, "Subir ${entry.label}")
+                            }
+                        IconButton(
+                            onClick = {
+                                vm.drawerOrder.value =
+                                    DrawerLayout.move(vm.drawerOrder.value, entry, 1)
+                            },
+                            enabled = index < order.lastIndex) {
+                                Icon(Icons.Filled.ArrowDownward, "Bajar ${entry.label}")
+                            }
+                    }
+                })
+        }
+        if (vm.drawerOrder.value.isNotEmpty() || vm.drawerHidden.value.isNotEmpty())
+            TextButton(
+                onClick = {
+                    vm.drawerOrder.value = emptyList()
+                    vm.drawerHidden.value = emptySet()
+                },
+                modifier = Modifier.padding(horizontal = 8.dp)) {
+                    Text("Restablecer")
+                }
     }
 }
 

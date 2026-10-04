@@ -78,6 +78,15 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("pure_black", false)
         set(v) = sp.edit().putBoolean("pure_black", v).apply()
 
+    /** Orden del menú lateral (nombres de [DrawerEntry]); vacío = el de fábrica. */
+    var drawerOrder: List<String>
+        get() = sp.getString("drawer_order", "").orEmpty().split(',').filter { it.isNotBlank() }
+        set(v) = sp.edit().putString("drawer_order", v.joinToString(",")).apply()
+
+    var drawerHidden: Set<String>
+        get() = sp.getString("drawer_hidden", "").orEmpty().split(',').filter { it.isNotBlank() }.toSet()
+        set(v) = sp.edit().putString("drawer_hidden", v.joinToString(",")).apply()
+
     // ---- Pantalla ----
 
     var thumbnails: Boolean

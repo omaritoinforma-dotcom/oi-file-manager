@@ -86,6 +86,8 @@ import androidx.core.content.ContextCompat
 import com.omaritoinforma.oiarchivos.data.Conflict
 import com.omaritoinforma.oiarchivos.data.GestureAction
 import com.omaritoinforma.oiarchivos.data.OpProgress
+import com.omaritoinforma.oiarchivos.data.DrawerEntry
+import com.omaritoinforma.oiarchivos.data.DrawerLayout
 import com.omaritoinforma.oiarchivos.ui.components.LocalPinned
 import com.omaritoinforma.oiarchivos.ui.components.LocalThumbnails
 import com.omaritoinforma.oiarchivos.ui.screens.*
@@ -363,15 +365,9 @@ private fun AppDrawer(vm: MainViewModel, close: () -> Unit) {
                         close()
                     }
             }
-            DrawerItem("Descargas", Icons.Filled.Download) {
-                vm.openFolder(
-                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                        .absolutePath)
-                close()
-            }
-            DrawerItem("Raíz del sistema", Icons.Filled.Dns) {
-                vm.openFolder("/")
-                close()
+            // Las opciones se pueden ocultar y reordenar en Ajustes → Barra lateral.
+            DrawerLayout.visible(vm.drawerOrder.value, vm.drawerHidden.value).forEach { entry ->
+                DrawerEntryItem(vm, entry, close)
             }
             if (vm.bookmarks.isNotEmpty()) {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
@@ -388,45 +384,6 @@ private fun AppDrawer(vm: MainViewModel, close: () -> Unit) {
                 }
             }
             HorizontalDivider(Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
-            DrawerItem("Papelera", Icons.Filled.Delete, vm.screen == Screen.Trash) {
-                vm.goTo(Screen.Trash)
-                close()
-            }
-            DrawerItem("Aplicaciones", Icons.Filled.Apps, vm.screen == Screen.Apps) {
-                vm.goTo(Screen.Apps)
-                close()
-            }
-            DrawerItem("Red, nube y USB", Icons.Filled.Dns, vm.screen == Screen.Connections) {
-                vm.goTo(Screen.Connections)
-                close()
-            }
-            DrawerItem("Analizar espacio", Icons.Filled.SdCard) {
-                vm.goTo(Screen.Analysis(PathUtil.internalRoot))
-                close()
-            }
-            DrawerItem(
-                "Listas de reproducción",
-                Icons.AutoMirrored.Filled.QueueMusic,
-                vm.screen == Screen.Playlists) {
-                    vm.goTo(Screen.Playlists)
-                    close()
-                }
-            DrawerItem("Limpiar basura", Icons.Filled.Delete, vm.screen == Screen.Cleaner) {
-                vm.goTo(Screen.Cleaner)
-                close()
-            }
-            DrawerItem("Transferencias", Icons.Filled.Download, vm.screen == Screen.Transfers) {
-                vm.goTo(Screen.Transfers)
-                close()
-            }
-            DrawerItem("Historial", Icons.Filled.Folder, vm.screen == Screen.History) {
-                vm.goTo(Screen.History)
-                close()
-            }
-            DrawerItem("Root con Magisk", Icons.Filled.Dns, vm.screen == Screen.RootTools) {
-                vm.goTo(Screen.RootTools)
-                close()
-            }
             DrawerItem("Ajustes", Icons.Filled.Settings, vm.screen == Screen.Settings) {
                 vm.goTo(Screen.Settings)
                 close()
@@ -438,6 +395,52 @@ private fun AppDrawer(vm: MainViewModel, close: () -> Unit) {
                 activity?.finishAndRemoveTask()
             }
         }
+    }
+}
+
+@Composable
+private fun DrawerEntryItem(vm: MainViewModel, entry: DrawerEntry, close: () -> Unit) {
+    val go: (Screen) -> Unit = {
+        vm.goTo(it)
+        close()
+    }
+    when (entry) {
+        DrawerEntry.DOWNLOADS ->
+            DrawerItem(entry.label, Icons.Filled.Download) {
+                vm.openFolder(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                        .absolutePath)
+                close()
+            }
+        DrawerEntry.ROOT_DIR ->
+            DrawerItem(entry.label, Icons.Filled.Dns) {
+                vm.openFolder("/")
+                close()
+            }
+        DrawerEntry.TRASH ->
+            DrawerItem(entry.label, Icons.Filled.Delete, vm.screen == Screen.Trash) { go(Screen.Trash) }
+        DrawerEntry.APPS ->
+            DrawerItem(entry.label, Icons.Filled.Apps, vm.screen == Screen.Apps) { go(Screen.Apps) }
+        DrawerEntry.NETWORK ->
+            DrawerItem(entry.label, Icons.Filled.Dns, vm.screen == Screen.Connections) {
+                go(Screen.Connections)
+            }
+        DrawerEntry.ANALYZE ->
+            DrawerItem(entry.label, Icons.Filled.SdCard) { go(Screen.Analysis(PathUtil.internalRoot)) }
+        DrawerEntry.PLAYLISTS ->
+            DrawerItem(entry.label, Icons.AutoMirrored.Filled.QueueMusic, vm.screen == Screen.Playlists) {
+                go(Screen.Playlists)
+            }
+        DrawerEntry.CLEANER ->
+            DrawerItem(entry.label, Icons.Filled.Delete, vm.screen == Screen.Cleaner) { go(Screen.Cleaner) }
+        DrawerEntry.TRANSFERS ->
+            DrawerItem(entry.label, Icons.Filled.Download, vm.screen == Screen.Transfers) {
+                go(Screen.Transfers)
+            }
+        DrawerEntry.HISTORY ->
+            DrawerItem(entry.label, Icons.Filled.Folder, vm.screen == Screen.History) { go(Screen.History) }
+        DrawerEntry.ROOT_TOOLS ->
+            DrawerItem(entry.label, Icons.Filled.Dns, vm.screen == Screen.RootTools) { go(Screen.RootTools) }
     }
 }
 
