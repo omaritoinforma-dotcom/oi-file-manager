@@ -1,17 +1,17 @@
 # Comparación con ES File Explorer
 
-Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android: `scripts/android_features.py`, 21/21 aprobadas). Esta matriz define el **mínimo** del proyecto: cada función de ES que un usuario puede usar, frente a su estado en OI Archivos.
+Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android: `scripts/android_features.py`, 24/24 aprobadas). Esta matriz define el **mínimo** del proyecto: cada función de ES que un usuario puede usar, frente a su estado en OI Archivos.
 
 ## Fuente y método
 
 - **APK analizado:** ES File Explorer 4.4.2.2.1 (código 15036), paquete `com.estrongs.android.pop`, SHA-256 `0f9f18684653696b1146700046f12e313c01e9fd5b794db35f6ba913cbc7c853`, obtenido de la réplica de APKPure.
 - **Autenticidad:** firmado con el certificado oficial de ES (`CN=xiao, OU=estrongs, O=estrongs`, SHA-256 `08e7cf9d166f82553fc89a447adaff3bf17ab53ea79b9743c250fcdfc57fa75b`). Es el mismo certificado que el APK 4.2.8.1 enlazado desde `estrongs.com`.
 - **Versión:** la tienda de Xiaomi publica la 4.4.3.7 (4 de agosto de 2026), pero no sirve el archivo sin su aplicación. La 4.4.2.2.1 es la más reciente con firma verificable que se pudo descargar; puede faltar algún cambio menor posterior.
-- **Análisis estático, sin ejecutar ES:**
+- **Análisis estático, sin ejecutar ES** (código descompilado con jadx 1.5.1 para entender cómo funciona cada parte):
   - Manifiesto: 168 pantallas, servicios y receptores, y 43 permisos.
   - 3.283 textos de la interfaz (2.236 traducidos al español).
   - Nombres de servicios y protocolos presentes en el código compilado.
-- **No se copia código ni recursos de ES.** El APK no se guarda en el repositorio porque es software propietario; el hash permite volver a obtener el mismo archivo.
+- **Se estudia el código de ES como inspiración, pero no se copia código ni recursos.** El APK no se guarda en el repositorio porque es software propietario; el hash permite volver a obtener el mismo archivo.
 
 ## Leyenda
 
@@ -111,7 +111,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | --- | --- | --- |
 | FTP, SFTP, WebDAV | ✅ | Servidores reales en el host; descarga SFTP reanudada en el emulador |
 | FTPS, SMB 1/2 | 🟡 | Falta un servidor de prueba |
-| Buscar equipos en la red local (LAN) | ❌ | Hay que escribir la dirección a mano |
+| Buscar equipos en la red local (LAN) | ✅ | Emulador Android 15: encuentra el servidor FTP del equipo de CI (10.0.2.2:21) y abre la conexión ya rellenada. Anuncios mDNS y puertos 445, 21, 990 y 22; SFTP y FTP se confirman por su saludo |
 | NFS | ❌ | |
 | Google Drive, Dropbox, OneDrive, Box, Yandex, S3, Baidu, SugarSync | 🟡 | Faltan registros OAuth y cuentas reales |
 | MediaFire, Flickr, Instagram, Facebook, Nutstore (坚果云), China Mobile Cloud (中国移动云盘) | ❌ | |
@@ -120,7 +120,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Subir automáticamente un archivo remoto editado en otra app | ❌ | |
 | Servidor FTP para gestionar el teléfono desde el PC | 🟡 | Solo modo pasivo; faltan modo activo, elegir codificación y acceso directo |
 | Servidor HTTP desde el navegador | ✅ | Emulador |
-| Enviar archivos entre teléfonos (ES Sender: misma Wi-Fi, punto de acceso, código QR) | ❌ | |
+| Enviar archivos entre teléfonos (ES Sender: misma Wi-Fi, punto de acceso, código QR) | 🟠 | Misma Wi-Fi: enviar y recibir comprobados en el emulador, con aceptación y SHA-256 por archivo; faltan punto de acceso y código QR |
 | Crear un punto de acceso Wi-Fi para transferir | ❌ | |
 | Enviar a la TV: DLNA/UPnP y Chromecast | ❌ | |
 | Instalar y gestionar una Android TV por ADB | ❌ | |
@@ -153,25 +153,25 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 
 | Estado | Funciones |
 | --- | ---: |
-| ✅ Comprobadas en su entorno real | 23 |
+| ✅ Comprobadas en su entorno real | 24 |
 | 🟡 Implementadas, sin comprobar | 15 |
-| 🟠 Parciales | 10 |
-| ❌ Faltan | 31 |
+| 🟠 Parciales | 11 |
+| ❌ Faltan | 29 |
 | **Total de filas** | **79** |
 
 **OI Archivos no cubre todavía el mínimo.** Las funciones que faltan más grandes, por valor para el usuario:
 
-1. Enviar archivos entre teléfonos (ES Sender).
-2. Enviar a la TV por DLNA o Chromecast.
-3. Buscar equipos en la red local.
-4. Reproducir desde red sin descargar.
-5. Copia automática a la nube.
-6. Gestor de descargas.
-7. Contraseña de la app y de los recursos.
-8. Portapapeles visible.
-9. Listas de reproducción y tonos.
-10. Limpieza de basura completa.
-11. Instalación y desinstalación por lotes.
-12. Aviso de archivos nuevos.
+1. Enviar a la TV por DLNA o Chromecast.
+2. Reproducir desde red sin descargar.
+3. Copia automática a la nube.
+4. Gestor de descargas.
+5. Contraseña de la app y de los recursos.
+6. Ajustes de ES: limpieza al salir, carpetas, ventana inicial, copia de ajustes.
+7. Portapapeles visible.
+8. Listas de reproducción y tonos.
+9. Limpieza de basura completa.
+10. Instalación y desinstalación por lotes.
+11. Aviso de archivos nuevos.
+12. Enviar entre teléfonos por punto de acceso o código QR.
 
-Los recuentos son por fila de esta matriz; una fila puede agrupar varias funciones pequeñas. Solo 23 de 79 cumplen ya el criterio de terminación (conectadas y comprobadas en su entorno real).
+Los recuentos son por fila de esta matriz; una fila puede agrupar varias funciones pequeñas. Solo 24 de 79 cumplen ya el criterio de terminación (conectadas y comprobadas en su entorno real).
