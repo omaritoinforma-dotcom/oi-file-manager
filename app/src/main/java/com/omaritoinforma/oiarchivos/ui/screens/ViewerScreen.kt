@@ -187,6 +187,29 @@ fun StreamScreen(vm: MainViewModel, url: String, title: String) {
         }
 }
 
+/** Reproduce una lista guardada; las pistas que ya no están en el teléfono se saltan. */
+@Composable
+fun PlaylistPlayerScreen(vm: MainViewModel, name: String, start: Int) {
+    val files =
+        remember(name) {
+            runCatching { vm.playlists.read(name).tracks }
+                .getOrDefault(emptyList())
+                .map(::File)
+                .filter { it.isFile }
+        }
+    ToolPage(name, vm) { pad ->
+        if (files.isEmpty())
+            Text("No hay pistas que reproducir.", Modifier.padding(pad).padding(16.dp))
+        else {
+            val items =
+                remember(files) { files.map { PlayItem(Uri.fromFile(it), it.path, it.name) } }
+            val audio = files.all { Kinds.ofExt(it.extension.lowercase()) == FileKind.AUDIO }
+            MediaPlayer(
+                items, start.coerceIn(0, items.lastIndex), audio, Modifier.fillMaxSize().padding(pad))
+        }
+    }
+}
+
 @Composable
 @androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
 private fun MediaPlayer(items: List<PlayItem>, start: Int, audio: Boolean, modifier: Modifier) {

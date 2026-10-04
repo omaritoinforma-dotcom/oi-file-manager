@@ -31,6 +31,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowUpward
@@ -421,6 +422,8 @@ private fun SelectionBottomBar(
     val files = selectedItems.filter { !it.isDirectory }
     var menu by remember { mutableStateOf(false) }
     var ringtone by remember { mutableStateOf<java.io.File?>(null) }
+    var playlistPaths by remember { mutableStateOf<List<String>?>(null) }
+    playlistPaths?.let { paths -> AddToPlaylistDialog(vm, paths) { playlistPaths = null } }
     ringtone?.let { audio ->
         AlertDialog(
             onDismissRequest = { ringtone = null },
@@ -475,6 +478,11 @@ private fun SelectionBottomBar(
                         vm.clearSelection()
                         vm.goTo(Screen.Nearby)
                     }
+                    if (files.all { Kinds.of(it) in setOf(FileKind.AUDIO, FileKind.VIDEO) })
+                        MenuItem("Añadir a lista de reproducción", Icons.AutoMirrored.Filled.PlaylistAdd) {
+                            menu = false
+                            playlistPaths = files.map { it.path }
+                        }
                     val media = files.singleOrNull()?.takeIf {
                         Kinds.of(it) in setOf(FileKind.IMAGE, FileKind.AUDIO, FileKind.VIDEO)
                     }

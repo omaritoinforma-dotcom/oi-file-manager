@@ -31,6 +31,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Delete
@@ -159,6 +160,9 @@ private fun MainContent(vm: MainViewModel) {
             is Screen.Stream -> StreamScreen(vm, screen.url, screen.title)
             Screen.Cast -> CastScreen(vm)
             Screen.Cleaner -> CleanerScreen(vm)
+            Screen.Playlists -> PlaylistsScreen(vm)
+            is Screen.Playlist -> PlaylistScreen(vm, screen.name)
+            is Screen.PlayPlaylist -> PlaylistPlayerScreen(vm, screen.name, screen.start)
         }
     }
     Overlays(vm)
@@ -397,6 +401,13 @@ private fun AppDrawer(vm: MainViewModel, close: () -> Unit) {
                 vm.goTo(Screen.Analysis(PathUtil.internalRoot))
                 close()
             }
+            DrawerItem(
+                "Listas de reproducción",
+                Icons.AutoMirrored.Filled.QueueMusic,
+                vm.screen == Screen.Playlists) {
+                    vm.goTo(Screen.Playlists)
+                    close()
+                }
             DrawerItem("Limpiar basura", Icons.Filled.Delete, vm.screen == Screen.Cleaner) {
                 vm.goTo(Screen.Cleaner)
                 close()

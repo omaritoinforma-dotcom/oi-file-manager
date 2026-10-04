@@ -110,6 +110,14 @@ sealed interface Screen {
 
     /** Limpiar basura. */
     data object Cleaner : Screen
+
+    /** Listas de reproducción guardadas. */
+    data object Playlists : Screen
+
+    data class Playlist(val name: String) : Screen
+
+    /** Reproduce una lista guardada empezando por la pista [start]. */
+    data class PlayPlaylist(val name: String, val start: Int = 0) : Screen
 }
 
 data class PendingPaste(
@@ -841,6 +849,38 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** «Poner como tono»; si falta el permiso de ajustes del sistema, abre la pantalla para darlo. */
+    // ---------------- Listas de reproducción ----------------
+
+    val playlists = com.omaritoinforma.oiarchivos.data.Playlists(File(ctx.filesDir, "listas"))
+
+    var playlistNames by mutableStateOf<List<String>>(emptyList())
+        private set
+
+    fun refreshPlaylists() {
+        playlistNames = runCatching { playlists.names() }.getOrDefault(emptyList())
+    }
+
+    /** Hace un cambio en las listas; si falla, avisa con el motivo y devuelve false. */
+    fun editPlaylists(done: String? = null, change: () -> Unit): Boolean {
+        val ok =
+            runCatching(change)
+                .onFailure { toast(it.message ?: "No se pudo cambiar la lista") }
+                .isSuccess
+        if (ok && done != null) toast(done)
+        refreshPlaylists()
+        return ok
+    }
+
+    fun addToPlaylist(name: String, paths: List<String>) {
+        var added = 0
+        if (editPlaylists { added = playlists.add(name, paths) }) {
+            clearSelection()
+            toast(
+                if (added == 0) "Ya estaban en «${name.trim()}»"
+                else "$added añadido(s) a «${name.trim()}»")
+        }
+    }
+
     fun setRingtone(file: File, kind: com.omaritoinforma.oiarchivos.util.Ringtones.Kind) {
         val tones = com.omaritoinforma.oiarchivos.util.Ringtones
         if (!tones.canWrite(ctx)) {

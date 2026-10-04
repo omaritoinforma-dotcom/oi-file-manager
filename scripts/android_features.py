@@ -1340,6 +1340,47 @@ def junk_cleaner():
 
 
 
+@check("listas-de-reproduccion")
+def playlists():
+    sh("rm", "-rf", q(f"{DIR}/lista"), check=False)
+    sh("mkdir", "-p", q(f"{DIR}/lista"))
+    for name in ("uno.wav", "dos.wav"):
+        sh("cp", q(f"{DIR}/tono.wav"), q(f"{DIR}/lista/{name}"))
+
+    def top(label):
+        node = wait(label)[0]
+        return int(re.findall(r"\d+", node.get("bounds"))[1])
+
+    try:
+        open_test_folder()
+        tap(find("lista").get("text"))
+        long_press("uno.wav")
+        tap("dos.wav")
+        menu_option("Añadir a lista de reproducción")
+        tap("Nueva lista…")
+        fill("Nombre de la lista", "Viaje")
+        tap_last("Aceptar")
+        wait_text("2 añadido(s) a «Viaje»")
+        # La lista sigue ahí al volver a abrir la app.
+        launch_home()
+        ui.drawer("Listas de reproducción")
+        wait("2 pista(s)")
+        tap("Viaje")
+        assert top("uno.wav") < top("dos.wav"), "Las pistas no están en el orden en que se añadieron"
+        tap("Bajar")
+        until(lambda: top("dos.wav") < top("uno.wav"), "«Bajar» no cambió el orden", 10)
+        adb("shell", "input", "keyevent", "4")
+        tap("Viaje")
+        assert top("dos.wav") < top("uno.wav"), "El nuevo orden no se guardó"
+        tap("Reproducir")
+        until(media_playing, "La lista no empezó a reproducirse", 20)
+        # Empieza por la primera pista de la lista, que ahora es dos.wav.
+        wait("dos.wav")
+        evidence("listas-de-reproduccion-sonando")
+    finally:
+        adb("shell", "am", "force-stop", ui.PACKAGE)
+
+
 @check("editor-sangria-y-guardado-automatico")
 def editor_options():
     push_bytes(b"  hola", f"{DIR}/codigo.txt")
