@@ -143,6 +143,15 @@ class Prefs(context: Context) {
         set(v) = sp.edit().putBoolean("low_space_warning", v).apply()
 
     /** Se avisa cuando quedan menos de estos MB libres. */
+    /** Puerto del servidor FTP del teléfono; 0 elige uno libre en cada inicio. */
+    var ftpPort: Int
+        get() = sp.getInt("ftp_port", 0).let { if (it in 1024..65535) it else 0 }
+        set(v) = sp.edit().putInt("ftp_port", if (v in 1024..65535) v else 0).apply()
+
+    var ftpEncoding: FtpEncoding
+        get() = enumOr(sp.getString("ftp_encoding", null), FtpEncoding.UTF8)
+        set(v) = sp.edit().putString("ftp_encoding", v.name).apply()
+
     var lowSpaceMb: Int
         get() = sp.getInt("low_space_mb", 1024)
         set(v) = sp.edit().putInt("low_space_mb", v.coerceIn(100, 102400)).apply()

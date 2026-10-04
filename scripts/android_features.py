@@ -692,6 +692,42 @@ def player_repeat_and_shuffle():
     adb("shell", "input", "keyevent", "4")
 
 
+@check("servidor-ftp-puerto-fijo-codificacion-y-modo-activo")
+def ftp_server_options():
+    port = "2299"
+    launch_home()
+    ui.drawer("Red, nube y USB")
+    tap("Compartir por Wi-Fi / FTP")
+    fill("Puerto FTP (vacío: automático)", port)
+    tap_node(find("ISO-8859-1 (Europa occidental)"))
+    evidence("servidor-ftp-opciones")
+    tap_node(find("Servidor FTP"))
+    try:
+        _, tree = wait("Detener servidor")
+        text = "\n".join(n.get("text", "") for n in tree.iter("node"))
+        address, shown = re.search(r"ftp://([^:]+):(\d+)/", text).groups()
+        assert shown == port, f"El servidor no usa el puerto elegido: {shown}"
+        password = re.search(r"Contraseña: (\S+)", text).group(1)
+        own = address.replace(".", ",")
+        dialog = (f"USER oi\r\nPASS {password}\r\nFEAT\r\nOPTS UTF8 ON\r\n"
+                  f"PORT {own},200,10\r\nPORT 8,8,8,8,200,10\r\nPORT {own},0,21\r\nQUIT\r\n")
+        out = subprocess.run(["adb", "shell", "toybox", "nc", "-w", "10", address, port],
+                             input=dialog.encode(), capture_output=True, timeout=40).stdout.decode("latin-1")
+        (OUTPUT / "servidor-ftp-dialogo.txt").write_text(out, encoding="utf-8")
+        assert out.startswith("220"), f"Sin saludo del servidor FTP: {out[:200]!r}"
+        assert "230 " in out, "No se pudo iniciar sesión con la contraseña mostrada"
+        features = out[out.index("211-Features"):out.index("211 End")]
+        assert "UTF8" not in features and "EPRT" in features, f"FEAT: {features!r}"
+        # Con los nombres en ISO-8859-1 no se acepta pasar a UTF-8.
+        assert "504 Los nombres van en ISO-8859-1" in out, "OPTS UTF8 ON no se rechazó"
+        # Modo activo: a la propia dirección sí; a otra dirección o a un puerto bajo, no.
+        assert "200 PORT aceptado" in out, "PORT a la propia dirección no se aceptó"
+        assert out.count("504 Solo se conecta a tu propia dirección") == 2, "No se rechazaron los PORT peligrosos"
+    finally:
+        tap("Detener servidor")
+        wait("Servidor FTP")
+
+
 @check("analizar-espacio-grandes-y-duplicados")
 def analysis():
     open_test_folder()

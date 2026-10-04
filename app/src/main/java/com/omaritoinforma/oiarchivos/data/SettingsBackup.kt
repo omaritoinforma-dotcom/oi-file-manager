@@ -67,6 +67,8 @@ object SettingsBackup {
             "close_notification" to Kind.Flag,
             "low_space_warning" to Kind.Flag,
             "low_space_mb" to Kind.Number(100..102400),
+            "ftp_port" to Kind.Number(0..65535),
+            "ftp_encoding" to choice(FtpEncoding.entries.toTypedArray()),
             "new_files_notify" to Kind.Flag,
             "daily_report" to Kind.Flag,
             "new_files_kinds" to Kind.Choices(NewFileKind.entries.map { it.name }.toSet()),

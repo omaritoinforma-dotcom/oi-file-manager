@@ -32,6 +32,18 @@ fun File.toItem(): FileItem {
 
 enum class ViewMode { LIST, DETAILS, GRID }
 
+/** Codificación de los nombres de archivo del servidor FTP del teléfono («Codificación» de ES). */
+enum class FtpEncoding(val label: String, private val charsetName: String) {
+    UTF8("UTF-8", "UTF-8"),
+    LATIN1("ISO-8859-1 (Europa occidental)", "ISO-8859-1"),
+    WINDOWS_1252("Windows-1252", "windows-1252"),
+    GBK("GBK (chino simplificado)", "GBK"),
+    SHIFT_JIS("Shift_JIS (japonés)", "Shift_JIS");
+
+    val charset: java.nio.charset.Charset
+        get() = runCatching { java.nio.charset.Charset.forName(charsetName) }.getOrDefault(Charsets.UTF_8)
+}
+
 enum class SortBy(val label: String) { NAME("Nombre"), DATE("Fecha"), SIZE("Tamaño"), TYPE("Tipo") }
 
 enum class ThemeMode(val label: String) { SYSTEM("Según el sistema"), LIGHT("Claro"), DARK("Oscuro") }

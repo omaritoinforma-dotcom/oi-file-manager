@@ -266,6 +266,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             scheduleStorageWatch()
             if (it) checkSpaceNow()
         })
+    val ftpPort = PrefState({ prefs.ftpPort }, { prefs.ftpPort = it })
+    val ftpEncoding = PrefState({ prefs.ftpEncoding }, { prefs.ftpEncoding = it })
     val lowSpaceMb = PrefState({ prefs.lowSpaceMb }, {
         prefs.lowSpaceMb = it
         prefs.lowSpaceWarned = false
@@ -455,6 +457,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             closeNotificationWhenDone,
             lowSpaceWarning,
             lowSpaceMb,
+            ftpPort,
+            ftpEncoding,
             newFilesNotify,
             newFilesKinds,
             dailyReport,

@@ -9,6 +9,7 @@ import androidx.core.content.ContextCompat
 import fi.iki.elonen.NanoHTTPD
 import java.io.*
 import java.net.*
+import java.nio.charset.Charset
 import java.nio.file.Files
 import java.security.MessageDigest
 import java.security.SecureRandom
@@ -71,8 +72,14 @@ class ShareService : Service() {
             val mode = intent.getStringExtra("mode") ?: "HTTP"
             val port =
                 if (mode == "FTP") {
-                    ftp = LocalFtp(root, address, password).apply { start() }
-                    ftp!!.port
+                    val prefs = Prefs(this)
+                    ftp =
+                        try {
+                            LocalFtp(root, address, password, prefs.ftpPort, prefs.ftpEncoding.charset)
+                        } catch (e: BindException) {
+                            throw IOException("El puerto ${prefs.ftpPort} está ocupado: elige otro")
+                        }
+                    ftp!!.apply { start() }.port
                 } else {
                     http =
                         LocalHttp(root, address, password).apply {
@@ -233,12 +240,24 @@ private class LocalHttp(private val root: File, address: String, private val pas
 }
 
 /** Passive FTP subset sufficient for desktop clients. No anonymous access or active-mode bounce. */
-private class LocalFtp(
+/**
+ * Servidor FTP del teléfono. [port] 0 elige uno libre; [charset] es la codificación de los nombres
+ * (UTF-8 salvo que el cliente sea antiguo). Admite modo pasivo (PASV, EPSV) y activo (PORT, EPRT):
+ * en el activo solo conecta de vuelta con la dirección del propio cliente y a puertos altos, para
+ * que nadie pueda usar el servidor para atacar a un tercero (ataque «FTP bounce»).
+ */
+internal class LocalFtp(
     private val root: File,
     private val address: String,
-    private val password: String
+    private val password: String,
+    port: Int = 0,
+    private val charset: Charset = Charsets.UTF_8
 ) : Closeable {
-    private val server = ServerSocket(0, 20, InetAddress.getByName(address))
+    private val server =
+        ServerSocket().apply {
+            reuseAddress = true
+            bind(InetSocketAddress(InetAddress.getByName(address), port), 20)
+        }
     val port: Int
         get() = server.localPort
 
@@ -268,10 +287,11 @@ private class LocalFtp(
 
     private fun serve(socket: Socket) {
         var passive: ServerSocket? = null
+        var active: InetSocketAddress? = null
         try {
             socket.soTimeout = 120000
-            val reader = socket.getInputStream().bufferedReader()
-            val writer = socket.getOutputStream().bufferedWriter()
+            val reader = socket.getInputStream().bufferedReader(charset)
+            val writer = socket.getOutputStream().bufferedWriter(charset)
             var user = false
             var logged = false
             var cwd = "/"
@@ -285,18 +305,42 @@ private class LocalFtp(
                 within(root, if (arg.startsWith('/')) arg else cwd.trimEnd('/') + "/" + arg)
             fun relative(file: File) = "/" + file.relativeTo(root).invariantSeparatorsPath
             fun data(block: (Socket) -> Unit) {
-                val p = passive ?: throw IOException("Usa PASV o EPSV")
-                reply(150, "Abriendo datos")
-                p.soTimeout = 30000
-                p.accept().use { peer ->
-                    if (peer.inetAddress != socket.inetAddress)
-                        throw IOException("Cliente de datos inesperado")
-                    peer.soTimeout = 30000
-                    block(peer)
+                val p = passive
+                val a = active
+                val peer =
+                    when {
+                        p != null -> {
+                            reply(150, "Abriendo datos")
+                            p.soTimeout = 30000
+                            p.accept().also {
+                                if (it.inetAddress != socket.inetAddress) {
+                                    it.close()
+                                    throw IOException("Cliente de datos inesperado")
+                                }
+                            }
+                        }
+                        a != null -> {
+                            reply(150, "Abriendo datos")
+                            Socket().apply { connect(a, 30000) }
+                        }
+                        else -> throw IOException("Usa PASV, EPSV, PORT o EPRT")
+                    }
+                peer.use {
+                    it.soTimeout = 30000
+                    block(it)
                 }
-                p.close()
+                p?.close()
                 passive = null
+                active = null
                 reply(226, "Transferencia completa")
+            }
+            /** Dirección de datos que pide el cliente en modo activo, si es la suya y un puerto alto. */
+            fun activeTarget(ip: String, port: Int): InetSocketAddress? {
+                if (ip != socket.inetAddress.hostAddress || port !in 1024..65535) {
+                    reply(504, "Solo se conecta a tu propia dirección y a puertos desde 1024")
+                    return null
+                }
+                return InetSocketAddress(socket.inetAddress, port)
             }
             reply(220, "OI Archivos FTP")
             while (running) {
@@ -329,11 +373,16 @@ private class LocalFtp(
                     when (cmd) {
                         "SYST" -> reply(215, "UNIX Type: L8")
                         "FEAT" -> {
+                            val utf8 = if (charset == Charsets.UTF_8) " UTF8\r\n" else ""
                             writer.write(
-                                "211-Features\r\n UTF8\r\n EPSV\r\n SIZE\r\n MDTM\r\n REST STREAM\r\n211 End\r\n")
+                                "211-Features\r\n$utf8 EPSV\r\n EPRT\r\n SIZE\r\n MDTM\r\n REST STREAM\r\n211 End\r\n")
                             writer.flush()
                         }
-                        "OPTS",
+                        "OPTS" ->
+                            // Los nombres van en la codificación elegida; no se puede pasar a UTF-8 a medias.
+                            if (arg.uppercase().startsWith("UTF8") && charset != Charsets.UTF_8)
+                                reply(504, "Los nombres van en ${charset.name()}")
+                            else reply(200, "OK")
                         "TYPE",
                         "NOOP" -> reply(200, "OK")
                         "PWD",
@@ -349,9 +398,38 @@ private class LocalFtp(
                             cwd = relative(f)
                             reply(250, "Carpeta cambiada")
                         }
+                        "PORT" -> {
+                            val n = arg.split(',').mapNotNull { it.trim().toIntOrNull() }
+                            if (n.size != 6 || n.any { it !in 0..255 }) reply(501, "PORT incorrecto")
+                            else {
+                                activeTarget(n.take(4).joinToString("."), n[4] * 256 + n[5])?.let {
+                                    passive?.close()
+                                    passive = null
+                                    active = it
+                                    reply(200, "PORT aceptado")
+                                }
+                            }
+                        }
+                        "EPRT" -> {
+                            val delimiter = arg.firstOrNull()
+                            val parts = if (delimiter == null) emptyList() else arg.split(delimiter)
+                            val port = parts.getOrNull(3)?.toIntOrNull()
+                            when {
+                                parts.size < 4 || port == null -> reply(501, "EPRT incorrecto")
+                                parts[1] != "1" -> reply(522, "Solo IPv4 (protocolo 1)")
+                                else ->
+                                    activeTarget(parts[2], port)?.let {
+                                        passive?.close()
+                                        passive = null
+                                        active = it
+                                        reply(200, "EPRT aceptado")
+                                    }
+                            }
+                        }
                         "PASV",
                         "EPSV" -> {
                             passive?.close()
+                            active = null
                             passive = ServerSocket(0, 1, InetAddress.getByName(address))
                             val p = passive!!.localPort
                             if (cmd == "EPSV") reply(229, "Entering Extended Passive Mode (|||$p|)")
@@ -371,7 +449,7 @@ private class LocalFtp(
                                     !Files.isSymbolicLink(it.toPath())
                                 }
                             data { peer ->
-                                peer.getOutputStream().bufferedWriter().use { out ->
+                                peer.getOutputStream().bufferedWriter(charset).use { out ->
                                     children.forEach { child ->
                                         val name = child.name.replace('\r', '_').replace('\n', '_')
                                         val text =
@@ -464,6 +542,7 @@ private class LocalFtp(
                 } catch (_: Exception) {
                     passive?.close()
                     passive = null
+                    active = null
                     reply(550, "Operación rechazada o incompleta")
                 }
             }
