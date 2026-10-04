@@ -9,6 +9,18 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import com.omaritoinforma.oiarchivos.data.BackgroundImage
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -81,14 +93,39 @@ class MainActivity : ComponentActivity() {
             val density = LocalDensity.current
             val scaled =
                 if (vm.largeLayout.value) Density(density.density * 1.2f, density.fontScale) else density
-            CompositionLocalProvider(LocalDensity provides scaled) {
-                OiTheme(dark = dark, accent = vm.accent.value, pureBlack = vm.pureBlack.value) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background) {
-                            AppRoot(vm)
-                        }
+            // Imagen de fondo: se dibuja debajo de todo y el color de fondo se vuelve translúcido.
+            val context = LocalContext.current
+            val image by
+                produceState<ImageBitmap?>(null, vm.backgroundImage.value, vm.backgroundVersion) {
+                    value =
+                        if (vm.backgroundImage.value)
+                            withContext(Dispatchers.IO) { BackgroundImage.load(context)?.asImageBitmap() }
+                        else null
                 }
+            val overlay =
+                if (image != null) BackgroundImage.overlayAlpha(vm.backgroundStrength.value) else 1f
+            CompositionLocalProvider(LocalDensity provides scaled) {
+                OiTheme(
+                    dark = dark,
+                    accent = vm.accent.value,
+                    pureBlack = vm.pureBlack.value,
+                    backgroundAlpha = overlay) {
+                        val solid = MaterialTheme.colorScheme.background.copy(alpha = 1f)
+                        Box(Modifier.fillMaxSize().background(solid)) {
+                            image?.let {
+                                Image(
+                                    it,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize())
+                            }
+                            // Transparente: cada pantalla pone su propio fondo (translúcido con imagen).
+                            // Si lo pusiera también aquí, las capas se sumarían y la imagen casi no se vería.
+                            Surface(modifier = Modifier.fillMaxSize(), color = androidx.compose.ui.graphics.Color.Transparent) {
+                                AppRoot(vm)
+                            }
+                        }
+                    }
             }
         }
     }

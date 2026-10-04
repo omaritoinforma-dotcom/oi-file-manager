@@ -2597,6 +2597,42 @@ def toolbar_customize():
         time.sleep(2)
 
 
+def blue_tint():
+    """Cuánto más azul que rojo es el margen izquierdo de la pantalla (donde solo hay fondo)."""
+    pixels = region_pixels(2, 900, 14, 1900, step=6)
+    return sum(p[2] for p in pixels) / len(pixels) - sum(p[0] for p in pixels) / len(pixels)
+
+
+@check("fondo-de-la-app-con-imagen")
+def background_image():
+    path = f"{DIR}/fondo-azul.png"
+    push_bytes(png((0, 0, 255), size=64), path)
+    try:
+        launch_home()
+        wait("Categorías")
+        before = blue_tint()
+        settings("Pantalla")
+        fill("Ruta de la imagen (JPG, PNG…)", path)
+        tap_node(find("Usar como fondo"))
+        wait_text("Visibilidad de la imagen")
+        evidence("fondo-ajustes")
+        launch_home()
+        wait("Categorías")
+        time.sleep(2)
+        after = blue_tint()
+        evidence("fondo-con-imagen")
+        assert after - before > 25, f"La imagen azul no se nota en el fondo: {before:.0f} → {after:.0f}"
+        # Inicio sigue completo y el fondo sobrevivió al reinicio (launch_home cierra la app a la fuerza).
+        wait("Accesos rápidos")
+    finally:
+        settings("Pantalla")
+        try:
+            tap_node(find("Quitar el fondo"))
+        except AssertionError:
+            pass
+        time.sleep(2)
+
+
 @check("informe-diario-de-archivos-nuevos")
 def daily_report():
     folder = "/sdcard/DCIM/OIInforme"

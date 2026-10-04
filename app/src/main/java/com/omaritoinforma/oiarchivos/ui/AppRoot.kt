@@ -14,6 +14,7 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -106,8 +107,15 @@ fun AppRoot(vm: MainViewModel) {
     // Las etiquetas de prueba (testTag) aparecen como resource-id para las pruebas en Android.
     Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
         when {
-            vm.locked -> LockScreen(vm)
-            !vm.hasPermission -> PermissionScreen(vm)
+            // Estas dos no tienen su propio fondo: se les pone uno sólido para que la imagen no estorbe.
+            vm.locked ->
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background.copy(alpha = 1f))) {
+                    LockScreen(vm)
+                }
+            !vm.hasPermission ->
+                Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background.copy(alpha = 1f))) {
+                    PermissionScreen(vm)
+                }
             else ->
                 CompositionLocalProvider(
                     LocalThumbnails provides vm.thumbnails.value,

@@ -14,6 +14,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -43,6 +44,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -68,6 +70,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.omaritoinforma.oiarchivos.BuildConfig
 import com.omaritoinforma.oiarchivos.data.AccentColor
+import com.omaritoinforma.oiarchivos.data.BackgroundImage
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.compose.rememberLauncherForActivityResult
 import com.omaritoinforma.oiarchivos.data.AutoBackup
 import com.omaritoinforma.oiarchivos.data.BackupKind
 import com.omaritoinforma.oiarchivos.data.DrawerLayout
@@ -257,6 +262,7 @@ private fun DisplaySettings(vm: MainViewModel) {
             "Fondo negro puro",
             "Con el tema oscuro, fondo totalmente negro (ahorra batería en pantallas OLED)",
             vm.pureBlack)
+        BackgroundSettings(vm)
         Text(
             "Estilo de las carpetas:",
             Modifier.padding(horizontal = 16.dp),
@@ -475,6 +481,52 @@ private fun HomeSettings(vm: MainViewModel) {
                 modifier = Modifier.padding(horizontal = 8.dp)) {
                     Text("Restablecer Inicio")
                 }
+    }
+}
+
+/** «Fondo» de los temas de ES: una imagen detrás de la interfaz, con su visibilidad. */
+@Composable
+private fun BackgroundSettings(vm: MainViewModel) {
+    val ctx = LocalContext.current
+    var path by remember { mutableStateOf("") }
+    val picker =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) {
+                // Se copia a la caché y desde ahí se reduce y se guarda: el selector da un enlace, no un archivo.
+                runCatching {
+                        val temp = File(ctx.cacheDir, "fondo-elegido")
+                        ctx.contentResolver.openInputStream(uri)?.use { input ->
+                            temp.outputStream().use { input.copyTo(it) }
+                        } ?: error("No se pudo leer la imagen")
+                        vm.setBackground(temp)
+                    }
+                    .onFailure { vm.toast(it.message ?: "No se pudo leer la imagen") }
+            }
+        }
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Text("Fondo de la app:", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedTextField(
+            path,
+            { path = it },
+            label = { Text("Ruta de la imagen (JPG, PNG…)") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth())
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(
+                onClick = { vm.setBackground(File(path.trim())) },
+                enabled = path.isNotBlank()) {
+                    Text("Usar como fondo")
+                }
+            OutlinedButton(onClick = { picker.launch("image/*") }) { Text("Elegir imagen…") }
+        }
+        if (vm.backgroundImage.value) {
+            Text("Visibilidad de la imagen: ${vm.backgroundStrength.value} %")
+            Slider(
+                value = vm.backgroundStrength.value.toFloat(),
+                onValueChange = { vm.backgroundStrength.value = it.toInt() },
+                valueRange = BackgroundImage.strengths.first.toFloat()..BackgroundImage.strengths.last.toFloat())
+            TextButton(onClick = { vm.clearBackground() }) { Text("Quitar el fondo") }
+        }
     }
 }
 

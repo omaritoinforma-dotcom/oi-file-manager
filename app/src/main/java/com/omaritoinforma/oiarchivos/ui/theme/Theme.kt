@@ -65,6 +65,8 @@ fun OiTheme(
     dark: Boolean,
     accent: AccentColor = AccentColor.DYNAMIC,
     pureBlack: Boolean = false,
+    /** Con imagen de fondo, el color de fondo se deja translúcido (0 a 1 de opacidad) para que se vea. */
+    backgroundAlpha: Float = 1f,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -72,5 +74,10 @@ fun OiTheme(
         if (accent == AccentColor.DYNAMIC && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
             if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         else staticScheme(accent, dark)
-    MaterialTheme(colorScheme = if (dark && pureBlack) withPureBlack(base) else base, content = content)
+    val scheme = if (dark && pureBlack) withPureBlack(base) else base
+    MaterialTheme(
+        colorScheme =
+            if (backgroundAlpha < 1f) scheme.copy(background = scheme.background.copy(alpha = backgroundAlpha))
+            else scheme,
+        content = content)
 }

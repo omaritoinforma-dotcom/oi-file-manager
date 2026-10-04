@@ -44,4 +44,20 @@ class DisplaySettingsTest {
             "\"ftp_encoding\":\"EBCDIC\""))
             assertThrows(bad, java.io.IOException::class.java) { SettingsBackup.parse(backup(bad)) }
     }
+
+    @Test
+    fun backgroundImageStrengthDecidesHowMuchOfTheScreenColourIsKept() {
+        assertEquals(0.75f, BackgroundImage.overlayAlpha(25), 1e-6f)
+        // Fuera de rango se ajusta: nunca queda la imagen tan visible que no se lea.
+        assertEquals(0.9f, BackgroundImage.overlayAlpha(0), 1e-6f)
+        assertEquals(0.4f, BackgroundImage.overlayAlpha(100), 1e-6f)
+        assertTrue(BackgroundImage.DEFAULT_STRENGTH in BackgroundImage.strengths)
+    }
+
+    @Test
+    fun theBackupKeepsTheStrengthButNeverThePrivateImage() {
+        assertEquals(40, SettingsBackup.parse(backup("\"background_strength\":40"))["background_strength"])
+        assertThrows(java.io.IOException::class.java) { SettingsBackup.parse(backup("\"background_strength\":90")) }
+        assertFalse(SettingsBackup.keys.containsKey("background_image"))
+    }
 }

@@ -17,6 +17,7 @@ import com.omaritoinforma.oiarchivos.data.CacheCleaner
 import com.omaritoinforma.oiarchivos.data.AppsRepo
 import com.omaritoinforma.oiarchivos.data.AnalysisTools
 import com.omaritoinforma.oiarchivos.data.ArchiveTools
+import com.omaritoinforma.oiarchivos.data.BackgroundImage
 import com.omaritoinforma.oiarchivos.data.Categories
 import com.omaritoinforma.oiarchivos.data.Clipboard
 import com.omaritoinforma.oiarchivos.data.Conflict
@@ -273,6 +274,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             if (it) checkSpaceNow()
         })
     val toolbarActions = PrefState({ prefs.toolbarActions }, { prefs.toolbarActions = it })
+    val backgroundImage = PrefState({ prefs.backgroundImage }, { prefs.backgroundImage = it })
+    val backgroundStrength = PrefState({ prefs.backgroundStrength }, { prefs.backgroundStrength = it })
     val folderStyle = PrefState({ prefs.folderStyle }, { prefs.folderStyle = it })
     val toolbarShowName = PrefState({ prefs.toolbarShowName }, { prefs.toolbarShowName = it })
     val showSelectButton = PrefState({ prefs.showSelectButton }, { prefs.showSelectButton = it })
@@ -474,6 +477,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             ftpPort,
             ftpEncoding,
             toolbarActions,
+            backgroundStrength,
             folderStyle,
             toolbarShowName,
             showSelectButton,
@@ -1099,6 +1103,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         tabs.forEach { it.cache.clear() }
         refresh()
     }
+
+    /** Pone [source] como fondo de la app; avisa si no se pudo. */
+    fun setBackground(source: File) {
+        viewModelScope.launch {
+            runCatching { withContext(Dispatchers.IO) { BackgroundImage.set(ctx, source) } }
+                .onSuccess {
+                    backgroundVersion++
+                    backgroundImage.value = true
+                    toast("Fondo cambiado")
+                }
+                .onFailure { toast(it.message ?: "No se pudo usar esa imagen") }
+        }
+    }
+
+    fun clearBackground() {
+        BackgroundImage.clear(ctx)
+        backgroundImage.value = false
+        backgroundVersion++
+    }
+
+    /** Cambia con cada imagen nueva, para que la pantalla vuelva a leerla. */
+    var backgroundVersion by mutableIntStateOf(0)
+        private set
 
     fun updateUseTrash(value: Boolean) {
         useTrash = value

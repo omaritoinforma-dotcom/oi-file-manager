@@ -274,6 +274,15 @@ class Prefs(context: Context) {
             else ToolbarLayout.defaultNames
         set(v) = sp.edit().putString("toolbar_actions", v.joinToString(",")).apply()
 
+    /** Si hay imagen de fondo (la copia está en [BackgroundImage.file]). */
+    var backgroundImage: Boolean
+        get() = sp.getBoolean("background_image", false)
+        set(v) = sp.edit().putBoolean("background_image", v).apply()
+
+    var backgroundStrength: Int
+        get() = sp.getInt("background_strength", BackgroundImage.DEFAULT_STRENGTH).coerceIn(BackgroundImage.strengths)
+        set(v) = sp.edit().putInt("background_strength", v.coerceIn(BackgroundImage.strengths)).apply()
+
     var folderStyle: FolderStyle
         get() = enumOr(sp.getString("folder_style", null), FolderStyle.CLASSIC)
         set(v) = sp.edit().putString("folder_style", v.name).apply()
