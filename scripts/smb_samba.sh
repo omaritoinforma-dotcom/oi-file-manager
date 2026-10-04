@@ -12,10 +12,14 @@ case "${1:-start}" in
   start)
     folder="$2"; user="$3"; password="$4"
     command -v smbd >/dev/null || { sudo apt-get update -qq; sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends samba >/dev/null; }
+    # Al instalarse, Samba arranca su propio servicio con la configuración del sistema: se detiene.
+    if [ -d /run/systemd/system ]; then sudo systemctl stop smbd nmbd 2>/dev/null || true; fi
     sudo pkill -x smbd 2>/dev/null || true
     sudo rm -rf "$WORK"; sudo mkdir -p "$WORK"/{private,lock,state,cache,pid,ncalrpc} /run/samba/ncalrpc
     id "$user" >/dev/null 2>&1 || sudo useradd -M -s /usr/sbin/nologin "$user"
-    sudo chmod 777 "$folder"
+    # Los archivos se tocan como el dueño de la carpeta: así el usuario de Samba no necesita poder
+    # atravesar las carpetas superiores (en el CI, /home/runner tiene permisos 750).
+    owner="$(stat -c %U "$folder")"; group="$(stat -c %G "$folder")"
     sudo tee "$WORK/smb.conf" >/dev/null <<CONF
 [global]
   workgroup = WORKGROUP
@@ -45,8 +49,10 @@ case "${1:-start}" in
   path = $folder
   read only = no
   valid users = $user
-  create mask = 0666
-  directory mask = 0777
+  force user = $owner
+  force group = $group
+  create mask = 0644
+  directory mask = 0755
 CONF
     (echo "$password"; echo "$password") | sudo smbpasswd -c "$WORK/smb.conf" -s -a "$user" >/dev/null
     sudo smbd -s "$WORK/smb.conf" -D
