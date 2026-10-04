@@ -1954,6 +1954,33 @@ def daily_report():
         sh("rm", "-rf", q(folder), check=False)
 
 
+@check("doble-panel-arrastrar-entre-paneles")
+def dual_pane_drag():
+    origin, target = f"{DIR}/arrastre-origen", f"{DIR}/arrastre-destino"
+    for folder in (origin, target):
+        sh("rm", "-rf", q(folder), check=False)
+        sh("mkdir", "-p", q(folder))
+    push_bytes(b"arrastrado", f"{origin}/mover.txt")
+    open_test_folder()
+    tap(find("arrastre-origen").get("text"))
+    tap("Más opciones")
+    tap("Doble panel")
+    wait("mover.txt")
+    # El panel derecho empieza en el almacenamiento: se baja hasta la carpeta de destino.
+    for step in ("Download", "OIPrueba", "arrastre-destino"):
+        tap(find(step).get("text"))
+        time.sleep(1)
+    handle = nodes("Mantén pulsado y arrastra al otro panel", hierarchy())[0]
+    x1, y1 = center(handle)
+    # Se suelta sobre el panel derecho.
+    adb("shell", "input", "draganddrop", str(x1), str(y1), "810", "1200", "1800")
+    wait("Mover aquí", timeout=15)
+    evidence("doble-panel-soltado")
+    tap("Mover aquí")
+    until(lambda: read(f"{target}/mover.txt") == "arrastrado", "El archivo arrastrado no llegó al otro panel", 30)
+    until(lambda: not exists(f"{origin}/mover.txt"), "Al mover, el original debe desaparecer", 15)
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()

@@ -52,7 +52,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | --- | --- | --- |
 | Ventanas o pestañas, abrir en ventana nueva | ✅ | Emulador Android 15 |
 | Vistas lista, detalle y cuadrícula, ordenar, miniaturas | 🟡 | Ordenar por tamaño comprobado en el emulador; faltan vistas y miniaturas |
-| Doble panel | 🟠 | La pantalla abre (emulador); falta comprobar arrastrar |
+| Doble panel | 🟡 | La pantalla abre (emulador); arrastrar archivos de un panel al otro (copiar o mover) con comprobación en el emulador preparada |
 | Marcadores, historial y opciones del historial | ✅ | Emulador Android 15: el marcador sobrevive al reinicio; el historial abre |
 | Categorías (imágenes, música, vídeo, documentos, APK, comprimidos) | ✅ | Emulador Android 15 (Documentos; el resto usa la misma consulta) |
 | Subcategorías de ES: libros electrónicos, capturas, grabaciones, Office separado (DOC/XLS/PPT), «último abierto o creado» | 🟡 | Libros, Capturas, Grabaciones, Word, Excel y PowerPoint en Inicio, por carpeta y tipo; «Recientes» muestra lo último modificado o creado y lo último abierto está en Historial. Reglas con pruebas locales; comprobación en el emulador preparada |
@@ -154,8 +154,8 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | Estado | Funciones |
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 32 |
-| 🟡 Implementadas, sin comprobar | 25 |
-| 🟠 Parciales | 11 |
+| 🟡 Implementadas, sin comprobar | 26 |
+| 🟠 Parciales | 10 |
 | ❌ Faltan | 11 |
 | **Total de filas** | **79** |
 
