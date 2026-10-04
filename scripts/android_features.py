@@ -8,6 +8,10 @@ smoke_android.py with the APK installed and storage permission granted.
 
 import hashlib
 import json
+import math
+import re
+import struct
+import wave
 import pathlib
 import subprocess
 import tempfile
@@ -90,8 +94,26 @@ def seed():
             (folder / f"{name}.txt").write_text(f"contenido {name}", encoding="utf-8")
         for file in folder.iterdir():
             adb("push", str(file), f"{DIR}/{file.name}")
+        (folder / "buscar_me.txt").write_text("aguja-unica-oi", encoding="utf-8")
+        duplicate = bytes(range(256)) * 4096
+        (folder / "dup1.bin").write_bytes(duplicate)
+        (folder / "dup2.bin").write_bytes(duplicate)
+        (folder / "grande.bin").write_bytes(b"\x07" * 3 * 1024 * 1024)
+        with wave.open(str(folder / "tono.wav"), "wb") as audio:
+            audio.setnchannels(1)
+            audio.setsampwidth(2)
+            audio.setframerate(16000)
+            audio.writeframes(b"".join(
+                struct.pack("<h", int(8000 * math.sin(2 * math.pi * 440 * i / 16000)))
+                for i in range(16000 * 30)))
+        for file in folder.iterdir():
+            if file.suffix != ".txt" or file.name == "buscar_me.txt":
+                adb("push", str(file), f"{DIR}/{file.name}")
     rar = ROOT / "app/src/test/resources/archives/test_read_format_rar5_encrypted_filenames.rar"
     adb("push", str(rar), f"{DIR}/cifrado.rar")
+    adb("push", str(next(pathlib.Path("apk").glob("*.apk"))), f"{DIR}/oi.apk")
+    # Categories read MediaStore, which does not index files pushed over adb by itself.
+    sh("content", "call", "--uri", "content://media", "--method", "scan_volume", "--arg", "external_primary", check=False)
 
 
 def open_test_folder():
@@ -125,6 +147,25 @@ def wait_text(fragment, timeout=30):
             return
         time.sleep(0.5)
     raise AssertionError(f"Text not shown: {fragment}")
+
+
+def find(label, swipes=8):
+    """Scrolls the visible list until a control appears (lazy lists only compose what is shown)."""
+    for _ in range(swipes):
+        found = nodes(label, hierarchy())
+        if found:
+            return found[0]
+        adb("shell", "input", "swipe", "540", "1500", "540", "700", "400")
+        time.sleep(0.5)
+    raise AssertionError(f"Not found after scrolling: {label}")
+
+
+def brightness():
+    raw = subprocess.check_output(["adb", "exec-out", "screencap"], timeout=30)
+    width, height = struct.unpack("<II", raw[:8])
+    pixels = raw[len(raw) - width * height * 4:]
+    samples = [pixels[i] + pixels[i + 1] + pixels[i + 2] for i in range(0, len(pixels), 4 * 997)]
+    return sum(samples) / len(samples) / 3
 
 
 def more(option):
@@ -274,6 +315,154 @@ def rar():
             lambda: read(f"{DIR}/cifrado/{name}.txt").strip() == f"This is from {name}.txt",
             f"RAR: {name}.txt no se extrajo",
             60)
+
+
+@check("busqueda-avanzada-por-contenido")
+def search_contents():
+    open_test_folder()
+    tap("Más opciones")
+    tap("Búsqueda avanzada")
+    fill("Texto dentro del archivo", "aguja-unica-oi")
+    tap("Buscar")
+    wait("buscar_me.txt")
+    assert not nodes("a.txt", hierarchy()), "La búsqueda devolvió archivos que no coinciden"
+
+
+@check("analizar-espacio-grandes-y-duplicados")
+def analysis():
+    open_test_folder()
+    tap("Más opciones")
+    tap("Analizar esta carpeta")
+    tap("Analizar")
+    find("Archivos más grandes")
+    find("grande.bin")
+    find("Duplicados exactos")
+    find("dup1.bin")
+    find("dup2.bin")
+
+
+@check("marcadores")
+def bookmarks():
+    open_test_folder()
+    long_press("Nueva")
+    more("Agregar a marcadores")
+    ui.launch()
+    wait("Categorías")
+    tap("Menú")
+    wait("Nueva")
+
+
+@check("pestañas")
+def tabs():
+    open_test_folder()
+    long_press("Nueva")
+    more("Abrir en pestaña nueva")
+    # The new tab shows "Nueva" in the title; the tab row still lists the first tab.
+    wait("OIPrueba")
+    wait("Nueva")
+
+
+@check("categoria-documentos")
+def category():
+    ui.launch()
+    wait("Categorías")
+    tap("Documentos")
+    find("buscar_me.txt")
+
+
+@check("gestos-configurables")
+def gestures():
+    ui.launch()
+    wait("Categorías")
+    ui.drawer("Ajustes")
+    tap("Deslizar a la derecha")
+    tap("Carpeta superior")
+    wait("Carpeta superior")
+    open_test_folder()
+    tap("Nueva")
+    time.sleep(1)
+    assert not nodes("buscar_me.txt", hierarchy()), "No se entró en la carpeta Nueva"
+    adb("shell", "input", "swipe", "150", "1000", "950", "1000", "250")
+    wait("buscar_me.txt")
+
+
+@check("tema-claro-y-oscuro")
+def theme():
+    ui.launch()
+    wait("Categorías")
+    ui.drawer("Ajustes")
+    tap(find("Claro").get("text"))
+    time.sleep(1)
+    light = brightness()
+    tap("Oscuro")
+    time.sleep(1)
+    dark = brightness()
+    tap("Según el sistema")
+    assert dark < light - 60, f"El tema oscuro no oscurece la pantalla ({light:.0f} → {dark:.0f})"
+
+
+@check("apps-respaldar-apk")
+def apps_backup():
+    sh("rm", "-rf", q("/sdcard/OI Archivos/Apps"), check=False)
+    ui.launch()
+    wait("Categorías")
+    ui.drawer("Aplicaciones")
+    fill("Buscar app…", "OI Arch")
+    wait("OI Archivos")
+    tap("Opciones")
+    tap("Respaldar APK")
+    until(
+        lambda: "OI Archivos_" in sh("ls", q("/sdcard/OI Archivos/Apps"), check=False),
+        "No se guardó el APK", 60)
+    size = sh("stat", "-c", "%s", q("/sdcard/OI Archivos/Apps/") + "*", check=False).split()
+    assert size and int(size[0]) > 1_000_000, f"Respaldo de tamaño sospechoso: {size}"
+
+
+@check("inspeccionar-apk")
+def inspect_apk():
+    open_test_folder()
+    long_press("oi.apk")
+    more("Inspeccionar APK")
+    wait_text("com.omaritoinforma.oiarchivos")
+
+
+@check("audio-en-segundo-plano")
+def background_audio():
+    open_test_folder()
+    tap(find("tono.wav").get("text"))
+    time.sleep(3)
+    adb("shell", "input", "keyevent", "KEYCODE_HOME")
+    time.sleep(3)
+    sessions = sh("dumpsys", "media_session")
+    owner = [block for block in sessions.split("\n\n") if ui.PACKAGE in block]
+    assert owner, "No hay sesión multimedia de la app"
+    assert any("state=3" in block for block in owner), "La sesión no está reproduciendo tras salir"
+    assert ui.PACKAGE in sh("dumpsys", "notification", "--noredact"), "Sin notificación de reproducción"
+    ui.launch()
+
+
+@check("ordenar-por-tamaño")
+def sort_size():
+    open_test_folder()
+    tap("Más opciones")
+    tap("Ordenar…")
+    tap("Tamaño")
+    tap("Descendente (Z→A, nuevo→antiguo)")
+    tap("Aplicar")
+    time.sleep(1)
+    tree = hierarchy()
+    y = {}
+    for n in tree.iter("node"):
+        if n.get("text") in ("grande.bin", "dup1.bin", "buscar_me.txt"):
+            y[n.get("text")] = int(re.findall(r"\d+", n.get("bounds"))[1])
+    # 3 MiB before 1 MiB; the small text file, if visible, comes after both.
+    assert "grande.bin" in y and "dup1.bin" in y, f"No se ven los archivos: {y}"
+    assert y["grande.bin"] < y["dup1.bin"] < y.get("buscar_me.txt", 10**9), f"Orden incorrecto: {y}"
+    tap("Más opciones")
+    tap("Ordenar…")
+    tap("Nombre")
+    tap("Ascendente (A→Z, antiguo→nuevo)")
+    tap("Aplicar")
 
 
 def main():
