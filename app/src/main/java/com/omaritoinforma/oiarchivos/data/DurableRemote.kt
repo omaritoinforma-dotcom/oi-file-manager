@@ -334,7 +334,12 @@ private constructor(
                                 return super.read().also { if (it >= 0) tracker.addBytes(1) }
                             }
                         }
-                    entry.remote = fs.write(parentPath, entry.name, input, entry.size)
+                    entry.remote =
+                        try {
+                            fs.write(parentPath, entry.name, input, entry.size)
+                        } catch (e: Exception) {
+                            throw e.cancellation() ?: e
+                        }
                 }
                 checkSource(entry)
                 val stored =

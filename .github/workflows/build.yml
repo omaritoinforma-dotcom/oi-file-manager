@@ -20,9 +20,18 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Preparar 7-Zip para las pruebas de RAR cifrado
         run: python3 scripts/build_archives.py --host
+      - name: Iniciar servidores SFTP, FTP y WebDAV reales para las pruebas de red
+        run: |
+          curl -sSfL -o rclone.zip https://downloads.rclone.org/v1.75.1/rclone-v1.75.1-linux-amd64.zip
+          echo "982b5aa772841168f8e380f139e9e787b2a105403e32b94da8676a0e1c0a13ab  rclone.zip" | sha256sum -c -
+          unzip -q rclone.zip
+          python3 -m pip install --quiet cryptography
+          RCLONE="$PWD/rclone-v1.75.1-linux-amd64/rclone" python3 scripts/remote_servers.py start >> "$GITHUB_ENV"
       - name: Pruebas y compilación
         env:
           OI_ARCHIVE_TEST_EXECUTABLE: ${{ github.workspace }}/build/native-archives/--host/7zz
+          LANG: C.UTF-8
+          LC_ALL: C.UTF-8
         run: |
           chmod +x gradlew
           ./gradlew testDebugUnitTest assembleRelease lintDebug --stacktrace
@@ -55,6 +64,15 @@ jobs:
         with:
           name: OI-Archivos-apk
           path: apk
+      - name: Iniciar un servidor SFTP real y lento para la reanudación en Android
+        env:
+          OI_REMOTE_BWLIMIT: 256k
+        run: |
+          curl -sSfL -o rclone.zip https://downloads.rclone.org/v1.75.1/rclone-v1.75.1-linux-amd64.zip
+          echo "982b5aa772841168f8e380f139e9e787b2a105403e32b94da8676a0e1c0a13ab  rclone.zip" | sha256sum -c -
+          unzip -q rclone.zip
+          python3 -m pip install --quiet cryptography
+          RCLONE="$PWD/rclone-v1.75.1-linux-amd64/rclone" python3 scripts/remote_servers.py start >> "$GITHUB_ENV"
       - name: Permitir aceleración del emulador
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules

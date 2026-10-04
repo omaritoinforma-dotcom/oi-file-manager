@@ -67,7 +67,7 @@ internal class RootFs : RemoteFs {
 
     override fun write(parent: String, name: String, input: InputStream, size: Long): String {
         val target = RemoteFiles.join(parent, name)
-        val temp = RemoteFiles.join(parent, ".oi-${UUID.randomUUID()}.part")
+        val temp = RemoteFiles.partName(target)
         try {
             command(
                 "set -e; test ! -e ${q(target)}; cat > ${q(temp)}; test \"\$(stat -c %s ${q(temp)})\" = ${q(size.toString())}; mv -n ${q(temp)} ${q(target)}",

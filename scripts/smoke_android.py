@@ -1,11 +1,14 @@
 """Exercise the built APK on a disposable Android 15 emulator, saving visible evidence.
 
-Uses only seeded files and a local HTTP server. Cloud accounts, USB and root still
+Uses seeded files, the app's own HTTP server and a real SFTP server on the runner
+(scripts/remote_servers.py, reached at 10.0.2.2). Cloud accounts, USB and root still
 need separate device/account verification. Run with an APK in ./apk/ and adb ready.
 """
 
 import base64
+import hashlib
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -126,6 +129,90 @@ def seed_files():
             adb("push", str(file), f"/sdcard/Download/{file.name}")
 
 
+def fill(label, value, current=None):
+    """Types into the dialog field found by label, hint or current value, scrolling if needed."""
+    for _ in range(6):
+        tree = hierarchy()
+        found = nodes(label, tree) or [
+            n for n in tree.iter("node")
+            if n.get("enabled") == "true"
+            and (n.get("hint") == label or (current is not None and n.get("text") == current))
+        ]
+        if found:
+            tap_node(found[0])
+            if current is not None:
+                adb("shell", "input", "keyevent", "KEYCODE_MOVE_END")
+                for _ in range(8):
+                    adb("shell", "input", "keyevent", "KEYCODE_DEL")
+            adb("shell", "input", "text", "'" + value + "'")
+            return
+        adb("shell", "input", "swipe", "540", "1300", "540", "700", "300")
+    raise AssertionError(f"Field not found: {label}")
+
+
+def remote_size(path):
+    out = adb("shell", "stat", "-c", "%s", path, check=False).strip()
+    return int(out) if out.isdigit() else -1
+
+
+def verify_network_resume():
+    """Real SFTP server on the runner (10.0.2.2): kill the app mid-download, then resume."""
+    root = pathlib.Path(os.environ["OI_REMOTE_TEST_ROOT"])
+    payload = os.urandom(24 * 1024 * 1024)
+    (root / "reanudar.bin").write_bytes(payload)
+    expected = hashlib.sha256(payload).hexdigest()
+    target = "/sdcard/Download/OI Archivos/reanudar.bin"
+    adb("shell", "rm", "-rf", "'/sdcard/Download/OI Archivos'")
+    launch()
+    wait("Categorías")
+    drawer("Red, nube y USB")
+    tap("Agregar")
+    fill("Nombre de la conexión", "SFTP prueba")
+    fill("Servidor", "10.0.2.2")
+    fill("Puerto", os.environ["OI_REMOTE_TEST_SFTP_PORT"], current="22")
+    fill("Usuario", "oi")
+    fill("Contraseña", os.environ["OI_REMOTE_TEST_PASSWORD"])
+    fill("Huella del servidor SHA256:…", os.environ["OI_REMOTE_TEST_SFTP_FINGERPRINT"])
+    tap("Guardar")
+    tap("SFTP prueba")
+    node, _ = wait("reanudar.bin")
+    x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds")))
+    adb("shell", "input", "swipe", *[str(v) for v in ((x1 + x2) // 2, (y1 + y2) // 2) * 2], "900")
+    tap("Descargar")
+    deadline = time.monotonic() + 90
+    part = ""
+    while not part:
+        assert time.monotonic() < deadline, "Download did not start"
+        listing = adb("shell", "ls", "-a", "'/sdcard/Download/OI Archivos/'", check=False).split()
+        names = [n for n in listing if n.startswith(".oi-resume-") and n.endswith(".part")]
+        if names and remote_size("'/sdcard/Download/OI Archivos/" + names[0] + "'") > 1024 * 1024:
+            part = names[0]
+        time.sleep(0.5)
+    checkpoint("15-network-download-running", "reanudar.bin")
+    # Process death in the middle of the transfer, as when Android reclaims the app.
+    adb("shell", "am", "force-stop", PACKAGE)
+    partial = remote_size("'/sdcard/Download/OI Archivos/" + part + "'")
+    assert 0 < partial < len(payload), partial
+    assert remote_size("'" + target + "'") < 0, "Final file must not exist before completion"
+    launch()
+    wait("Categorías")
+    drawer("Transferencias")
+    checkpoint("16-network-download-pending", "Reanudar")
+    tap("Reanudar")
+    deadline = time.monotonic() + 240
+    while remote_size("'" + target + "'") != len(payload):
+        assert time.monotonic() < deadline, "Resumed download did not finish"
+        time.sleep(1)
+    digest = adb("shell", "sha256sum", "'" + target + "'").split()[0]
+    assert digest == expected, "Resumed download differs from the server file"
+    assert (root / "reanudar.bin").exists(), "A copy must keep the server original"
+    leftovers = set(adb("shell", "ls", "-a", "'/sdcard/Download/OI Archivos/'").split()) - {".", ".."}
+    assert leftovers == {"reanudar.bin"}, leftovers
+    CHECKS.append("network-download-survives-process-death")
+    print(f"PASS: network-download-survives-process-death (partial {partial} bytes)", flush=True)
+    back_home()
+
+
 def verify_http():
     tap("Navegador / Wi-Fi")
     _, tree = wait("Detener servidor")
@@ -235,6 +322,7 @@ def main():
     adb("shell", "input", "keyevent", "3")
     adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity")
     checkpoint("14-resume", "smoke.txt")
+    verify_network_resume()
     crash = adb("logcat", "-d", "-b", "crash")
     assert f"Process: {PACKAGE}" not in crash, crash
 

@@ -1,6 +1,6 @@
 # Cobertura de funciones y trabajo pendiente
 
-El mínimo solicitado sigue siendo cubrir ES File Explorer. Esta lista **no convierte código nuevo en funciones probadas en un teléfono**. La copia local genera el APK v0.2.6 con firma válida y pasa 48 pruebas unitarias, sin fallos ni pruebas omitidas. Estas pruebas incluyen RAR cifrado y la recuperación de copias locales y de transferencias de red/nube. `lintDebug` se completa con 0 errores y 21 advertencias. La nueva versión todavía necesita validación de interfaz, hardware, servidores y cuentas reales; no se declara equivalencia completa con ES.
+El mínimo solicitado sigue siendo cubrir ES File Explorer. Esta lista **no convierte código nuevo en funciones probadas en un teléfono**. La copia local genera el APK v0.2.7 con firma válida y pasa 51 pruebas, sin fallos ni pruebas omitidas. Estas pruebas incluyen RAR cifrado, la recuperación de copias locales y de transferencias de red/nube, y los clientes SFTP, FTP y WebDAV reales contra servidores reales. `lintDebug` se completa con 0 errores y 21 advertencias. La nueva versión todavía necesita validación de interfaz, hardware, servidores y cuentas reales; no se declara equivalencia completa con ES.
 
 Referencia de funciones: ficha del desarrollador de ES en [Xiaomi](https://app.mi.com/details?id=com.estrongs.android.pop&type=pad), versión 4.4.3.7, publicada el 4 de agosto de 2026. Las funciones históricas de navegación de ES se conservan en la lista original de Claude.
 
@@ -18,7 +18,7 @@ Referencia de funciones: ficha del desarrollador de ES en [Xiaomi](https://app.m
 | Espacio | Carpetas/archivos grandes, duplicados SHA-256, candidatos temporales/vacíos con selección manual y papelera | Hasta 200.000 archivos; no borra cachés privados de otras apps sin permiso |
 | Apps y APK | Abrir, instalar APK, desinstalar, compartir, información y permisos; respaldo con splits en APKS | APKS requiere un instalador compatible para reinstalar todos los splits; no se presenta base.apk como respaldo completo |
 | Almacenamiento externo | Volúmenes locales y selector SAF para SD/USB/proveedores instalados; copiar/importar, crear, renombrar y borrar documentos | El proveedor determina lectura/escritura y si ofrece carpetas; no todos los proveedores de nube ofrecen árboles SAF |
-| Red | Clientes FTP/FTPS/SFTP/SMB 2/3/WebDAV: listar, subir, bajar, crear, renombrar, borrar y portapapeles remoto | Credenciales y servidor real; SFTP exige SHA256 de la clave del servidor; FTP no cifra |
+| Red | Clientes FTP/FTPS/SFTP/SMB 2/3/WebDAV: listar, subir, bajar, crear, renombrar, borrar y portapapeles remoto; nombres en UTF-8 por FTP | SFTP, FTP y WebDAV probados contra servidores reales en el host; SMB y FTPS sin servidor real todavía. SFTP exige SHA256 de la clave del servidor; FTP no cifra |
 | Nubes | Drive, Dropbox, OneDrive, Box, Yandex, S3, Baidu y SugarSync: código de navegación, transferencias y administración; autorización/renovación integradas; exportación de documentos Google y renombrado de carpetas S3 | Falta configurar registros OAuth de la aplicación y validar autorización, renovación y operaciones con cuentas reales |
 | Servidores | HTTP desde navegador y FTP pasivo con usuario/contraseña, carpeta limitada y servicio en primer plano | Red local de confianza; sin TLS local; HTTP subidas máx. 1 GB; FTP no reanuda subidas |
 | Bluetooth | Compartir archivos y explorar dispositivos mediante cliente OBEX | Codificación de paquetes probada; navegación y transferencias requieren un dispositivo que ofrezca el servicio OBEX y una prueba real |
@@ -29,9 +29,9 @@ Referencia de funciones: ficha del desarrollador de ES en [Xiaomi](https://app.m
 
 ## Pendientes para la equivalencia completa
 
-1. Probar con servidores y cuentas reales la pausa y recuperación de transferencias de red/nube, y extenderlas al pegado de remoto a remoto.
+1. Confirmar en Android la recuperación de transferencias (prueba del emulador añadida), probarla con SMB, FTPS y cuentas de nube reales, y extenderla al pegado de remoto a remoto.
 2. Registrar/configurar OAuth para las nubes y probar cada operación y la renovación con cuentas reales, incluidos Baidu/SugarSync.
 3. Ejecutar el APK nuevo en Android para probar el motor RAR/7z, arrastrar/soltar, gestos, edición de video y audio en segundo plano.
 4. Probar servidores HTTP/FTP y clientes de red con servidores reales; Bluetooth, SD/USB y root en hardware compatible.
-5. Atender las advertencias de `lintDebug` (dependencias y API objetivo) y cerrar la comparación funcional con ES. Las 48 pruebas unitarias aprobadas no sustituyen estas comprobaciones.
+5. Atender las advertencias de `lintDebug` (dependencias y API objetivo) y cerrar la comparación funcional con ES. Las 51 pruebas aprobadas no sustituyen estas comprobaciones.
 6. Extras posteriores al mínimo: Shizuku, bóveda con huella, MCP e instalador de paquetes divididos. La pantalla root ya permite trabajar en rutas autorizadas en dispositivos compatibles.

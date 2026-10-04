@@ -220,6 +220,17 @@ object RemoteFiles {
         return parent.trimEnd('/') + "/" + name
     }
 
+    /**
+     * Temporary upload name derived from the target, so a retry after an interruption that left
+     * the old part behind overwrites it instead of leaving hidden files on the server.
+     */
+    fun partName(target: String): String {
+        val hash = MessageDigest.getInstance("SHA-256").digest(target.toByteArray())
+        return join(
+            target.substringBeforeLast('/'),
+            ".oi-" + hash.take(12).joinToString("") { "%02x".format(it) } + ".part")
+    }
+
     fun unique(fs: RemoteFs, parent: String, name: String): String {
         val names = fs.list(parent).map { it.name }.toSet()
         if (name !in names) return name
@@ -267,7 +278,11 @@ object RemoteFiles {
                                 return super.read()
                             }
                         }
-                    fs.write(dir, name, input, file.length())
+                    try {
+                        fs.write(dir, name, input, file.length())
+                    } catch (e: Exception) {
+                        throw e.cancellation() ?: e
+                    }
                 }
             }
         }
@@ -335,9 +350,12 @@ private class FtpFs(c: Connection) : RemoteFs {
         try {
             client.connectTimeout = 15000
             client.defaultTimeout = 30000
+            // Names with accents or ñ are sent as UTF-8 (RFC 2640), not the ISO-8859-1 default.
+            client.controlEncoding = "UTF-8"
             client.connect(c.host, c.port)
             if (!client.login(c.user.ifBlank { "anonymous" }, c.secret))
                 throw IOException("El servidor rechazó las credenciales")
+            runCatching { client.sendCommand("OPTS UTF8 ON") }
             if (client is FTPSClient) {
                 client.execPBSZ(0)
                 client.execPROT("P")
@@ -376,12 +394,32 @@ private class FtpFs(c: Connection) : RemoteFs {
 
     override fun write(parent: String, name: String, input: InputStream, size: Long): String {
         val target = RemoteFiles.join(parent, name)
-        val temp = RemoteFiles.join(parent, ".oi-${UUID.randomUUID()}.part")
+        val temp = RemoteFiles.partName(target)
+        // commons-net only closes the data connection for IOExceptions; a cancellation left it
+        // open and the next command waited for the server until the timeout.
+        val guarded =
+            object : FilterInputStream(input) {
+                override fun read(b: ByteArray, off: Int, len: Int): Int =
+                    try {
+                        super.read(b, off, len)
+                    } catch (e: RuntimeException) {
+                        throw IOException("Transferencia interrumpida", e)
+                    }
+
+                override fun read(): Int =
+                    try {
+                        super.read()
+                    } catch (e: RuntimeException) {
+                        throw IOException("Transferencia interrumpida", e)
+                    }
+            }
+        var stored = false
         try {
-            if (!client.storeFile(temp, input) || !client.rename(temp, target))
+            if (!client.storeFile(temp, guarded) || !client.rename(temp, target))
                 throw IOException("No se pudo subir el archivo")
+            stored = true
         } finally {
-            client.deleteFile(temp)
+            if (!stored) runCatching { client.deleteFile(temp) }
         }
         return target
     }
@@ -423,9 +461,10 @@ private class SftpFs(c: Connection) : RemoteFs {
                 override fun check(host: String?, key: ByteArray?): Int {
                     val actual =
                         "SHA256:" +
-                            Base64.encodeToString(
-                                MessageDigest.getInstance("SHA-256").digest(key ?: byteArrayOf()),
-                                Base64.NO_WRAP or Base64.NO_PADDING)
+                            java.util.Base64.getEncoder()
+                                .withoutPadding()
+                                .encodeToString(
+                                    MessageDigest.getInstance("SHA-256").digest(key ?: byteArrayOf()))
                     if (actual != c.fingerprint.trim())
                         throw IOException("La huella SFTP no coincide. Huella recibida: $actual")
                     return HostKeyRepository.OK
@@ -473,7 +512,7 @@ private class SftpFs(c: Connection) : RemoteFs {
 
     override fun write(parent: String, name: String, input: InputStream, size: Long): String {
         val target = RemoteFiles.join(parent, name)
-        val temp = RemoteFiles.join(parent, ".oi-${UUID.randomUUID()}.part")
+        val temp = RemoteFiles.partName(target)
         try {
             sftp.put(input, temp)
             sftp.rename(temp, target)
@@ -548,7 +587,7 @@ private class SmbFs(c: Connection) : RemoteFs {
 
     override fun write(parent: String, name: String, input: InputStream, size: Long): String {
         val target = RemoteFiles.join(parent, name)
-        val temp = RemoteFiles.join(parent, ".oi-${UUID.randomUUID()}.part")
+        val temp = RemoteFiles.partName(target)
         file(temp).use { part ->
             try {
                 part.outputStream.use { input.copyTo(it) }
@@ -666,7 +705,8 @@ private class DavFs(c: Connection) : RemoteFs {
     private val base = c.host.trimEnd('/')
     private val http =
         Http(
-            "Basic " + Base64.encodeToString("${c.user}:${c.secret}".toByteArray(), Base64.NO_WRAP))
+            "Basic " +
+                java.util.Base64.getEncoder().encodeToString("${c.user}:${c.secret}".toByteArray()))
 
     init {
         if (!base.startsWith("https://") && !base.startsWith("http://"))
@@ -768,5 +808,12 @@ private class DavFs(c: Connection) : RemoteFs {
         http.request(url(entry.path), "DELETE")
     }
 }
+
+/** Libraries such as JSch wrap the cancellation thrown from our stream in their own exception. */
+internal fun Throwable.cancellation(): kotlinx.coroutines.CancellationException? =
+    generateSequence(this) { it.cause }
+        .take(16)
+        .filterIsInstance<kotlinx.coroutines.CancellationException>()
+        .firstOrNull()
 
 internal fun encode(value: String): String = URLEncoder.encode(value, "UTF-8").replace("+", "%20")

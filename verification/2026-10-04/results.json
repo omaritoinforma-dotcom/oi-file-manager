@@ -1,9 +1,10 @@
 {
-  "apk_version": "0.2.6",
-  "version_code": 6,
-  "debug_apk_sha256": "dbccdbe7462282682ad5bf42c9ec83398bdaee51a1c748e2447d5b90a6c42d1b",
-  "release_apk_sha256": "33e7fb34d7b3fceb014f7c884647df5e6565129fdd0858a96255ca5fb5625567",
-  "command": "OI_BUILD_NUMBER=6 ./gradlew testDebugUnitTest assembleRelease lintDebug assembleDebug (LANG=C.UTF-8)",
+  "apk_version": "0.2.7",
+  "version_code": 7,
+  "debug_apk_sha256": "aac801d6b106594546c84bbb1a0dbb7eb1cdfe332c442120440ee7798d042fd8",
+  "release_apk_sha256": "be58a167b31d49752f399c33ba46bcb23606f307475b45ef745bf5e4053e257b",
+  "command": "scripts/remote_servers.py start; OI_BUILD_NUMBER=7 ./gradlew testDebugUnitTest assembleRelease lintDebug assembleDebug (LANG=C.UTF-8)",
+  "real_servers": "rclone v1.75.1: SFTP, FTP, WebDAV on 127.0.0.1",
   "suites": [
     {
       "name": "com.omaritoinforma.oiarchivos.data.CloudXmlTest",
@@ -11,7 +12,7 @@
       "failures": "0",
       "errors": "0",
       "skipped": "0",
-      "timestamp": "2026-10-04T04:17:34"
+      "timestamp": "2026-10-04T04:48:58"
     },
     {
       "name": "com.omaritoinforma.oiarchivos.data.DurableCopyTest",
@@ -19,7 +20,7 @@
       "failures": "0",
       "errors": "0",
       "skipped": "0",
-      "timestamp": "2026-10-04T04:17:34"
+      "timestamp": "2026-10-04T04:48:58"
     },
     {
       "name": "com.omaritoinforma.oiarchivos.data.DurableRemoteTest",
@@ -27,7 +28,7 @@
       "failures": "0",
       "errors": "0",
       "skipped": "0",
-      "timestamp": "2026-10-04T04:17:35"
+      "timestamp": "2026-10-04T04:48:59"
     },
     {
       "name": "com.omaritoinforma.oiarchivos.data.FileSafetyTest",
@@ -35,7 +36,7 @@
       "failures": "0",
       "errors": "0",
       "skipped": "0",
-      "timestamp": "2026-10-04T04:17:35"
+      "timestamp": "2026-10-04T04:48:59"
     },
     {
       "name": "com.omaritoinforma.oiarchivos.data.NativeArchiveTest",
@@ -43,7 +44,7 @@
       "failures": "0",
       "errors": "0",
       "skipped": "0",
-      "timestamp": "2026-10-04T04:17:38"
+      "timestamp": "2026-10-04T04:49:01"
     },
     {
       "name": "com.omaritoinforma.oiarchivos.data.ProtocolTest",
@@ -51,7 +52,15 @@
       "failures": "0",
       "errors": "0",
       "skipped": "0",
-      "timestamp": "2026-10-04T04:17:38"
+      "timestamp": "2026-10-04T04:49:02"
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.RemoteServerTest",
+      "tests": "3",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "timestamp": "2026-10-04T04:49:02"
     },
     {
       "name": "com.omaritoinforma.oiarchivos.data.SubtitleTest",
@@ -59,9 +68,9 @@
       "failures": "0",
       "errors": "0",
       "skipped": "0",
-      "timestamp": "2026-10-04T04:17:38"
+      "timestamp": "2026-10-04T04:49:05"
     }
   ],
   "lint_status": "Completed: 0 errors, 21 warnings (see lint-results-debug.txt)",
-  "android_integration_status": "Not verified for this checkpoint"
+  "android_integration_status": "Pending: emulator run in CI (scripts/smoke_android.py)"
 }
