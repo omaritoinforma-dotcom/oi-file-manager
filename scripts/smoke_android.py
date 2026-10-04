@@ -160,7 +160,7 @@ def field_texts():
     return [n.get("text") for n in hierarchy().iter("node") if n.get("class") == "android.widget.EditText"]
 
 
-def fill(label, value, current=None):
+def fill(label, value, current=None, clear=False):
     """Types into the dialog field found by label, hint or current value, scrolling if needed."""
     for _ in range(6):
         tree = hierarchy()
@@ -171,9 +171,9 @@ def fill(label, value, current=None):
         ]
         if found:
             tap_node(found[0])
-            if current is not None:
+            if current is not None or clear:
                 adb("shell", "input", "keyevent", "KEYCODE_MOVE_END")
-                for _ in range(8):
+                for _ in range(40 if clear else 8):
                     adb("shell", "input", "keyevent", "KEYCODE_DEL")
             adb("shell", "input", "text", "'" + value + "'")
             return
@@ -373,9 +373,14 @@ def main():
     assert f"Process: {PACKAGE}" not in crash, crash
 
 
-try:
-    main()
-finally:
+def run():
+    try:
+        main()
+    finally:
+        save_evidence()
+
+
+def save_evidence():
     (OUTPUT / "logcat.txt").write_text(adb("logcat", "-d"), encoding="utf-8")
     (OUTPUT / "checks.json").write_text(json.dumps(CHECKS, indent=2), encoding="utf-8")
     try:
@@ -383,3 +388,6 @@ finally:
         (OUTPUT / "last.png").write_bytes(subprocess.check_output(["adb", "exec-out", "screencap", "-p"], timeout=30))
     except Exception:
         pass
+
+if __name__ == "__main__":
+    run()
