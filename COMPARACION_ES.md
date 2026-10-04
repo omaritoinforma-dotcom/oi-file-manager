@@ -55,7 +55,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Doble panel | 🟠 | La pantalla abre (emulador); falta comprobar arrastrar |
 | Marcadores, historial y opciones del historial | ✅ | Emulador Android 15: el marcador sobrevive al reinicio; el historial abre |
 | Categorías (imágenes, música, vídeo, documentos, APK, comprimidos) | ✅ | Emulador Android 15 (Documentos; el resto usa la misma consulta) |
-| Subcategorías de ES: libros electrónicos, capturas, grabaciones, Office separado (DOC/XLS/PPT), «último abierto o creado» | 🟠 | |
+| Subcategorías de ES: libros electrónicos, capturas, grabaciones, Office separado (DOC/XLS/PPT), «último abierto o creado» | 🟡 | Libros, Capturas, Grabaciones, Word, Excel y PowerPoint en Inicio, por carpeta y tipo; «Recientes» muestra lo último modificado o creado y lo último abierto está en Historial. Reglas con pruebas locales; comprobación en el emulador preparada |
 | Gestos configurables | ✅ | Emulador Android 15 |
 | Barra lateral personalizable y diseño de la barra de herramientas | ❌ | |
 | Temas: claro y oscuro | ✅ | Emulador Android 15 (brillo de pantalla medido) |
@@ -154,8 +154,8 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | Estado | Funciones |
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 32 |
-| 🟡 Implementadas, sin comprobar | 23 |
-| 🟠 Parciales | 11 |
+| 🟡 Implementadas, sin comprobar | 24 |
+| 🟠 Parciales | 10 |
 | ❌ Faltan | 13 |
 | **Total de filas** | **79** |
 
@@ -165,6 +165,6 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 2. Enviar entre teléfonos por punto de acceso o código QR.
 3. Idioma y temas dentro de la app; barra lateral personalizable.
 
-Hechos y pendientes de su comprobación en el emulador (CI en curso): listas de reproducción, aviso de archivos nuevos, aviso de poco espacio, instalar y desinstalar apps por lotes, copia automática, herramientas del editor, fijar arriba, abrir como y nivel de compresión.
+Hechos y pendientes de su comprobación en el emulador (CI en curso): listas de reproducción, aviso de archivos nuevos, aviso de poco espacio, instalar y desinstalar apps por lotes, copia automática, herramientas del editor, fijar arriba, abrir como, nivel de compresión y subcategorías.
 
 Los recuentos son por fila de esta matriz; una fila puede agrupar varias funciones pequeñas. Solo 32 de 79 cumplen ya el criterio de terminación (conectadas y comprobadas en su entorno real).

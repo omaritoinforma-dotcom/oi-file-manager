@@ -1802,6 +1802,43 @@ def compression_levels():
     tap("Cancelar")
 
 
+@check("subcategorias-libros-capturas-grabaciones-y-office")
+def sub_categories():
+    seeds = {
+        "Capturas": ("/sdcard/Pictures/Screenshots/captura-oi.png", png((0, 0, 255))),
+        "Libros": (f"{DIR}/libro-oi.epub", b"PK-no-es-un-epub-de-verdad"),
+        "Grabaciones": ("/sdcard/Recordings/nota-oi.wav", None),
+        "Word": (f"{DIR}/informe-oi.docx", b"word"),
+        "Excel": (f"{DIR}/tabla-oi.xlsx", b"excel"),
+        "PowerPoint": (f"{DIR}/charla-oi.pptx", b"ppt"),
+    }
+    sh("mkdir", "-p", q("/sdcard/Pictures/Screenshots"), q("/sdcard/Recordings"))
+    try:
+        for tile, (path, data) in seeds.items():
+            if data is None:
+                sh("cp", q(f"{DIR}/tono.wav"), q(path))
+            else:
+                push_bytes(data, path)
+        sh("content", "call", "--uri", "content://media", "--method", "scan_volume",
+           "--arg", "external_primary", check=False)
+        time.sleep(3)
+        for tile, (path, _) in seeds.items():
+            name = path.rsplit("/", 1)[1]
+            launch_home()
+            tap_node(find(tile))
+            wait(name)
+            # Solo hay lo de su tipo: lo de las otras subcategorías no se mezcla.
+            others = [p.rsplit("/", 1)[1] for t, (p, _) in seeds.items() if t != tile]
+            tree = hierarchy()
+            mixed = [o for o in others if nodes(o, tree)]
+            assert not mixed, f"«{tile}» muestra archivos de otra categoría: {mixed}"
+    finally:
+        for path, _ in seeds.values():
+            sh("rm", "-f", q(path), check=False)
+        sh("content", "call", "--uri", "content://media", "--method", "scan_volume",
+           "--arg", "external_primary", check=False)
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()

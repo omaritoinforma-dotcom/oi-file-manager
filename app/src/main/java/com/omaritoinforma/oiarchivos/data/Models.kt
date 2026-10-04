@@ -45,6 +45,14 @@ enum class FileCategory(val label: String) {
     DOCUMENTS("Documentos"),
     APKS("APK"),
     ARCHIVES("Comprimidos"),
+
+    // Subcategorías de ES: libros electrónicos, capturas, grabaciones y Office separado.
+    EBOOKS("Libros"),
+    SCREENSHOTS("Capturas"),
+    RECORDINGS("Grabaciones"),
+    WORD("Word"),
+    EXCEL("Excel"),
+    POWERPOINT("PowerPoint"),
     RECENT("Recientes"),
 }
 

@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Archive
@@ -36,11 +37,15 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.SdCard
+import androidx.compose.material.icons.filled.Screenshot
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Slideshow
+import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -147,6 +152,12 @@ private fun categoryTiles(vm: MainViewModel): List<Tile> =
                 FileCategory.DOCUMENTS -> Icons.Filled.Description to Color(0xFF1E88E5)
                 FileCategory.APKS -> Icons.Filled.Android to Color(0xFF7CB342)
                 FileCategory.ARCHIVES -> Icons.Filled.Archive to Color(0xFF8D6E63)
+                FileCategory.EBOOKS -> Icons.AutoMirrored.Filled.MenuBook to Color(0xFF6D4C41)
+                FileCategory.SCREENSHOTS -> Icons.Filled.Screenshot to Color(0xFF00897B)
+                FileCategory.RECORDINGS -> Icons.Filled.Mic to Color(0xFFD81B60)
+                FileCategory.WORD -> Icons.Filled.Description to Color(0xFF1565C0)
+                FileCategory.EXCEL -> Icons.Filled.TableChart to Color(0xFF2E7D32)
+                FileCategory.POWERPOINT -> Icons.Filled.Slideshow to Color(0xFFEF6C00)
                 FileCategory.RECENT -> Icons.Filled.History to Color(0xFFFB8C00)
             }
         Tile(c.label, icon, color) { vm.navigate(Location.Category(c)) }
