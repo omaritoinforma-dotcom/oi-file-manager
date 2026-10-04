@@ -5,7 +5,7 @@ import java.util.UUID
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 
-/** A transfer whose journal survives process death and can be resumed from Transferencias. */
+/** Transferencia cuyo registro sobrevive al cierre del proceso y se reanuda desde Transferencias. */
 interface DurableJob {
     val id: String
     val title: String
@@ -19,8 +19,8 @@ interface DurableJob {
 }
 
 /**
- * Network/cloud download or upload journal. Only the connection id is stored; credentials stay in
- * the Keystore-encrypted [ConnectionStore] and are resolved through [connector] when resuming.
+ * Registro de una descarga o subida de red/nube. Solo guarda el id de la conexión; las credenciales
+ * siguen cifradas con Keystore en [ConnectionStore] y se obtienen con [connector] al reanudar.
  */
 class DurableRemote
 private constructor(
@@ -29,22 +29,22 @@ private constructor(
     val move: Boolean,
     val connectionId: String,
     private val label: String,
-    /** Upload: remote parent folder. Download: local destination folder. */
+    /** Subida: carpeta remota de destino. Descarga: carpeta local de destino. */
     private val root: String,
     private val entries: MutableList<Entry>,
     private val journal: File,
     private val connector: (String) -> RemoteFs,
 ) : DurableJob {
     private class Entry(
-        /** Download: local target. Upload: local source. */
+        /** Descarga: archivo local de destino. Subida: archivo local de origen. */
         var local: String,
-        /** Download: remote source. Upload: created remote path, empty until stored. */
+        /** Descarga: origen remoto. Subida: ruta remota creada; vacía hasta guardarse. */
         var remote: String,
-        /** Download: remote parent used to re-check the source. */
+        /** Descarga: carpeta remota usada para volver a comprobar el origen. */
         val remoteParent: String,
-        /** Upload: remote name, made unique for top-level items before writing. */
+        /** Subida: nombre remoto; único para los elementos raíz antes de escribir. */
         var name: String,
-        /** Upload: index of the parent folder entry, -1 for [root]. */
+        /** Subida: índice de la carpeta padre; -1 para [root]. */
         val parent: Int,
         val directory: Boolean,
         val size: Long,
@@ -101,7 +101,7 @@ private constructor(
         }
 
     /**
-     * Removes the journal and local partial files. Remote writers commit atomically or not at all.
+     * Borra el registro y los parciales locales. Los servidores guardan cada archivo entero o nada.
      */
     override fun discard() {
         if (!upload)
@@ -170,7 +170,7 @@ private constructor(
             if (java.nio.file.Files.isSymbolicLink(part.toPath()))
                 throw IOException("El archivo parcial fue sustituido por un enlace")
             if (entry.phase == READY && !part.isFile) {
-                // The process may have died between the rename and saving the journal.
+                // El proceso pudo morir entre el renombrado y el guardado del registro.
                 val stored = checkedLocal(entry.local)
                 if (stored.isFile && (entry.size < 0 || stored.length() == entry.size))
                     entry.phase = STORED
@@ -186,7 +186,7 @@ private constructor(
                     save()
                 }
                 fetch(fs, entry, part, tracker)
-                // Fix the final local name before renaming so a restart can recognize it.
+                // Se fija el nombre final antes de renombrar para reconocerlo al reiniciar.
                 var target = checkedLocal(entry.local)
                 if (target.exists()) {
                     target = FileOps.uniqueName(target.parentFile!!, target.name)
@@ -229,7 +229,7 @@ private constructor(
             val current = fs.list(entry.remoteParent).firstOrNull { it.path == entry.remote }
             if (current == null || current.directory)
                 throw IOException("El archivo remoto ya no existe: ${entry.name}")
-            // A different size means the server copy changed, so the prefix is not reused.
+            // Si cambió el tamaño, el archivo del servidor cambió y no se reutiliza lo descargado.
             input = if (current.size == entry.size) fs.readFrom(entry.remote, offset) else null
             if (input == null) offset = 0
         }
@@ -265,7 +265,7 @@ private constructor(
         try {
             fs.delete(remoteEntry(entry))
         } catch (e: IOException) {
-            // A restart after a delete that was not recorded finds the original already gone.
+            // Al reiniciar tras un borrado no registrado, el original ya no está.
             if (fs.list(entry.remoteParent).any { it.path == entry.remote }) throw e
         }
         markDone(entry)
@@ -298,7 +298,7 @@ private constructor(
             if (entry.phase == PENDING) {
                 checkSource(entry)
                 if (entry.parent < 0) entry.name = RemoteFiles.unique(fs, parentPath, entry.name)
-                // The name is recorded before writing so a restart can replace our own leftover.
+                // El nombre se registra antes de escribir para poder reemplazar el resto propio al reiniciar.
                 entry.phase = ACTIVE
                 save()
             }
@@ -395,7 +395,7 @@ private constructor(
                 throw IOException("No se pudo guardar la transferencia")
         }
 
-        /** Lists the remote tree once and records every file before the first byte is copied. */
+        /** Recorre el árbol remoto una vez y registra cada archivo antes de copiar el primer byte. */
         suspend fun createDownload(
             directory: File,
             fs: RemoteFs,

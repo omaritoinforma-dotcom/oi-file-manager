@@ -18,7 +18,7 @@ import com.omaritoinforma.oiarchivos.data.Protocol
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/** Services that announce themselves by mDNS / DNS-SD, as ES does with Zeroconf. */
+/** Servicios que se anuncian por mDNS / DNS-SD, como hace ES con Zeroconf. */
 private val announced =
     mapOf(
         "_smb._tcp." to Protocol.SMB,
@@ -27,8 +27,8 @@ private val announced =
         "_webdav._tcp." to Protocol.WEBDAV)
 
 /**
- * Listens for announced servers until [onDispose]. Resolution runs one service at a time because
- * older Android versions reject parallel resolves.
+ * Escucha los servidores anunciados hasta [stop]. Se resuelve un servicio cada vez porque las
+ * versiones antiguas de Android rechazan resoluciones simultáneas.
  */
 private class Announcements(ctx: Context, val onFound: (LanHost) -> Unit) {
     private val nsd = ctx.getSystemService(Context.NSD_SERVICE) as NsdManager
@@ -107,7 +107,7 @@ fun LanScanDialog(onDismiss: () -> Unit, onPick: (LanHost) -> Unit) {
     var scanning by remember { mutableStateOf(true) }
     var networks by remember { mutableStateOf("") }
     fun add(host: LanHost) {
-        // An announced server (with its name) replaces the same address found by port.
+        // Un servidor anunciado (con su nombre) sustituye a la misma dirección encontrada por puerto.
         val same = found.indexOfFirst { it.address == host.address && it.port == host.port }
         if (same < 0) found += host else if (host.name.isNotBlank()) found[same] = host
     }

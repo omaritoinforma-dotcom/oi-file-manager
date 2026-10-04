@@ -23,10 +23,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * Phone-to-phone transfer over the same Wi-Fi, like ES File Explorer's Sender: the receiver
- * listens on a fixed port, the sender finds it by scanning the subnet, offers the files and sends
- * them only after the receiver accepts. Unlike ES, every file is checked with SHA-256 and names are
- * validated so a sender cannot write outside the destination folder.
+ * Envío entre teléfonos por la misma Wi-Fi, como el Sender de ES: el receptor escucha en un puerto
+ * fijo, el emisor lo encuentra recorriendo la subred, ofrece los archivos y solo los envía si el
+ * receptor acepta. A diferencia de ES, cada archivo se comprueba con SHA-256 y los nombres se validan
+ * para que nadie pueda escribir fuera de la carpeta de destino.
  */
 object Nearby {
     const val PORT = 42137
@@ -58,7 +58,7 @@ object Nearby {
                 })
             .toString()
 
-    /** Parses and validates an offer; a bad one is rejected before anyone is asked. */
+    /** Lee y valida una oferta; una no válida se rechaza antes de preguntar a nadie. */
     fun parseOffer(json: String): Offer {
         val o = JSONObject(json)
         val list = o.getJSONArray("files")
@@ -92,7 +92,7 @@ object Nearby {
         return md.digest().joinToString("") { "%02x".format(it) }
     }
 
-    /** Asks [address]:[port] for its name; null when it is not an OI Archivos receiver. */
+    /** Pide su nombre a [address]:[port]; null si no es un receptor de OI Archivos. */
     fun hello(address: String, port: Int = PORT, timeoutMs: Int = 800): Peer? =
         runCatching {
                 val c = URL("http://$address:$port$PATH/hola").openConnection() as HttpURLConnection
@@ -109,7 +109,7 @@ object Nearby {
             }
             .getOrNull()
 
-    /** Finds receivers on [hosts] in parallel. */
+    /** Busca receptores en [hosts] en paralelo. */
     suspend fun discover(
         hosts: List<Inet4Address>,
         port: Int = PORT,
@@ -127,8 +127,8 @@ object Nearby {
     }
 
     /**
-     * Offers [files] to [peer], waits for the person there to accept, then sends them.
-     * Returns false when the offer is declined.
+     * Ofrece [files] a [peer], espera a que la otra persona acepte y los envía.
+     * Devuelve false si rechaza la oferta.
      */
     suspend fun send(
         peer: Peer,
@@ -209,8 +209,8 @@ object Nearby {
 }
 
 /**
- * The receiving side. [decide] runs on a server thread and blocks until the person accepts or
- * declines (or a time limit passes); [onReceived] is called for every verified file.
+ * Lado receptor. [decide] se ejecuta en un hilo del servidor y espera a que la persona acepte o
+ * rechace (o se agote el tiempo); [onReceived] se llama con cada archivo comprobado.
  */
 class NearbyReceiver(
     private val destination: File,
@@ -226,8 +226,8 @@ class NearbyReceiver(
 
     private fun text(status: Response.Status, body: String) =
         newFixedLengthResponse(status, "text/plain; charset=utf-8", body).apply {
-            // A rejected request may leave its body unread; reusing the connection would make
-            // those bytes the start of the next request.
+            // Una solicitud rechazada puede dejar su contenido sin leer; si se reutilizara la
+            // conexión, esos bytes serían el principio de la siguiente solicitud.
             if (status != Response.Status.OK) closeConnection(true)
         }
 

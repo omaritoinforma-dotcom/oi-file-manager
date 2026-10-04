@@ -26,7 +26,7 @@ import kotlinx.coroutines.withContext
 
 private class IncomingOffer(val offer: Nearby.Offer, val answer: CompletableFuture<Boolean>)
 
-/** Send to / receive from another phone on the same Wi-Fi (ES File Explorer's "Sender"). */
+/** Enviar a otro teléfono y recibir de él por la misma Wi-Fi (el «Sender» de ES). */
 @Composable
 fun NearbyScreen(vm: MainViewModel) {
     val ctx = LocalContext.current
@@ -53,7 +53,7 @@ fun NearbyScreen(vm: MainViewModel) {
                     decide = { offer ->
                         val pending = IncomingOffer(offer, CompletableFuture())
                         main.post { incoming = pending }
-                        // Unanswered offers are declined after two minutes.
+                        // Las ofertas sin respuesta se rechazan a los dos minutos.
                         runCatching { pending.answer.get(120, TimeUnit.SECONDS) }
                             .getOrDefault(false)
                             .also { main.post { if (incoming === pending) incoming = null } }

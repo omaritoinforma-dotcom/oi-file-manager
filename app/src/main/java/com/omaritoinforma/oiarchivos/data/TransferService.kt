@@ -199,8 +199,8 @@ class TransferService : Service() {
             submitDurable(ctx, job.title) { job }
 
         /**
-         * [plan] runs in the service on an IO thread, so remote folders can be listed there. Once
-         * its journal exists the job can be paused, and canceling discards its partial files.
+         * [plan] se ejecuta en el servicio en un hilo de E/S, para poder listar carpetas remotas. En
+         * cuanto existe el registro se puede pausar, y cancelar descarta sus archivos parciales.
          */
         fun submitDurable(ctx: Context, title: String, plan: suspend () -> DurableJob): Boolean =
             start(ctx, title, true) { report ->
@@ -209,7 +209,7 @@ class TransferService : Service() {
                 job.run(report)
             }
 
-        /** Local copies and network/cloud transfers left by a pause, error or process death. */
+        /** Copias locales y transferencias de red/nube pendientes por una pausa, un error o un cierre. */
         fun pendingJobs(ctx: Context): List<DurableJob> =
             DurableCopy.pending(jobsDirectory(ctx)) +
                 DurableRemote.pending(jobsDirectory(ctx), RemoteFiles::connectById)

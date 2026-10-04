@@ -389,7 +389,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Remote → local through a journal that Transferencias can resume after a pause or crash. */
+    /** Remoto → local con un registro que Transferencias puede reanudar tras una pausa o un cierre. */
     fun downloadDurable(
         connection: com.omaritoinforma.oiarchivos.data.Connection,
         entries: List<com.omaritoinforma.oiarchivos.data.RemoteEntry>,
@@ -413,7 +413,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Local → remote through a journal; each original is deleted only after its upload. */
+    /** Local → remoto con registro; cada original se borra solo después de subirlo. */
     fun uploadDurable(
         connection: com.omaritoinforma.oiarchivos.data.Connection,
         sources: List<File>,
@@ -507,8 +507,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             viewModelScope.launch {
                 try {
                     if (loc is Location.Search && loc.filter != null) {
-                        // Refreshing advanced results repeats the same filters, not a name search
-                        // for the tab title.
+                        // Al actualizar resultados avanzados se repiten los mismos filtros, no una
+                        // búsqueda por el título de la pestaña.
                         val found =
                             withContext(Dispatchers.IO) {
                                 AnalysisTools.search(File(loc.root), loc.filter) {}

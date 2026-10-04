@@ -171,7 +171,7 @@ interface RemoteFs : Closeable {
 
     fun read(path: String): InputStream
 
-    /** Reads from [offset], or returns null when the server cannot resume (restart from zero). */
+    /** Lee desde [offset], o devuelve null si el servidor no permite reanudar (se empieza de cero). */
     fun readFrom(path: String, offset: Long): InputStream? = null
 
     fun write(parent: String, name: String, input: InputStream, size: Long): String
@@ -211,7 +211,7 @@ object RemoteFiles {
         }
     }
 
-    /** Resolves a saved connection for a resumed transfer; journals never store credentials. */
+    /** Obtiene la conexión guardada para reanudar; los registros nunca guardan credenciales. */
     fun connectById(id: String): RemoteFs =
         connect(ConnectionStore(appContext).load().first { it.id == id })
 
@@ -221,8 +221,8 @@ object RemoteFiles {
     }
 
     /**
-     * Temporary upload name derived from the target, so a retry after an interruption that left
-     * the old part behind overwrites it instead of leaving hidden files on the server.
+     * Nombre temporal de subida derivado del destino: al reintentar tras una interrupción se
+     * reemplaza el resto anterior en vez de dejar archivos ocultos en el servidor.
      */
     fun partName(target: String): String {
         val hash = MessageDigest.getInstance("SHA-256").digest(target.toByteArray())
@@ -350,7 +350,7 @@ private class FtpFs(c: Connection) : RemoteFs {
         try {
             client.connectTimeout = 15000
             client.defaultTimeout = 30000
-            // Names with accents or ñ are sent as UTF-8 (RFC 2640), not the ISO-8859-1 default.
+            // Los nombres con tildes o ñ se envían en UTF-8 (RFC 2640), no en ISO-8859-1 por defecto.
             client.controlEncoding = "UTF-8"
             client.connect(c.host, c.port)
             if (!client.login(c.user.ifBlank { "anonymous" }, c.secret))
@@ -395,8 +395,8 @@ private class FtpFs(c: Connection) : RemoteFs {
     override fun write(parent: String, name: String, input: InputStream, size: Long): String {
         val target = RemoteFiles.join(parent, name)
         val temp = RemoteFiles.partName(target)
-        // commons-net only closes the data connection for IOExceptions; a cancellation left it
-        // open and the next command waited for the server until the timeout.
+        // commons-net solo cierra la conexión de datos ante IOException; una cancelación la dejaba
+        // abierta y la orden siguiente esperaba al servidor hasta agotar el tiempo.
         val guarded =
             object : FilterInputStream(input) {
                 override fun read(b: ByteArray, off: Int, len: Int): Int =
@@ -768,7 +768,7 @@ private class DavFs(c: Connection) : RemoteFs {
 
     override fun readFrom(path: String, offset: Long): InputStream? {
         val c = http.open(url(path), "GET", mapOf("Range" to "bytes=$offset-"))
-        // Only a partial response that starts exactly at the offset can be appended.
+        // Solo se puede añadir una respuesta parcial que empiece justo en el desplazamiento.
         if (c.responseCode != 206 ||
             c.getHeaderField("Content-Range")?.startsWith("bytes $offset-") != true) {
             runCatching { c.inputStream.close() }
@@ -809,7 +809,7 @@ private class DavFs(c: Connection) : RemoteFs {
     }
 }
 
-/** Libraries such as JSch wrap the cancellation thrown from our stream in their own exception. */
+/** Bibliotecas como JSch envuelven en su propia excepción la cancelación lanzada desde nuestro flujo. */
 internal fun Throwable.cancellation(): kotlinx.coroutines.CancellationException? =
     generateSequence(this) { it.cause }
         .take(16)

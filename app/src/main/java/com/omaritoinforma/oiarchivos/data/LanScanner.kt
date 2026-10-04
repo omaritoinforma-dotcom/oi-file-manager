@@ -10,18 +10,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
-/** A file server found on the local network. */
+/** Servidor de archivos encontrado en la red local. */
 data class LanHost(val protocol: Protocol, val address: String, val port: Int, val name: String = "")
 
 /**
- * Finds file servers on the Wi-Fi subnet by their standard ports, like ES File Explorer's LAN scan,
- * but confirms SFTP and FTP by the greeting they send, so an unrelated open port is not listed.
+ * Busca servidores de archivos en la subred Wi-Fi por sus puertos estándar, como la búsqueda LAN de
+ * ES, pero confirma SFTP y FTP por su saludo para no listar un puerto abierto que no lo sea.
  */
 object LanScanner {
     val standardPorts =
         listOf(Protocol.SMB to 445, Protocol.FTP to 21, Protocol.FTPS to 990, Protocol.SFTP to 22)
 
-    /** IPv4 address and prefix of every active, non-loopback private interface. */
+    /** Dirección IPv4 y prefijo de cada interfaz privada activa (sin la de bucle local). */
     fun localNetworks(): List<Pair<Inet4Address, Int>> =
         NetworkInterface.getNetworkInterfaces()
             .toList()
@@ -35,8 +35,8 @@ object LanScanner {
             }
 
     /**
-     * Hosts of the subnet, without the device itself. Networks larger than /24 are limited to the
-     * device's /24 so a scan stays at most 253 hosts, as ES does.
+     * Equipos de la subred, sin el propio teléfono. Las redes mayores que /24 se limitan a la /24 del
+     * teléfono para revisar como mucho 253 equipos, como ES.
      */
     fun subnetHosts(local: Inet4Address, prefix: Int): List<Inet4Address> {
         val bits = prefix.coerceIn(24, 30)
@@ -54,7 +54,7 @@ object LanScanner {
             }
     }
 
-    /** True when [address]:[port] answers like [protocol]. */
+    /** Verdadero si [address]:[port] responde como [protocol]. */
     fun probe(address: String, port: Int, protocol: Protocol, timeoutMs: Int = 400): Boolean =
         runCatching {
                 Socket().use { socket ->
@@ -63,7 +63,7 @@ object LanScanner {
                     when (protocol) {
                         Protocol.SFTP -> greeting(socket).startsWith("SSH-")
                         Protocol.FTP -> greeting(socket).startsWith("220")
-                        // SMB and implicit FTPS do not greet first; an open port is the evidence.
+                        // SMB y FTPS implícito no saludan primero; basta con que el puerto esté abierto.
                         else -> true
                     }
                 }
@@ -77,8 +77,8 @@ object LanScanner {
     }
 
     /**
-     * Probes every host and port in parallel. [onFound] and [onProgress] may be called from
-     * several threads.
+     * Prueba cada equipo y puerto en paralelo. [onFound] y [onProgress] pueden llamarse desde
+     * varios hilos.
      */
     suspend fun scan(
         hosts: List<Inet4Address>,

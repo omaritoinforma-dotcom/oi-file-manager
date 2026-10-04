@@ -51,7 +51,7 @@ enum class FileCategory(val label: String) {
 sealed interface Location {
     data class Folder(val path: String) : Location
     data class Category(val category: FileCategory) : Location
-    /** [filter] marks advanced-search results, which are repeated with the same filter on refresh. */
+    /** [filter] marca resultados de búsqueda avanzada, que se repiten con el mismo filtro al actualizar. */
     data class Search(val root: String, val query: String, val filter: SearchFilter? = null) :
         Location
 }

@@ -8,7 +8,7 @@ data class NetworkClip(
     val connection: Connection,
     val entries: List<RemoteEntry>,
     val move: Boolean,
-    /** Folder the entries were selected in; cloud paths are ids, so it cannot be derived. */
+    /** Carpeta donde se eligieron los elementos; en las nubes las rutas son ids y no se puede deducir. */
     val parent: String
 )
 
