@@ -65,11 +65,14 @@ class ShareService : Service() {
             if (!root.isDirectory || !root.canRead())
                 throw IOException("La carpeta no se puede leer")
             val address = localAddress() ?: throw IOException("Conéctate a una red Wi-Fi local")
-            val password =
-                Base64.encodeToString(
-                    ByteArray(18).apply { SecureRandom().nextBytes(this) },
-                    Base64.NO_WRAP or Base64.URL_SAFE or Base64.NO_PADDING)
             val mode = intent.getStringExtra("mode") ?: "HTTP"
+            // Con una contraseña fija elegida en la pantalla de compartir, el PC puede guardar la conexión (solo FTP).
+            val fixed = Prefs(this).ftpPassword.takeIf { mode == "FTP" && ftpPasswordValid(it) && it.isNotEmpty() }
+            val password =
+                fixed
+                    ?: Base64.encodeToString(
+                        ByteArray(18).apply { SecureRandom().nextBytes(this) },
+                        Base64.NO_WRAP or Base64.URL_SAFE or Base64.NO_PADDING)
             val port =
                 if (mode == "FTP") {
                     val prefs = Prefs(this)
@@ -115,6 +118,11 @@ class ShareService : Service() {
     }
 
     companion object {
+        /** Vacía (una nueva cada vez) o de 8 a 64 caracteres sin espacios ni de control. */
+        fun ftpPasswordValid(password: String): Boolean =
+            password.isEmpty() ||
+                (password.length in 8..64 && password.none { it.isWhitespace() || it.isISOControl() })
+
         val state = MutableStateFlow<ShareInfo?>(null)
         val error = MutableStateFlow<String?>(null)
 

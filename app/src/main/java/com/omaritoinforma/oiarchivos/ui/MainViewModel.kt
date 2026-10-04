@@ -19,6 +19,8 @@ import com.omaritoinforma.oiarchivos.data.AnalysisTools
 import com.omaritoinforma.oiarchivos.data.ArchiveTools
 import com.omaritoinforma.oiarchivos.data.BackgroundImage
 import com.omaritoinforma.oiarchivos.data.Categories
+import com.omaritoinforma.oiarchivos.data.ShareService
+import com.omaritoinforma.oiarchivos.data.DocumentType
 import com.omaritoinforma.oiarchivos.data.Clipboard
 import com.omaritoinforma.oiarchivos.data.Conflict
 import com.omaritoinforma.oiarchivos.data.CryptoTools
@@ -276,6 +278,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val toolbarActions = PrefState({ prefs.toolbarActions }, { prefs.toolbarActions = it })
     val backgroundImage = PrefState({ prefs.backgroundImage }, { prefs.backgroundImage = it })
     val backgroundStrength = PrefState({ prefs.backgroundStrength }, { prefs.backgroundStrength = it })
+    val documentTypes = PrefState({ prefs.documentTypes }, { prefs.documentTypes = it })
+
+    /** Los tipos elegidos para «Documentos», ya como enumerado. */
+    fun documentTypeSet(): Set<DocumentType> =
+        documentTypes.value.mapNotNull { name -> DocumentType.entries.firstOrNull { it.name == name } }.toSet()
+    val homeSearch = PrefState({ prefs.homeSearch }, { prefs.homeSearch = it })
+    val ftpPassword = PrefState({ prefs.ftpPassword }, { prefs.ftpPassword = it })
+    val ftpStopOnExit = PrefState({ prefs.ftpStopOnExit }, { prefs.ftpStopOnExit = it })
     val folderStyle = PrefState({ prefs.folderStyle }, { prefs.folderStyle = it })
     val toolbarShowName = PrefState({ prefs.toolbarShowName }, { prefs.toolbarShowName = it })
     val showSelectButton = PrefState({ prefs.showSelectButton }, { prefs.showSelectButton = it })
@@ -477,6 +487,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             ftpPort,
             ftpEncoding,
             toolbarActions,
+            documentTypes,
+            homeSearch,
+            ftpStopOnExit,
             backgroundStrength,
             folderStyle,
             toolbarShowName,
@@ -916,6 +929,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         navigate(Location.Folder(parent.absolutePath))
     }
 
+    /** Busca por nombre en todo el almacenamiento (el buscador de Inicio). */
+    fun searchEverywhere(query: String) {
+        navigate(Location.Search(PathUtil.internalRoot, query))
+    }
+
     fun search(query: String) {
         val loc = currentTab?.location
         // Dentro de una categoría (Imágenes, Música…) se busca solo entre sus archivos.
@@ -974,7 +992,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         val found =
                             withContext(Dispatchers.IO) {
                                 Categories.byName(
-                                    runCatching { Categories.query(ctx, loc.category, showHidden) }
+                                    runCatching { Categories.query(ctx, loc.category, showHidden, documentTypeSet()) }
                                         .getOrDefault(emptyList()),
                                     loc.query)
                             }
@@ -995,7 +1013,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                                     is Location.Folder -> FileRepo.list(File(loc.path), showHidden)
                                     is Location.Category ->
                                         runCatching {
-                                                Categories.query(ctx, loc.category, showHidden)
+                                                Categories.query(ctx, loc.category, showHidden, documentTypeSet())
                                             }
                                             .getOrDefault(emptyList<FileItem>())
                                     is Location.Search -> emptyList<FileItem>()
@@ -1574,6 +1592,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun exit() {
         if (exited) return
         exited = true
+        if (ftpStopOnExit.value) ShareService.stop(ctx)
         if (clearHistoryOnExit.value) clearHistory()
         if (clearCacheOnExit.value) {
             val app = ctx

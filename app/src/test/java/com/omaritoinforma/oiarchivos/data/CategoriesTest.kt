@@ -63,4 +63,29 @@ class CategoriesTest {
         assertEquals(listOf("Informe.docx", "INFORME-2.docx"), Categories.byName(items, "informe").map { it.name })
         assertEquals(emptyList<String>(), Categories.byName(items, "zzz").map { it.name })
     }
+
+    @Test
+    fun documentTypesDecideWhatIsInDocuments() {
+        val d = FileCategory.DOCUMENTS
+        // Por omisión entra todo lo de antes.
+        for (name in listOf("a.pdf", "a.docx", "a.xlsx", "a.pptx", "a.txt", "a.md", "a.epub", "a.csv", "a.rtf"))
+            assertTrue(name, Categories.matches(d, "/x/$name"))
+        // Solo PDF y texto: lo demás sale.
+        val chosen = setOf(DocumentType.PDF, DocumentType.TEXT)
+        assertTrue(Categories.matches(d, "/x/a.PDF", null, chosen))
+        assertTrue(Categories.matches(d, "/x/notas.md", null, chosen))
+        assertFalse(Categories.matches(d, "/x/a.docx", null, chosen))
+        assertFalse(Categories.matches(d, "/x/a.csv", null, chosen))
+        assertFalse(Categories.matches(d, "/x/a.epub", null, chosen))
+        // Sin tipos no sale nada, y las demás categorías no cambian.
+        assertFalse(Categories.matches(d, "/x/a.pdf", null, emptySet()))
+        assertTrue(Categories.matches(FileCategory.WORD, "/x/a.docx", null, emptySet()))
+    }
+
+    @Test
+    fun everyDocumentExtensionBelongsToExactlyOneType() {
+        val all = DocumentType.entries.flatMap { it.extensions }
+        assertEquals(all.size, all.toSet().size)
+        assertEquals(all.toSet(), DocumentType.extensions(DocumentType.all).toSet())
+    }
 }

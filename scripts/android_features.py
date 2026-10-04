@@ -699,6 +699,8 @@ def ftp_server_options():
     ui.drawer("Red, nube y USB")
     tap("Compartir por Wi-Fi / FTP")
     fill("Puerto FTP (vacío: automático)", port)
+    fixed = "fija-oi-2026"
+    fill("Contraseña FTP fija (opcional)", fixed, verify=False)
     tap_node(find("ISO-8859-1 (Europa occidental)"))
     evidence("servidor-ftp-opciones")
     tap_node(find("Servidor FTP"))
@@ -708,6 +710,11 @@ def ftp_server_options():
         address, shown = re.search(r"ftp://([^:]+):(\d+)/", text).groups()
         assert shown == port, f"El servidor no usa el puerto elegido: {shown}"
         password = re.search(r"Contraseña: (\S+)", text).group(1)
+        assert password == fixed, f"El servidor no usa la contraseña fija elegida: {password}"
+        wrong = subprocess.run(["adb", "shell", "toybox", "nc", "-w", "10", address, port],
+                               input=b"USER oi\r\nPASS incorrecta-123\r\nQUIT\r\n", capture_output=True,
+                               timeout=40).stdout.decode("latin-1")
+        assert "530 " in wrong and "230 " not in wrong, f"Una contraseña incorrecta no se rechazó: {wrong!r}"
         own = address.replace(".", ",")
         dialog = (f"USER oi\r\nPASS {password}\r\nFEAT\r\nOPTS UTF8 ON\r\n"
                   f"PORT {own},200,10\r\nPORT 8,8,8,8,200,10\r\nPORT {own},0,21\r\nQUIT\r\n")
@@ -726,6 +733,11 @@ def ftp_server_options():
     finally:
         tap("Detener servidor")
         wait("Servidor FTP")
+        # Se deja la contraseña vacía otra vez (una nueva en cada inicio).
+        tap_node(find("Contraseña FTP fija (opcional)"))
+        adb("shell", "input", "keyevent", "KEYCODE_MOVE_END")
+        for _ in range(20):
+            adb("shell", "input", "keyevent", "KEYCODE_DEL")
 
 
 @check("analizar-espacio-grandes-y-duplicados")
@@ -1080,20 +1092,28 @@ def pick_folder(setting, path):
     wait_text(path.replace("/sdcard", INTERNAL))
 
 
-def switch_state(title):
-    """Estado del interruptor de la fila cuyo título es [title]."""
+def nearest_switch(title):
+    """El interruptor más cercano (en vertical) a la fila cuyo título es [title]."""
     tree = hierarchy()
     row = nodes(title, tree)[0]
     row_y = int(re.findall(r"\d+", row.get("bounds"))[1])
     switches = [n for n in tree.iter("node") if n.get("checkable") == "true"]
-    switch = min(switches, key=lambda n: abs(int(re.findall(r"\d+", n.get("bounds"))[1]) - row_y))
-    return switch.get("checked") == "true"
+    return min(switches, key=lambda n: abs(int(re.findall(r"\d+", n.get("bounds"))[1]) - row_y))
+
+
+def switch_state(title):
+    """Estado del interruptor de la fila cuyo título es [title]."""
+    return nearest_switch(title).get("checked") == "true"
 
 
 def set_switch(title, on):
     if switch_state(title) != on:
         tap(title)
         time.sleep(1)
+        # Si tocar el título no lo cambió (la fila no es pulsable), se toca el interruptor mismo.
+        if switch_state(title) != on:
+            tap_node(nearest_switch(title))
+            time.sleep(1)
     assert switch_state(title) == on, f"«{title}» no quedó {'activado' if on else 'desactivado'}"
 
 
@@ -2648,6 +2668,82 @@ def home_new_files():
     tap_node(find(name))
     wait_text("recien llegado")
     adb("shell", "input", "keyevent", "4")
+
+
+@check("servidor-ftp-se-detiene-al-salir-si-se-pide")
+def ftp_stops_on_exit():
+    def running():
+        return "ShareService" in sh("dumpsys", "activity", "services", ui.PACKAGE, check=False)
+
+    launch_home()
+    ui.drawer("Red, nube y USB")
+    tap("Compartir por Wi-Fi / FTP")
+    find("Detener el servidor al salir de la app")
+    set_switch("Detener el servidor al salir de la app", True)
+    try:
+        tap_node(find("Servidor FTP"))
+        wait("Detener servidor")
+        until(running, "El servidor FTP no figura como servicio en marcha", 15)
+        # «Salir» del menú lateral cierra la app: con el ajuste, el servidor se detiene con ella.
+        adb("shell", "input", "keyevent", "4")
+        ui.drawer("Salir")
+        until(lambda: not running(), "El servidor FTP siguió en marcha tras salir de la app", 20)
+    finally:
+        ui.launch()
+        ui.drawer("Red, nube y USB")
+        tap("Compartir por Wi-Fi / FTP")
+        if nodes("Detener servidor", hierarchy()):
+            tap("Detener servidor")
+            wait("Servidor FTP")
+        find("Detener el servidor al salir de la app")
+        set_switch("Detener el servidor al salir de la app", False)
+
+
+@check("documentos-elegir-tipos")
+def document_types():
+    def count():
+        launch_home()
+        tap("Documentos")
+        wait_text("archivos")
+        time.sleep(2)
+        text = next(n.get("text") for n in hierarchy().iter("node")
+                    if re.match(r"^Documentos · \d+ archivos$", n.get("text") or ""))
+        return int(re.search(r"(\d+)", text).group(1))
+
+    try:
+        before = count()
+        assert before >= 2, f"La categoría Documentos casi no tiene archivos de prueba: {before}"
+        settings("Documentos")
+        set_switch("Texto (.txt y .md)", False)
+        after = count()
+        evidence("documentos-sin-texto")
+        assert after < before, f"Quitar el texto no quitó nada de Documentos: {before} → {after}"
+    finally:
+        settings("Documentos")
+        set_switch("Texto (.txt y .md)", True)
+        time.sleep(2)
+
+
+@check("inicio-buscador-de-archivos")
+def home_search():
+    try:
+        launch_home()
+        wait("Categorías")
+        fill("Buscar archivos…", "buscar_me")
+        tap("Buscar en todo el almacenamiento")
+        wait_text("«buscar_me»")
+        wait("buscar_me.txt", 40)
+        evidence("inicio-buscador-resultados")
+        # Ajustes → «Pantalla de inicio» lo puede ocultar.
+        settings("Pantalla de inicio")
+        set_switch("Mostrar el buscador en Inicio", False)
+        launch_home()
+        wait("Categorías")
+        assert not nodes("Buscar archivos…", hierarchy()), "El buscador sigue en Inicio aunque se ocultó"
+    finally:
+        settings("Pantalla de inicio")
+        set_switch("Mostrar el buscador en Inicio", True)
+        time.sleep(2)
 
 
 @check("informe-diario-de-archivos-nuevos")

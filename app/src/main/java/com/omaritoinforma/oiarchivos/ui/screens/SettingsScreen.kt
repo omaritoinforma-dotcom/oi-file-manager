@@ -76,6 +76,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import com.omaritoinforma.oiarchivos.data.AutoBackup
 import com.omaritoinforma.oiarchivos.data.BackupKind
 import com.omaritoinforma.oiarchivos.data.DrawerLayout
+import com.omaritoinforma.oiarchivos.data.DocumentType
 import com.omaritoinforma.oiarchivos.data.FileCategory
 import com.omaritoinforma.oiarchivos.data.FolderStyle
 import com.omaritoinforma.oiarchivos.data.HomeLayout
@@ -117,6 +118,7 @@ private enum class Section(val group: String, val title: String, val summary: St
     BACKUP("Seguridad", "Copia de ajustes", "Guardar y restaurar los ajustes"),
     APPS("Herramientas", "Aplicaciones", "Copia del APK y carpeta de copias"),
     EDITOR("Herramientas", "Editor de texto", "Letra, líneas, sangría, tabulador, símbolos y guardado"),
+    DOCUMENTS("Herramientas", "Documentos", "Qué tipos de archivo entran en la categoría Documentos"),
     TRASH("Herramientas", "Papelera", "Usar la papelera al eliminar"),
     GESTURES("Herramientas", "Gestos", "Deslizar en el explorador"),
     ABOUT("Sistema", "Acerca de", "Versión de OI Archivos")
@@ -168,6 +170,7 @@ fun SettingsScreen(vm: MainViewModel) {
                 Section.BACKUP -> item { BackupSettings(vm) }
                 Section.APPS -> item { AppSettings(vm) }
                 Section.EDITOR -> item { EditorSettings(vm) }
+                Section.DOCUMENTS -> item { DocumentSettings(vm) }
                 Section.TRASH -> item {
                     SwitchRow(
                         "Usar la papelera",
@@ -390,6 +393,12 @@ private fun DrawerSettings(vm: MainViewModel) {
                                 else vm.drawerHidden.value + entry.name
                         })
                 },
+                modifier =
+                    Modifier.clickable {
+                        vm.drawerHidden.value =
+                            if (shown) vm.drawerHidden.value + entry.name
+                            else vm.drawerHidden.value - entry.name
+                    },
                 trailingContent = {
                     Row {
                         IconButton(
@@ -444,6 +453,12 @@ private fun HomeSettings(vm: MainViewModel) {
                                 else vm.homeHidden.value + section.name
                         })
                 },
+                modifier =
+                    Modifier.clickable {
+                        vm.homeHidden.value =
+                            if (section.name in vm.homeHidden.value) vm.homeHidden.value - section.name
+                            else vm.homeHidden.value + section.name
+                    },
                 trailingContent = {
                     Row {
                         IconButton(
@@ -463,6 +478,10 @@ private fun HomeSettings(vm: MainViewModel) {
                     }
                 })
         }
+        SwitchRow(
+            "Mostrar el buscador en Inicio",
+            "Una barra para buscar por nombre en todo el almacenamiento",
+            vm.homeSearch)
         SectionTitle("Iconos de «Categorías»", Modifier.padding(start = 16.dp, top = 8.dp))
         FileCategory.entries.forEach { category ->
             TileSwitch(category.label, HomeLayout.categoryKey(category), vm)
@@ -531,6 +550,37 @@ private fun BackgroundSettings(vm: MainViewModel) {
 }
 
 @Composable
+private fun DocumentSettings(vm: MainViewModel) {
+    val chosen = vm.documentTypeSet()
+    Column {
+        Text(
+            "Elige qué tipos de archivo salen en la categoría «Documentos». Tiene que quedar al menos uno.",
+            Modifier.padding(16.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        DocumentType.entries.forEach { type ->
+            val on = type in chosen
+            ListItem(
+                headlineContent = { Text(type.label) },
+                supportingContent = { Text(type.extensions.joinToString(" ") { ".$it" }) },
+                trailingContent = {
+                    Switch(
+                        checked = on,
+                        enabled = !on || chosen.size > 1,
+                        onCheckedChange = { want ->
+                            vm.documentTypes.value =
+                                (if (want) chosen + type else chosen - type).map { it.name }.toSet()
+                        })
+                },
+                modifier =
+                    Modifier.clickable(enabled = !on || chosen.size > 1) {
+                        vm.documentTypes.value =
+                            (if (on) chosen - type else chosen + type).map { it.name }.toSet()
+                    })
+        }
+    }
+}
+
+@Composable
 private fun ToolbarSettings(vm: MainViewModel) {
     val chosen = ToolbarLayout.actions(vm.toolbarActions.value)
     val rest = ToolbarAction.entries.filter { it !in chosen }
@@ -550,6 +600,10 @@ private fun ToolbarSettings(vm: MainViewModel) {
                             vm.toolbarActions.value = ToolbarLayout.toggle(vm.toolbarActions.value, action)
                         })
                 },
+                modifier =
+                    Modifier.clickable {
+                        vm.toolbarActions.value = ToolbarLayout.toggle(vm.toolbarActions.value, action)
+                    },
                 trailingContent = {
                     Row {
                         IconButton(
@@ -584,7 +638,11 @@ private fun ToolbarSettings(vm: MainViewModel) {
                         onCheckedChange = {
                             vm.toolbarActions.value = ToolbarLayout.toggle(vm.toolbarActions.value, action)
                         })
-                })
+                },
+                modifier =
+                    Modifier.clickable(enabled = chosen.size < ToolbarLayout.MAX) {
+                        vm.toolbarActions.value = ToolbarLayout.toggle(vm.toolbarActions.value, action)
+                    })
         }
         if (chosen != ToolbarLayout.DEFAULT)
             TextButton(

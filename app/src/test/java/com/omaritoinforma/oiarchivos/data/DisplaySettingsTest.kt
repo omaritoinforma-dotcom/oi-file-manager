@@ -60,4 +60,27 @@ class DisplaySettingsTest {
         assertThrows(java.io.IOException::class.java) { SettingsBackup.parse(backup("\"background_strength\":90")) }
         assertFalse(SettingsBackup.keys.containsKey("background_image"))
     }
+
+    @Test
+    fun theFtpPasswordIsEmptyOrEightToSixtyFourVisibleCharacters() {
+        assertTrue(ShareService.ftpPasswordValid(""))
+        assertTrue(ShareService.ftpPasswordValid("12345678"))
+        assertTrue(ShareService.ftpPasswordValid("a".repeat(64)))
+        assertFalse(ShareService.ftpPasswordValid("1234567"))
+        assertFalse(ShareService.ftpPasswordValid("a".repeat(65)))
+        assertFalse(ShareService.ftpPasswordValid("con espacio 1"))
+        assertFalse(ShareService.ftpPasswordValid("tab\tulador1"))
+    }
+
+    @Test
+    fun theBackupKeepsHomeSearchDocumentTypesAndStopOnExitButNeverThePassword() {
+        val parsed =
+            SettingsBackup.parse(
+                backup("\"home_search\":false,\"document_types\":\"PDF,TEXT\",\"ftp_stop_on_exit\":true"))
+        assertEquals(false, parsed["home_search"])
+        assertEquals("PDF,TEXT", parsed["document_types"])
+        assertEquals(true, parsed["ftp_stop_on_exit"])
+        assertThrows(java.io.IOException::class.java) { SettingsBackup.parse(backup("\"document_types\":\"PDF,ZIP\"")) }
+        assertFalse(SettingsBackup.keys.containsKey("ftp_password"))
+    }
 }

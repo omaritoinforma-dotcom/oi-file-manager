@@ -5,6 +5,11 @@ package com.omaritoinforma.oiarchivos.ui.screens
 import android.os.Environment
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -131,6 +136,26 @@ fun HomeScreen(vm: MainViewModel, openDrawer: () -> Unit) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            if (vm.homeSearch.value)
+                item(key = "search") {
+                    var query by remember { mutableStateOf("") }
+                    val go = { if (query.isNotBlank()) vm.searchEverywhere(query.trim()) }
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = { Text("Buscar archivos…") },
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Filled.Search, null) },
+                        trailingIcon = {
+                            IconButton(onClick = go) {
+                                Icon(Icons.Filled.Search, "Buscar en todo el almacenamiento")
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { go() }),
+                        shape = RoundedCornerShape(28.dp),
+                        modifier = Modifier.fillMaxWidth())
+                }
             val sections = HomeLayout.visible(vm.homeOrder.value, vm.homeHidden.value)
             if (sections.isEmpty())
                 item {

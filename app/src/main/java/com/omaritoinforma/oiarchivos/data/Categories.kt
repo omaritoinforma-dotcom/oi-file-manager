@@ -4,12 +4,28 @@ import android.content.Context
 import android.provider.MediaStore
 import java.io.File
 
+/**
+ * Qué tipos de archivo entran en la categoría «Documentos» («Document type setting» de ES). Cada uno
+ * agrupa las extensiones que se reconocen juntas.
+ */
+enum class DocumentType(val label: String, val extensions: List<String>) {
+    PDF("PDF", listOf("pdf")),
+    WORD("Word y texto enriquecido", listOf("doc", "docx", "odt", "rtf")),
+    EXCEL("Hojas de cálculo", listOf("xls", "xlsx", "ods", "csv")),
+    POWERPOINT("Presentaciones", listOf("ppt", "pptx", "odp")),
+    TEXT("Texto (.txt y .md)", listOf("txt", "md")),
+    EBOOK("Libros electrónicos (.epub)", listOf("epub"));
+
+    companion object {
+        val all: Set<DocumentType> = entries.toSet()
+
+        /** Extensiones de los tipos elegidos. */
+        fun extensions(types: Set<DocumentType>): List<String> = types.flatMap { it.extensions }
+    }
+}
+
 /** Categorías (Imágenes, Música, ...) usando el índice del sistema: es mucho más rápido que recorrer todo. */
 object Categories {
-    private val docExt = listOf(
-        "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "odt", "ods", "odp",
-        "txt", "rtf", "csv", "epub", "md",
-    )
     private val archiveExt = listOf("zip", "rar", "7z", "tar", "gz", "tgz", "bz2", "xz")
 
     // Una sola definición de cada regla: sirve para pedir al sistema solo lo que toca y para
@@ -31,14 +47,19 @@ object Categories {
         dirs.any { path.contains("/$it/", ignoreCase = true) }
 
     /** Si [path] (con su tipo MIME, si se conoce) pertenece a la categoría [cat]. */
-    fun matches(cat: FileCategory, path: String, mime: String? = null): Boolean {
+    fun matches(
+        cat: FileCategory,
+        path: String,
+        mime: String? = null,
+        documentTypes: Set<DocumentType> = DocumentType.all
+    ): Boolean {
         val ext = extension(path)
         val name = path.substringAfterLast('/')
         return when (cat) {
             FileCategory.IMAGES -> mime?.startsWith("image/") == true
             FileCategory.MUSIC -> mime?.startsWith("audio/") == true
             FileCategory.VIDEOS -> mime?.startsWith("video/") == true
-            FileCategory.DOCUMENTS -> ext in docExt
+            FileCategory.DOCUMENTS -> ext in DocumentType.extensions(documentTypes)
             FileCategory.APKS -> ext == "apk"
             FileCategory.ARCHIVES -> ext in archiveExt
             FileCategory.EBOOKS -> ext in ebookExt
@@ -61,14 +82,19 @@ object Categories {
         items.filter { it.name.contains(query, ignoreCase = true) }
 
     @Suppress("DEPRECATION")
-    fun query(ctx: Context, cat: FileCategory, showHidden: Boolean): List<FileItem> {
+    fun query(
+        ctx: Context,
+        cat: FileCategory,
+        showHidden: Boolean,
+        documentTypes: Set<DocumentType> = DocumentType.all
+    ): List<FileItem> {
         val dataCol = MediaStore.Files.FileColumns.DATA
         val mimeCol = MediaStore.Files.FileColumns.MIME_TYPE
         val (selection, args) = when (cat) {
             FileCategory.IMAGES -> "$mimeCol LIKE ?" to arrayOf("image/%")
             FileCategory.MUSIC -> "$mimeCol LIKE ?" to arrayOf("audio/%")
             FileCategory.VIDEOS -> "$mimeCol LIKE ?" to arrayOf("video/%")
-            FileCategory.DOCUMENTS -> likeAny(dataCol, docExt)
+            FileCategory.DOCUMENTS -> likeAny(dataCol, DocumentType.extensions(documentTypes))
             FileCategory.APKS -> likeAny(dataCol, listOf("apk"))
             FileCategory.ARCHIVES -> likeAny(dataCol, archiveExt)
             FileCategory.EBOOKS -> likeAny(dataCol, ebookExt)
@@ -83,6 +109,7 @@ object Categories {
                     arrayOf("audio/%") + recordingDirs.map { "%/$it/%" }
             FileCategory.RECENT -> "$mimeCol IS NOT NULL" to emptyArray<String>()
         }
+        if (cat == FileCategory.DOCUMENTS && documentTypes.isEmpty()) return emptyList()
         val limit = if (cat == FileCategory.RECENT) 300 else 10_000
         val out = ArrayList<FileItem>()
         val seen = HashSet<String>()
@@ -99,7 +126,7 @@ object Categories {
                 val path = c.getString(idx) ?: continue
                 if (!showHidden && path.contains("/.")) continue
                 // «_» en LIKE vale por cualquier carácter: se confirma con la misma regla de [matches].
-                if (!matches(cat, path, c.getString(mimeIdx))) continue
+                if (!matches(cat, path, c.getString(mimeIdx), documentTypes)) continue
                 if (!seen.add(path)) continue
                 val f = File(path)
                 if (f.isFile) out += f.toItem()

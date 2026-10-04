@@ -1,6 +1,10 @@
 package com.omaritoinforma.oiarchivos.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -58,6 +62,35 @@ fun SharingScreen(vm: MainViewModel) {
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         modifier = Modifier.fillMaxWidth())
+                    var password by remember { mutableStateOf(vm.ftpPassword.value) }
+                    val passwordInvalid = !ShareService.ftpPasswordValid(password)
+                    OutlinedTextField(
+                        password,
+                        {
+                            password = it
+                            if (ShareService.ftpPasswordValid(it)) vm.ftpPassword.value = it
+                        },
+                        label = { Text("Contraseña FTP fija (opcional)") },
+                        supportingText = {
+                            Text(
+                                if (passwordInvalid) "De 8 a 64 caracteres, sin espacios"
+                                else "Vacía: se genera una nueva en cada inicio. El usuario es «oi»")
+                        },
+                        isError = passwordInvalid,
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        modifier = Modifier.fillMaxWidth())
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .toggleable(
+                                vm.ftpStopOnExit.value,
+                                role = Role.Switch,
+                                onValueChange = { vm.ftpStopOnExit.value = it }),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Detener el servidor al salir de la app", Modifier.weight(1f))
+                            Switch(vm.ftpStopOnExit.value, null)
+                        }
                     Text("Codificación de los nombres en FTP", style = MaterialTheme.typography.labelLarge)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FtpEncoding.entries.forEach { option ->
@@ -77,7 +110,7 @@ fun SharingScreen(vm: MainViewModel) {
                             }
                         Spacer(Modifier.width(8.dp))
                         Button(
-                            enabled = !portInvalid,
+                            enabled = !portInvalid && ShareService.ftpPasswordValid(vm.ftpPassword.value),
                             onClick = {
                                 runCatching { ShareService.start(ctx, root, "FTP") }
                                     .onFailure { vm.toast(it.message.orEmpty()) }

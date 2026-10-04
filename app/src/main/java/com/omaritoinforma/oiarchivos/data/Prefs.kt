@@ -283,6 +283,29 @@ class Prefs(context: Context) {
         get() = sp.getInt("background_strength", BackgroundImage.DEFAULT_STRENGTH).coerceIn(BackgroundImage.strengths)
         set(v) = sp.edit().putInt("background_strength", v.coerceIn(BackgroundImage.strengths)).apply()
 
+    /** Tipos que entran en «Documentos» (nombres de [DocumentType]); sin guardar = todos. */
+    var documentTypes: Set<String>
+        get() =
+            if (sp.contains("document_types"))
+                sp.getString("document_types", "").orEmpty().split(',').filter { it.isNotBlank() }.toSet()
+            else DocumentType.entries.map { it.name }.toSet()
+        set(v) = sp.edit().putString("document_types", v.joinToString(",")).apply()
+
+    /** Buscador en la pantalla de inicio («Show Search engine on Homepage» de ES). */
+    var homeSearch: Boolean
+        get() = sp.getBoolean("home_search", true)
+        set(v) = sp.edit().putBoolean("home_search", v).apply()
+
+    /** Contraseña fija del servidor FTP; vacía = una nueva cada vez. Es del dispositivo: no va en la copia de ajustes. */
+    var ftpPassword: String
+        get() = sp.getString("ftp_password", "").orEmpty()
+        set(v) = sp.edit().putString("ftp_password", v).apply()
+
+    /** «Cerrar al salir» del servidor FTP de ES: se detiene al salir de la app. */
+    var ftpStopOnExit: Boolean
+        get() = sp.getBoolean("ftp_stop_on_exit", false)
+        set(v) = sp.edit().putBoolean("ftp_stop_on_exit", v).apply()
+
     var folderStyle: FolderStyle
         get() = enumOr(sp.getString("folder_style", null), FolderStyle.CLASSIC)
         set(v) = sp.edit().putString("folder_style", v.name).apply()
