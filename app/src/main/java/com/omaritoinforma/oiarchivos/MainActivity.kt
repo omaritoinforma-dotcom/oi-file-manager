@@ -1,5 +1,6 @@
 package com.omaritoinforma.oiarchivos
 
+import android.content.pm.ActivityInfo
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -11,12 +12,17 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.omaritoinforma.oiarchivos.data.AppInstaller
+import com.omaritoinforma.oiarchivos.data.ScreenOrientation
 import com.omaritoinforma.oiarchivos.data.ThemeMode
 import kotlinx.coroutines.launch
 import com.omaritoinforma.oiarchivos.ui.AppRoot
@@ -61,12 +67,28 @@ class MainActivity : ComponentActivity() {
                 )
                 onDispose {}
             }
-            OiTheme(dark = dark, accent = vm.accent.value, pureBlack = vm.pureBlack.value) {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background) {
-                        AppRoot(vm)
+            // «Orientación de la pantalla»: automática (la del teléfono), vertical u horizontal.
+            val orientation = vm.screenOrientation.value
+            LaunchedEffect(orientation) {
+                requestedOrientation =
+                    when (orientation) {
+                        ScreenOrientation.AUTO -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        ScreenOrientation.PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                        ScreenOrientation.LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
                     }
+            }
+            // «Diseño grande»: la interfaz entera, un 20 % más grande.
+            val density = LocalDensity.current
+            val scaled =
+                if (vm.largeLayout.value) Density(density.density * 1.2f, density.fontScale) else density
+            CompositionLocalProvider(LocalDensity provides scaled) {
+                OiTheme(dark = dark, accent = vm.accent.value, pureBlack = vm.pureBlack.value) {
+                    Surface(
+                        modifier = Modifier.fillMaxSize(),
+                        color = MaterialTheme.colorScheme.background) {
+                            AppRoot(vm)
+                        }
+                }
             }
         }
     }

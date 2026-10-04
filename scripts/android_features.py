@@ -2451,6 +2451,66 @@ def home_layout():
     wait("Música")
 
 
+def is_landscape():
+    raw = subprocess.check_output(["adb", "exec-out", "screencap"], timeout=30)
+    width, height = struct.unpack("<II", raw[:8])
+    return width > height
+
+
+@check("ajustes-pantalla-orientacion-nombre-seleccion-y-diseno-grande")
+def display_toolbar_orientation_large():
+    launch_home()
+    tap_node(find("Videos"))
+    wait_text("archivos")
+    assert nodes("Videos", hierarchy()), "Sin el ajuste, el título de la categoría debía verse en la barra"
+    try:
+        # Orientación: los botones están arriba del todo, así que también se ven en horizontal.
+        settings("Pantalla")
+        tap("Horizontal")
+        until(is_landscape, "La pantalla no pasó a horizontal", 25)
+        evidence("orientacion-horizontal")
+        tap("Automática")
+        until(lambda: not is_landscape(), "La pantalla no volvió a vertical", 25)
+        # Sin el nombre en la barra y con el botón de selección.
+        set_switch("Mostrar el nombre en la barra de herramientas", False)
+        set_switch("Mostrar botón de selección", True)
+        launch_home()
+        tap_node(find("Videos"))
+        wait_text("archivos")
+        assert not nodes("Videos", hierarchy()), "El título sigue en la barra aunque se ocultó"
+        open_test_folder()
+        tap("Seleccionar")
+        wait_text("0 seleccionado(s)")
+        tap("a.txt")
+        wait_text("1 seleccionado(s)")
+        evidence("boton-de-seleccion")
+        tap("Cancelar selección")
+        until(lambda: not nodes("Cancelar selección", hierarchy()), "No se salió de la selección", 10)
+        # Diseño grande: el título «Categorías» de Inicio crece.
+        launch_home()
+        small = row_height("Categorías")
+        settings("Pantalla")
+        set_switch("Diseño grande", True)
+        launch_home()
+        big = row_height("Categorías")
+        assert big > small * 1.1, f"El diseño grande no agrandó la interfaz: {small} → {big} px"
+    finally:
+        if is_landscape():
+            tap("Automática")
+            until(lambda: not is_landscape(), "No se pudo volver a vertical", 25)
+        settings("Pantalla")
+        set_switch("Mostrar el nombre en la barra de herramientas", True)
+        set_switch("Mostrar botón de selección", False)
+        set_switch("Diseño grande", False)
+        time.sleep(2)
+
+
+def row_height(label):
+    node = wait(label)[0]
+    top, bottom = re.findall(r"\d+", node.get("bounds"))[1::2]
+    return int(bottom) - int(top)
+
+
 @check("informe-diario-de-archivos-nuevos")
 def daily_report():
     folder = "/sdcard/DCIM/OIInforme"

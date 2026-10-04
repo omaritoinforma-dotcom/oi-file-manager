@@ -266,6 +266,30 @@ class Prefs(context: Context) {
         get() = sp.getInt("editor_font", 14)
         set(v) = sp.edit().putInt("editor_font", v.coerceIn(10, 28)).apply()
 
+    /** «Mostrar el nombre en la barra de herramientas»: el título de la carpeta o categoría. */
+    var toolbarShowName: Boolean
+        get() = sp.getBoolean("toolbar_show_name", true)
+        set(v) = sp.edit().putBoolean("toolbar_show_name", v).apply()
+
+    /** «Mostrar botón de selección»: un botón en la barra para empezar a marcar sin mantener pulsado. */
+    var showSelectButton: Boolean
+        get() = sp.getBoolean("show_select_button", false)
+        set(v) = sp.edit().putBoolean("show_select_button", v).apply()
+
+    var screenOrientation: ScreenOrientation
+        get() = enumOr(sp.getString("screen_orientation", null), ScreenOrientation.AUTO)
+        set(v) = sp.edit().putString("screen_orientation", v.name).apply()
+
+    /** «Large layout»: todo un poco más grande. */
+    var largeLayout: Boolean
+        get() = sp.getBoolean("large_layout", false)
+        set(v) = sp.edit().putBoolean("large_layout", v).apply()
+
+    /** Tamaño máximo (KB) del archivo al que se le colorea el código («Restringir tamaño del archivo resaltado»). */
+    var editorHighlightLimitKb: Int
+        get() = sp.getInt("editor_highlight_limit_kb", EditorText.DEFAULT_HIGHLIGHT_LIMIT_KB)
+        set(v) = sp.edit().putInt("editor_highlight_limit_kb", v.coerceIn(10, 5000)).apply()
+
     var editorLineNumbers: Boolean
         get() = sp.getBoolean("editor_line_numbers", true)
         set(v) = sp.edit().putBoolean("editor_line_numbers", v).apply()

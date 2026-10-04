@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentCut
@@ -139,12 +140,12 @@ fun BrowserScreen(vm: MainViewModel, openDrawer: () -> Unit) {
     }
     val ctx = LocalContext.current
     val loc = tab.location
-    val inSelection = tab.selected.isNotEmpty()
+    val inSelection = tab.selected.isNotEmpty() || tab.selectMode
     var dialog by remember { mutableStateOf<BrowserDialog?>(null) }
     var searching by remember { mutableStateOf(false) }
 
     fun openItem(item: FileItem) {
-        if (tab.selected.isNotEmpty()) {
+        if (inSelection) {
             vm.toggleSelect(item)
             return
         }
@@ -183,9 +184,9 @@ fun BrowserScreen(vm: MainViewModel, openDrawer: () -> Unit) {
             }
         },
         bottomBar = {
-            if (inSelection) {
+            if (tab.selected.isNotEmpty()) {
                 SelectionBottomBar(vm, tab, ctx) { dialog = it }
-            } else if (vm.clipboard != null && loc is Location.Folder) {
+            } else if (!inSelection && vm.clipboard != null && loc is Location.Folder) {
                 PasteBar(vm)
             }
         },
@@ -242,9 +243,16 @@ private fun BrowserTopBar(
     var menu by remember { mutableStateOf(false) }
     TopAppBar(
         navigationIcon = { IconButton(onClick = openDrawer) { Icon(Icons.Filled.Menu, "Menú") } },
-        title = { Text(locationTitle(loc), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        title = {
+            if (vm.toolbarShowName.value)
+                Text(locationTitle(loc), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
         actions = {
             IconButton(onClick = onSearch) { Icon(Icons.Filled.Search, "Buscar") }
+            if (vm.showSelectButton.value)
+                IconButton(onClick = vm::startSelecting) {
+                    Icon(Icons.Filled.CheckBox, "Seleccionar")
+                }
             IconButton(onClick = { vm.cycleViewMode() }) {
                 @Suppress("DEPRECATION")
                 val icon =

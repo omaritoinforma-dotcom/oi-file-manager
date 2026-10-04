@@ -148,6 +148,9 @@ class TabState(start: Location) {
     val items = mutableStateListOf<FileItem>()
     var loading by mutableStateOf(false)
     val selected = mutableStateMapOf<String, FileItem>()
+
+    /** Modo de selección empezado con el botón de la barra, aunque aún no haya nada marcado. */
+    var selectMode by mutableStateOf(false)
     internal val cache = HashMap<Location, List<FileItem>>()
     internal val scroll = HashMap<Location, Pair<Int, Int>>()
     internal var job: Job? = null
@@ -269,6 +272,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             scheduleStorageWatch()
             if (it) checkSpaceNow()
         })
+    val toolbarShowName = PrefState({ prefs.toolbarShowName }, { prefs.toolbarShowName = it })
+    val showSelectButton = PrefState({ prefs.showSelectButton }, { prefs.showSelectButton = it })
+    val screenOrientation = PrefState({ prefs.screenOrientation }, { prefs.screenOrientation = it })
+    val largeLayout = PrefState({ prefs.largeLayout }, { prefs.largeLayout = it })
+    val editorHighlightLimit =
+        PrefState({ prefs.editorHighlightLimitKb }, { prefs.editorHighlightLimitKb = it })
     val ftpPort = PrefState({ prefs.ftpPort }, { prefs.ftpPort = it })
     val ftpEncoding = PrefState({ prefs.ftpEncoding }, { prefs.ftpEncoding = it })
     val lowSpaceMb = PrefState({ prefs.lowSpaceMb }, {
@@ -462,6 +471,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             lowSpaceMb,
             ftpPort,
             ftpEncoding,
+            toolbarShowName,
+            showSelectButton,
+            screenOrientation,
+            largeLayout,
+            editorHighlightLimit,
             newFilesNotify,
             newFilesKinds,
             dailyReport,
@@ -724,7 +738,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         get() {
             if (screen == Screen.Browser) {
                 val t = currentTab
-                if (t != null && (t.selected.isNotEmpty() || t.history.size > 1)) return true
+                if (t != null && (t.selected.isNotEmpty() || t.selectMode || t.history.size > 1)) return true
             }
             return screens.size > 1
         }
@@ -733,8 +747,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (screen == Screen.Browser) {
             val t = currentTab
             if (t != null) {
-                if (t.selected.isNotEmpty()) {
+                if (t.selected.isNotEmpty() || t.selectMode) {
                     t.selected.clear()
+                    t.selectMode = false
                     return
                 }
                 if (t.history.size > 1) {
@@ -763,6 +778,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 existing
             }
         tab.selected.clear()
+        tab.selectMode = false
         load(tab)
         goTo(Screen.Browser)
     }
@@ -1028,11 +1044,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val t = currentTab ?: return
         val inverted = t.items.filter { !t.selected.containsKey(it.path) }
         t.selected.clear()
+        t.selectMode = false
         inverted.forEach { t.selected[it.path] = it }
     }
 
     fun clearSelection() {
         currentTab?.selected?.clear()
+        currentTab?.selectMode = false
+    }
+
+    /** Empieza a marcar con el botón «Seleccionar» de la barra (sin mantener pulsado). */
+    fun startSelecting() {
+        currentTab?.selectMode = true
     }
 
     // ---------------- Vista y ajustes ----------------
@@ -1186,6 +1209,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (paths.isEmpty()) return
         clipboard = Clipboard(paths, move)
         t.selected.clear()
+        t.selectMode = false
         toast(
             "${paths.size} elemento(s) listos para ${if (move) "mover" else "copiar"}. Ve al destino y toca «Pegar aquí».")
     }
@@ -1245,6 +1269,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (paths.isEmpty()) return
         clipboard = Clipboard((clip.paths + paths).distinct(), clip.move)
         t.selected.clear()
+        t.selectMode = false
         toast("En el portapapeles: ${clipboard!!.paths.size} elemento(s)")
     }
 

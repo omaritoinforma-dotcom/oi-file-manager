@@ -53,8 +53,14 @@ object EditorText {
     /** Dibuja los espacios como «·» y los tabuladores como «→» sin cambiar las posiciones. */
     fun showWhitespace(text: String): String = text.replace(' ', '·').replace('\t', '→')
 
-    /** Tamaño máximo para colorear el código (ES: «Restringir tamaño del archivo resaltado»). */
-    const val HIGHLIGHT_LIMIT = 500 * 1024
+    /**
+     * Tamaño máximo por omisión (KB) para colorear el código (ES: «Restringir tamaño del archivo
+     * resaltado»). Colorear se repite con cada tecla, así que el límite se puede subir en Ajustes.
+     */
+    const val DEFAULT_HIGHLIGHT_LIMIT_KB = 100
+
+    /** Si un texto de [length] caracteres se colorea con un límite de [limitKb] KB. */
+    fun highlightApplies(length: Int, limitKb: Int): Boolean = length <= limitKb.toLong() * 1024
 
     /**
      * Sangría automática: si el cambio fue escribir un salto de línea en [cursor], copia al principio

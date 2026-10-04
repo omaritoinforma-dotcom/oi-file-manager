@@ -74,6 +74,7 @@ import com.omaritoinforma.oiarchivos.data.DrawerLayout
 import com.omaritoinforma.oiarchivos.data.FileCategory
 import com.omaritoinforma.oiarchivos.data.HomeLayout
 import com.omaritoinforma.oiarchivos.data.QuickTile
+import com.omaritoinforma.oiarchivos.data.ScreenOrientation
 import com.omaritoinforma.oiarchivos.data.GestureAction
 import com.omaritoinforma.oiarchivos.data.NewFileKind
 import com.omaritoinforma.oiarchivos.data.Prefs
@@ -190,6 +191,31 @@ private fun LazyListScope.sectionList(onOpen: (Section) -> Unit) {
 @Composable
 private fun DisplaySettings(vm: MainViewModel) {
     Column {
+        // Arriba del todo: así se puede deshacer aunque la pantalla esté en horizontal.
+        Text(
+            "Orientación de la pantalla:",
+            Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ChipRow {
+            ScreenOrientation.entries.forEach { o ->
+                FilterChip(
+                    vm.screenOrientation.value == o,
+                    onClick = { vm.screenOrientation.value = o },
+                    label = { Text(o.label) })
+            }
+        }
+        SwitchRow(
+            "Mostrar el nombre en la barra de herramientas",
+            "El título de la carpeta o categoría que se ve arriba",
+            vm.toolbarShowName)
+        SwitchRow(
+            "Mostrar botón de selección",
+            "Un botón en la barra para empezar a marcar archivos sin mantener pulsado",
+            vm.showSelectButton)
+        SwitchRow(
+            "Diseño grande",
+            "Textos y controles un 20 % más grandes",
+            vm.largeLayout)
         SwitchRow(
             "Mostrar archivos ocultos",
             "Archivos y carpetas que empiezan con punto",
@@ -983,8 +1009,20 @@ private fun EditorSettings(vm: MainViewModel) {
             vm.editorAutoIndent)
         SwitchRow(
             "Resaltado de sintaxis",
-            "Colorear el código (solo en archivos de hasta 500 KB)",
+            "Colorear el código (solo en archivos de hasta ${vm.editorHighlightLimit.value} KB)",
             vm.editorHighlight)
+        Text(
+            "Tamaño máximo del archivo resaltado:",
+            Modifier.padding(horizontal = 16.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ChipRow {
+            listOf(50, 100, 500, 1000, 2000).forEach { kb ->
+                FilterChip(
+                    vm.editorHighlightLimit.value == kb,
+                    onClick = { vm.editorHighlightLimit.value = kb },
+                    label = { Text(if (kb >= 1000) "${kb / 1000} MB" else "$kb KB") })
+            }
+        }
         SwitchRow(
             "Guardado automático",
             "Guardar al salir del editor sin preguntar",

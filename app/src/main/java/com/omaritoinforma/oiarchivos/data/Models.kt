@@ -44,6 +44,13 @@ enum class FtpEncoding(val label: String, private val charsetName: String) {
         get() = runCatching { java.nio.charset.Charset.forName(charsetName) }.getOrDefault(Charsets.UTF_8)
 }
 
+/** Orientación de la pantalla («Orientación de la pantalla» de ES). */
+enum class ScreenOrientation(val label: String) {
+    AUTO("Automática"),
+    PORTRAIT("Vertical"),
+    LANDSCAPE("Horizontal")
+}
+
 enum class SortBy(val label: String) { NAME("Nombre"), DATE("Fecha"), SIZE("Tamaño"), TYPE("Tipo") }
 
 enum class ThemeMode(val label: String) { SYSTEM("Según el sistema"), LIGHT("Claro"), DARK("Oscuro") }

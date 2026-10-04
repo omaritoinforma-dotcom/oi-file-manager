@@ -248,9 +248,10 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                         val current = value!!
                         val lineCount = current.text.count { it == '\n' } + 1
                         val wrap = vm.editorWrap.value
+                        val limit = vm.editorHighlightLimit.value * 1024
                         val highlight =
                             vm.editorHighlight.value &&
-                                current.text.length <= EditorText.HIGHLIGHT_LIMIT
+                                EditorText.highlightApplies(current.text.length, vm.editorHighlightLimit.value)
                         val whitespace = vm.editorShowWhitespace.value
                         val marker = MaterialTheme.colorScheme.outline
                         val style =
@@ -298,8 +299,8 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                                                 else KeyboardCapitalization.None),
                                     visualTransformation =
                                         if (highlight || whitespace)
-                                            remember(highlight, whitespace, marker) {
-                                                EditorLook(highlight, whitespace, marker)
+                                            remember(highlight, whitespace, marker, limit) {
+                                                EditorLook(highlight, whitespace, marker, limit)
                                             }
                                         else VisualTransformation.None,
                                     modifier =
@@ -370,10 +371,11 @@ fun EditorScreen(vm: MainViewModel, path: String) {
 private class EditorLook(
     private val highlight: Boolean,
     private val whitespace: Boolean,
-    private val marker: Color
+    private val marker: Color,
+    private val limit: Int
 ) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
-        if (text.length > 100000) return TransformedText(text, OffsetMapping.Identity)
+        if (text.length > limit) return TransformedText(text, OffsetMapping.Identity)
         val raw = text.text
         val builder = AnnotatedString.Builder(if (whitespace) EditorText.showWhitespace(raw) else raw)
         if (highlight) {
