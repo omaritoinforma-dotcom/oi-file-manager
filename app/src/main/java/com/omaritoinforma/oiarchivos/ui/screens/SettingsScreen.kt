@@ -71,6 +71,9 @@ import com.omaritoinforma.oiarchivos.data.AccentColor
 import com.omaritoinforma.oiarchivos.data.AutoBackup
 import com.omaritoinforma.oiarchivos.data.BackupKind
 import com.omaritoinforma.oiarchivos.data.DrawerLayout
+import com.omaritoinforma.oiarchivos.data.FileCategory
+import com.omaritoinforma.oiarchivos.data.HomeLayout
+import com.omaritoinforma.oiarchivos.data.QuickTile
 import com.omaritoinforma.oiarchivos.data.GestureAction
 import com.omaritoinforma.oiarchivos.data.NewFileKind
 import com.omaritoinforma.oiarchivos.data.Prefs
@@ -95,6 +98,7 @@ private enum class Section(val group: String, val title: String, val summary: St
     CLEANUP("General", "Limpieza", "Borrar el historial y la caché"),
     FOLDERS("General", "Carpetas", "Carpeta de inicio y carpeta de descargas"),
     START("General", "Ventana inicial", "Qué se abre al iniciar la app"),
+    HOME("General", "Pantalla de inicio", "Ocultar y ordenar las secciones y los iconos de Inicio"),
     DRAWER("General", "Barra lateral", "Ocultar y ordenar las opciones del menú lateral"),
     NOTIFICATIONS("General", "Notificaciones", "Aviso al terminar, espacio bajo y archivos nuevos"),
     REMOTE("Red y nube", "Archivos remotos", "Subir lo que edites en otra app"),
@@ -136,6 +140,7 @@ fun SettingsScreen(vm: MainViewModel) {
                 Section.CLEANUP -> item { CleanupSettings(vm) }
                 Section.FOLDERS -> item { FolderSettings(vm) }
                 Section.START -> item { StartSettings(vm) }
+                Section.HOME -> item { HomeSettings(vm) }
                 Section.DRAWER -> item { DrawerSettings(vm) }
                 Section.NOTIFICATIONS -> item { NotificationSettings(vm) }
                 Section.REMOTE ->
@@ -367,6 +372,87 @@ private fun DrawerSettings(vm: MainViewModel) {
                     Text("Restablecer")
                 }
     }
+}
+
+@Composable
+private fun HomeSettings(vm: MainViewModel) {
+    val order = HomeLayout.order(vm.homeOrder.value)
+    Column {
+        Text(
+            "Elige qué secciones salen en Inicio y en qué orden, y qué iconos se ven dentro de " +
+                "«Categorías» y «Accesos rápidos». El botón de Ajustes de arriba siempre está.",
+            Modifier.padding(16.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        order.forEachIndexed { index, section ->
+            ListItem(
+                headlineContent = { Text(section.label) },
+                leadingContent = {
+                    Switch(
+                        checked = section.name !in vm.homeHidden.value,
+                        onCheckedChange = { on ->
+                            vm.homeHidden.value =
+                                if (on) vm.homeHidden.value - section.name
+                                else vm.homeHidden.value + section.name
+                        })
+                },
+                trailingContent = {
+                    Row {
+                        IconButton(
+                            onClick = {
+                                vm.homeOrder.value = HomeLayout.move(vm.homeOrder.value, section, -1)
+                            },
+                            enabled = index > 0) {
+                                Icon(Icons.Filled.ArrowUpward, "Subir ${section.label}")
+                            }
+                        IconButton(
+                            onClick = {
+                                vm.homeOrder.value = HomeLayout.move(vm.homeOrder.value, section, 1)
+                            },
+                            enabled = index < order.lastIndex) {
+                                Icon(Icons.Filled.ArrowDownward, "Bajar ${section.label}")
+                            }
+                    }
+                })
+        }
+        SectionTitle("Iconos de «Categorías»", Modifier.padding(start = 16.dp, top = 8.dp))
+        FileCategory.entries.forEach { category ->
+            TileSwitch(category.label, HomeLayout.categoryKey(category), vm)
+        }
+        SectionTitle("Iconos de «Accesos rápidos»", Modifier.padding(start = 16.dp, top = 8.dp))
+        QuickTile.entries.forEach { tile -> TileSwitch(tile.label, HomeLayout.quickKey(tile), vm) }
+        if (vm.homeOrder.value.isNotEmpty() ||
+            vm.homeHidden.value.isNotEmpty() ||
+            vm.homeHiddenTiles.value.isNotEmpty())
+            TextButton(
+                onClick = {
+                    vm.homeOrder.value = emptyList()
+                    vm.homeHidden.value = emptySet()
+                    vm.homeHiddenTiles.value = emptySet()
+                },
+                modifier = Modifier.padding(horizontal = 8.dp)) {
+                    Text("Restablecer Inicio")
+                }
+    }
+}
+
+@Composable
+private fun TileSwitch(label: String, key: String, vm: MainViewModel) {
+    ListItem(
+        headlineContent = { Text(label) },
+        trailingContent = {
+            Switch(
+                checked = key !in vm.homeHiddenTiles.value,
+                onCheckedChange = { on ->
+                    vm.homeHiddenTiles.value =
+                        if (on) vm.homeHiddenTiles.value - key else vm.homeHiddenTiles.value + key
+                })
+        },
+        modifier =
+            Modifier.clickable {
+                vm.homeHiddenTiles.value =
+                    if (key in vm.homeHiddenTiles.value) vm.homeHiddenTiles.value - key
+                    else vm.homeHiddenTiles.value + key
+            })
 }
 
 @Composable

@@ -67,6 +67,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.omaritoinforma.oiarchivos.data.FileCategory
+import com.omaritoinforma.oiarchivos.data.HomeLayout
+import com.omaritoinforma.oiarchivos.data.HomeSection
+import com.omaritoinforma.oiarchivos.data.QuickTile
 import com.omaritoinforma.oiarchivos.data.Location
 import com.omaritoinforma.oiarchivos.data.StorageVolumeInfo
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
@@ -106,44 +109,67 @@ fun HomeScreen(vm: MainViewModel, openDrawer: () -> Unit) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            items(vm.volumes.toList(), key = { "vol:" + it.path }) { v ->
-                StorageCard(v) { vm.openFolder(v.path) }
-            }
-            item { SectionTitle("Categorías") }
-            item { TileGrid(categoryTiles(vm)) }
-            item { SectionTitle("Accesos rápidos") }
-            item { TileGrid(quickTiles(vm)) }
-            if (vm.bookmarks.isNotEmpty()) {
-                item { SectionTitle("Marcadores") }
-                items(vm.bookmarks.toList(), key = { "bm:$it" }) { b ->
-                    ListItem(
-                        headlineContent = { Text(PathUtil.displayName(b)) },
-                        supportingContent = {
-                            Text(b, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        },
-                        leadingContent = {
-                            Icon(
-                                Icons.Filled.Bookmark,
-                                null,
-                                tint = MaterialTheme.colorScheme.primary)
-                        },
-                        trailingContent = {
-                            IconButton(onClick = { vm.toggleBookmark(b) }) {
-                                Icon(Icons.Filled.Close, "Quitar marcador")
+            val sections = HomeLayout.visible(vm.homeOrder.value, vm.homeHidden.value)
+            if (sections.isEmpty())
+                item {
+                    Text(
+                        "Inicio está vacío. Para volver a mostrar algo: Ajustes → Pantalla de inicio.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            sections.forEach { section ->
+                when (section) {
+                    HomeSection.STORAGE ->
+                        items(vm.volumes.toList(), key = { "vol:" + it.path }) { v ->
+                            StorageCard(v) { vm.openFolder(v.path) }
+                        }
+                    HomeSection.CATEGORIES -> {
+                        val tiles = categoryTiles(vm, vm.homeHiddenTiles.value)
+                        if (tiles.isNotEmpty()) {
+                            item(key = "title:cat") { SectionTitle("Categorías") }
+                            item(key = "tiles:cat") { TileGrid(tiles) }
+                        }
+                    }
+                    HomeSection.QUICK -> {
+                        val tiles = quickTiles(vm, vm.homeHiddenTiles.value)
+                        if (tiles.isNotEmpty()) {
+                            item(key = "title:quick") { SectionTitle("Accesos rápidos") }
+                            item(key = "tiles:quick") { TileGrid(tiles) }
+                        }
+                    }
+                    HomeSection.BOOKMARKS ->
+                        if (vm.bookmarks.isNotEmpty()) {
+                            item(key = "title:bm") { SectionTitle("Marcadores") }
+                            items(vm.bookmarks.toList(), key = { "bm:$it" }) { b ->
+                                ListItem(
+                                    headlineContent = { Text(PathUtil.displayName(b)) },
+                                    supportingContent = {
+                                        Text(b, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    },
+                                    leadingContent = {
+                                        Icon(
+                                            Icons.Filled.Bookmark,
+                                            null,
+                                            tint = MaterialTheme.colorScheme.primary)
+                                    },
+                                    trailingContent = {
+                                        IconButton(onClick = { vm.toggleBookmark(b) }) {
+                                            Icon(Icons.Filled.Close, "Quitar marcador")
+                                        }
+                                    },
+                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                    modifier =
+                                        Modifier.clip(RoundedCornerShape(12.dp)).clickable { vm.openFolder(b) },
+                                )
                             }
-                        },
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        modifier =
-                            Modifier.clip(RoundedCornerShape(12.dp)).clickable { vm.openFolder(b) },
-                    )
+                        }
                 }
             }
         }
     }
 }
 
-private fun categoryTiles(vm: MainViewModel): List<Tile> =
-    FileCategory.entries.map { c ->
+private fun categoryTiles(vm: MainViewModel, hidden: Set<String>): List<Tile> =
+    HomeLayout.categories(hidden).map { c ->
         val (icon, color) =
             when (c) {
                 FileCategory.IMAGES -> Icons.Filled.Image to Color(0xFF43A047)
@@ -167,31 +193,45 @@ private fun categoryTiles(vm: MainViewModel): List<Tile> =
 private fun publicDir(type: String): String =
     Environment.getExternalStoragePublicDirectory(type).absolutePath
 
-private fun quickTiles(vm: MainViewModel): List<Tile> =
-    listOf(
-        Tile("Descargas", Icons.Filled.Download, Color(0xFF1E88E5)) {
-            vm.openFolder(publicDir(Environment.DIRECTORY_DOWNLOADS))
-        },
-        Tile("Cámara", Icons.Filled.CameraAlt, Color(0xFF00897B)) {
-            vm.openFolder(publicDir(Environment.DIRECTORY_DCIM))
-        },
-        Tile("Imágenes", Icons.Filled.Collections, Color(0xFF43A047)) {
-            vm.openFolder(publicDir(Environment.DIRECTORY_PICTURES))
-        },
-        Tile("Documentos", Icons.Filled.Description, Color(0xFF3949AB)) {
-            vm.openFolder(publicDir(Environment.DIRECTORY_DOCUMENTS))
-        },
-        Tile("Papelera", Icons.Filled.Delete, Color(0xFF757575)) { vm.goTo(Screen.Trash) },
-        Tile("Apps", Icons.Filled.Apps, Color(0xFF7CB342)) { vm.goTo(Screen.Apps) },
-        Tile("Red / nube", Icons.Filled.Dns, Color(0xFF1E88E5)) { vm.goTo(Screen.Connections) },
-        Tile("Analizar", Icons.Filled.SdCard, Color(0xFF8E24AA)) {
-            vm.goTo(Screen.Analysis(PathUtil.internalRoot))
-        },
-        Tile("Historial", Icons.Filled.History, Color(0xFFFB8C00)) { vm.goTo(Screen.History) },
-        Tile("Transferir", Icons.Filled.Download, Color(0xFF00897B)) { vm.goTo(Screen.Transfers) },
-        Tile("Raíz", Icons.Filled.Dns, Color(0xFF6D4C41)) { vm.openFolder("/") },
-        Tile("Ajustes", Icons.Filled.Settings, Color(0xFF546E7A)) { vm.goTo(Screen.Settings) },
-    )
+private fun quickTiles(vm: MainViewModel, hidden: Set<String>): List<Tile> =
+    HomeLayout.quick(hidden).map { t ->
+        when (t) {
+            QuickTile.DOWNLOADS ->
+                Tile(t.label, Icons.Filled.Download, Color(0xFF1E88E5)) {
+                    vm.openFolder(publicDir(Environment.DIRECTORY_DOWNLOADS))
+                }
+            QuickTile.CAMERA ->
+                Tile(t.label, Icons.Filled.CameraAlt, Color(0xFF00897B)) {
+                    vm.openFolder(publicDir(Environment.DIRECTORY_DCIM))
+                }
+            QuickTile.PICTURES ->
+                Tile(t.label, Icons.Filled.Collections, Color(0xFF43A047)) {
+                    vm.openFolder(publicDir(Environment.DIRECTORY_PICTURES))
+                }
+            QuickTile.DOCUMENTS ->
+                Tile(t.label, Icons.Filled.Description, Color(0xFF3949AB)) {
+                    vm.openFolder(publicDir(Environment.DIRECTORY_DOCUMENTS))
+                }
+            QuickTile.TRASH ->
+                Tile(t.label, Icons.Filled.Delete, Color(0xFF757575)) { vm.goTo(Screen.Trash) }
+            QuickTile.APPS ->
+                Tile(t.label, Icons.Filled.Apps, Color(0xFF7CB342)) { vm.goTo(Screen.Apps) }
+            QuickTile.NETWORK ->
+                Tile(t.label, Icons.Filled.Dns, Color(0xFF1E88E5)) { vm.goTo(Screen.Connections) }
+            QuickTile.ANALYZE ->
+                Tile(t.label, Icons.Filled.SdCard, Color(0xFF8E24AA)) {
+                    vm.goTo(Screen.Analysis(PathUtil.internalRoot))
+                }
+            QuickTile.HISTORY ->
+                Tile(t.label, Icons.Filled.History, Color(0xFFFB8C00)) { vm.goTo(Screen.History) }
+            QuickTile.TRANSFERS ->
+                Tile(t.label, Icons.Filled.Download, Color(0xFF00897B)) { vm.goTo(Screen.Transfers) }
+            QuickTile.ROOT ->
+                Tile(t.label, Icons.Filled.Dns, Color(0xFF6D4C41)) { vm.openFolder("/") }
+            QuickTile.SETTINGS ->
+                Tile(t.label, Icons.Filled.Settings, Color(0xFF546E7A)) { vm.goTo(Screen.Settings) }
+        }
+    }
 
 @Composable
 private fun TileGrid(tiles: List<Tile>) {

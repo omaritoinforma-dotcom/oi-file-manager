@@ -2423,6 +2423,34 @@ def drawer_customize():
         time.sleep(2)
 
 
+@check("pantalla-de-inicio-ocultar-y-reordenar")
+def home_layout():
+    try:
+        settings("Pantalla de inicio")
+        # «Accesos rápidos» sube un puesto (queda antes que «Categorías») y se oculta el icono de Música.
+        tap("Subir Accesos rápidos")
+        time.sleep(1)
+        find("Música")
+        set_switch("Música", False)
+        launch_home()
+        wait("Categorías")
+        wait("Accesos rápidos")
+        assert row_top("Accesos rápidos") < row_top("Categorías"), "El orden de las secciones no se aplicó a Inicio"
+        tree = hierarchy()
+        assert not nodes("Música", tree), "El icono de Música sigue en Inicio aunque se ocultó"
+        assert nodes("Imágenes", tree) and nodes("Videos", tree), "Se ocultaron más iconos de los elegidos"
+        evidence("inicio-personalizado")
+    finally:
+        settings("Pantalla de inicio")
+        if nodes("Restablecer Inicio", hierarchy()):
+            tap("Restablecer Inicio")
+        time.sleep(2)
+    launch_home()
+    wait("Categorías")
+    assert row_top("Categorías") < row_top("Accesos rápidos"), "Al restablecer no volvió el orden de fábrica"
+    wait("Música")
+
+
 @check("informe-diario-de-archivos-nuevos")
 def daily_report():
     folder = "/sdcard/DCIM/OIInforme"

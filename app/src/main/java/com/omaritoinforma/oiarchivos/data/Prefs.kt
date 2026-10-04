@@ -87,6 +87,20 @@ class Prefs(context: Context) {
         get() = sp.getString("drawer_hidden", "").orEmpty().split(',').filter { it.isNotBlank() }.toSet()
         set(v) = sp.edit().putString("drawer_hidden", v.joinToString(",")).apply()
 
+    /** Orden de las secciones de Inicio (nombres de [HomeSection]); vacío = el de fábrica. */
+    var homeOrder: List<String>
+        get() = sp.getString("home_order", "").orEmpty().split(',').filter { it.isNotBlank() }
+        set(v) = sp.edit().putString("home_order", v.joinToString(",")).apply()
+
+    var homeHidden: Set<String>
+        get() = sp.getString("home_hidden", "").orEmpty().split(',').filter { it.isNotBlank() }.toSet()
+        set(v) = sp.edit().putString("home_hidden", v.joinToString(",")).apply()
+
+    /** Iconos de Inicio ocultos: «cat:IMAGES», «quick:DOWNLOADS»… (ver [HomeLayout]). */
+    var homeHiddenTiles: Set<String>
+        get() = sp.getString("home_hidden_tiles", "").orEmpty().split(',').filter { it.isNotBlank() }.toSet()
+        set(v) = sp.edit().putString("home_hidden_tiles", v.joinToString(",")).apply()
+
     /** Rutas (ya con el punto) de lo que se ocultó desde la app, para la «Lista de ocultos». */
     var hiddenItems: List<String>
         get() = sp.getString("hidden_items", "").orEmpty().split('\n').filter { it.isNotBlank() }

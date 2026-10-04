@@ -231,6 +231,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val accent = PrefState({ prefs.accent }, { prefs.accent = it })
     val drawerOrder = PrefState({ prefs.drawerOrder }, { prefs.drawerOrder = it })
     val drawerHidden = PrefState({ prefs.drawerHidden }, { prefs.drawerHidden = it })
+    val homeOrder = PrefState({ prefs.homeOrder }, { prefs.homeOrder = it })
+    val homeHidden = PrefState({ prefs.homeHidden }, { prefs.homeHidden = it })
+    val homeHiddenTiles = PrefState({ prefs.homeHiddenTiles }, { prefs.homeHiddenTiles = it })
     val pureBlack = PrefState({ prefs.pureBlack }, { prefs.pureBlack = it })
 
     /** Rutas fijadas arriba en las listas de archivos. */
@@ -487,6 +490,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             pureBlack,
             drawerOrder,
             drawerHidden,
+            homeOrder,
+            homeHidden,
+            homeHiddenTiles,
             lockStart,
             lockNetwork,
             lockHidden)
