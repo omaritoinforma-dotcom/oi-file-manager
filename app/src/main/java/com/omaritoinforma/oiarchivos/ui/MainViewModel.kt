@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.omaritoinforma.oiarchivos.data.AppInfo
+import com.omaritoinforma.oiarchivos.data.AppInstaller
 import com.omaritoinforma.oiarchivos.data.AppLock
 import com.omaritoinforma.oiarchivos.data.CacheCleaner
 import com.omaritoinforma.oiarchivos.data.AppsRepo
@@ -335,6 +336,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             openStartWindow()
         }
         scheduleStorageWatch()
+        viewModelScope.launch {
+            AppInstaller.finished.collect { summary ->
+                toast(summary)
+                if (screen == Screen.Apps) loadApps(appsIncludeSystem)
+            }
+        }
         viewModelScope.launch {
             TransferService.completion.collect { completed ->
                 if (completed != null) {
@@ -1072,7 +1079,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- Aplicaciones ----------------
 
+    private var appsIncludeSystem = false
+
     fun loadApps(includeSystem: Boolean) {
+        appsIncludeSystem = includeSystem
         appsLoading = true
         viewModelScope.launch {
             val list =
@@ -1097,6 +1107,61 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 runCatching { AppsRepo.backup(a, File(appBackupFolder.value)) }.onSuccess { out += it }
             }
             OpResult("APK guardados en «${PathUtil.displayName(appBackupFolder.value)}» (${out.size} de ${list.size})", out)
+        }
+    }
+
+    // ---------------- Instalar y desinstalar por lotes ----------------
+
+    /** Instala varios APK seguidos; Android pide confirmar cada uno. */
+    fun installApks(files: List<File>) {
+        if (files.isEmpty()) return
+        if (!ctx.packageManager.canRequestPackageInstalls()) {
+            toast("Permite a OI Archivos instalar apps y vuelve a intentarlo")
+            runCatching {
+                ctx.startActivity(
+                    android.content.Intent(
+                            android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                            android.net.Uri.parse("package:${ctx.packageName}"))
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
+            return
+        }
+        if (AppInstaller.start(ctx, files.map { AppInstaller.Install(it) })) {
+            clearSelection()
+            toast("Instalando ${files.size} APK: confirma cada uno")
+        } else toast("Espera a que termine la tanda de instalación en curso")
+    }
+
+    /**
+     * Desinstala varias apps seguidas (solo las que no son del sistema). Si en Ajustes →
+     * Aplicaciones está activada la copia, antes se guardan sus APK.
+     */
+    fun uninstallApps(list: List<AppInfo>) {
+        val user = list.filter { !it.isSystem }
+        if (user.isEmpty()) {
+            toast("Las apps del sistema no se pueden desinstalar sin root")
+            return
+        }
+        if (AppInstaller.busy) {
+            toast("Espera a que termine la tanda en curso")
+            return
+        }
+        val jobs = user.map { AppInstaller.Uninstall(it.packageName, it.label) }
+        val skipped = list.size - user.size
+        val start = {
+            AppInstaller.start(ctx, jobs)
+            if (skipped > 0) toast("Se omiten $skipped app(s) del sistema")
+        }
+        if (!backupBeforeUninstall.value) return start()
+        val folder = File(appBackupFolder.value)
+        runTask("Copia antes de desinstalar") { report ->
+            val copies = ArrayList<File>()
+            for ((i, app) in user.withIndex()) {
+                report(OpProgress("Copia antes de desinstalar", app.label, doneFiles = i, totalFiles = user.size))
+                copies += AppsRepo.backup(app, folder)
+            }
+            withContext(Dispatchers.Main) { start() }
+            OperationResult("Copias guardadas: ${copies.size}", copies)
         }
     }
 

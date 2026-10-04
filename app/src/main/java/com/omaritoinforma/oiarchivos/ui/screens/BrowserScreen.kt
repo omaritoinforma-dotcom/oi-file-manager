@@ -33,6 +33,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bookmark
@@ -478,6 +479,13 @@ private fun SelectionBottomBar(
                         vm.clearSelection()
                         vm.goTo(Screen.Nearby)
                     }
+                    if (files.all { it.extension.equals("apk", ignoreCase = true) })
+                        MenuItem(
+                            if (files.size == 1) "Instalar APK" else "Instalar ${files.size} APK",
+                            Icons.Filled.Android) {
+                                menu = false
+                                vm.installApks(files.map { it.file })
+                            }
                     if (files.all { Kinds.of(it) in setOf(FileKind.AUDIO, FileKind.VIDEO) })
                         MenuItem("Añadir a lista de reproducción", Icons.AutoMirrored.Filled.PlaylistAdd) {
                             menu = false

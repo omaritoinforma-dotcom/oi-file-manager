@@ -76,6 +76,7 @@
             android:foregroundServiceType="dataSync" />
         <service android:name=".data.ShareService" android:exported="false"
             android:foregroundServiceType="dataSync" />
+        <receiver android:name=".data.AppInstallReceiver" android:exported="false" />
         <service android:name=".data.AudioPlaybackService" android:exported="false"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter><action android:name="androidx.media3.session.MediaSessionService" /></intent-filter>

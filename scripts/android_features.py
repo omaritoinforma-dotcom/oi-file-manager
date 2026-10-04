@@ -1484,6 +1484,125 @@ def low_space_notice():
         tap("1 GB")
 
 
+def android_sdk():
+    for var in ("ANDROID_HOME", "ANDROID_SDK_ROOT"):
+        path = os.environ.get(var)
+        if path and pathlib.Path(path, "build-tools").is_dir():
+            return pathlib.Path(path)
+    props = ROOT / "local.properties"
+    if props.exists():
+        for line in props.read_text(encoding="utf-8").splitlines():
+            if line.startswith("sdk.dir="):
+                return pathlib.Path(line.split("=", 1)[1].strip())
+    raise AssertionError("No se encontró el SDK de Android para crear los APK de prueba")
+
+
+def version_key(name):
+    return [int(part) for part in re.findall(r"\d+", name)]
+
+
+def build_test_apk(folder, package, label):
+    """APK mínimo y firmado (sin código), creado con las herramientas del SDK del equipo de CI."""
+    sdk = android_sdk()
+    tools = max((d for d in (sdk / "build-tools").iterdir()
+                 if (d / "aapt2").exists() and (d / "apksigner").exists()),
+                key=lambda d: version_key(d.name))
+    jar = max((sdk / "platforms").glob("android-*/android.jar"),
+              key=lambda p: version_key(p.parent.name))
+    manifest = folder / f"{package}.xml"
+    manifest.write_text(
+        '<manifest xmlns:android="http://schemas.android.com/apk/res/android" '
+        f'package="{package}" android:versionCode="1" android:versionName="1.0">'
+        '<uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34"/>'
+        f'<application android:label="{label}" android:hasCode="false"/></manifest>',
+        encoding="utf-8")
+    unsigned, aligned, out = (folder / f"{package}-{kind}.apk" for kind in ("sin-firmar", "alineado", "firmado"))
+    subprocess.check_call([str(tools / "aapt2"), "link", "-o", str(unsigned), "-I", str(jar),
+                           "--manifest", str(manifest)])
+    subprocess.check_call([str(tools / "zipalign"), "-f", "4", str(unsigned), str(aligned)])
+    keystore = folder / "prueba.jks"
+    if not keystore.exists():
+        subprocess.check_call(["keytool", "-genkeypair", "-keystore", str(keystore), "-storepass", "prueba123",
+                               "-keypass", "prueba123", "-alias", "prueba", "-keyalg", "RSA", "-keysize", "2048",
+                               "-validity", "3650", "-dname", "CN=Prueba OI"],
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.check_call([str(tools / "apksigner"), "sign", "--ks", str(keystore), "--ks-pass", "pass:prueba123",
+                           "--key-pass", "pass:prueba123", "--out", str(out), str(aligned)])
+    return out
+
+
+def installed(package):
+    return f"package:{package}" in sh("pm", "list", "packages", package, check=False).split()
+
+
+def answer_system_dialogs(buttons, done, message, timeout=120):
+    """Toca los botones de los diálogos de Android (el emulador está en inglés) hasta que [done]."""
+    deadline = time.monotonic() + timeout
+    while not done():
+        assert time.monotonic() < deadline, message
+        tree = hierarchy()
+        for label in buttons:
+            found = [n for n in nodes(label, tree) if n.get("package") != ui.PACKAGE]
+            if found:
+                tap_node(found[0])
+                time.sleep(1.5)
+                break
+        else:
+            time.sleep(1)
+
+
+def press_and_hold(label):
+    node, _ = wait(label)
+    x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds")))
+    x, y = (x1 + x2) // 2, (y1 + y2) // 2
+    adb("shell", "input", "swipe", str(x), str(y), str(x), str(y), "900")
+    time.sleep(1)
+
+
+@check("instalar-y-desinstalar-apps-por-lotes")
+def batch_apps():
+    packages = {"com.omaritoinforma.prueba.uno": "Prueba uno", "com.omaritoinforma.prueba.dos": "Prueba dos"}
+    folder = f"{DIR}/apks"
+    for package in packages:
+        sh("pm", "uninstall", package, check=False)
+    sh("rm", "-rf", q(folder), check=False)
+    with tempfile.TemporaryDirectory() as tmp:
+        for (package, label), name in zip(packages.items(), ("uno.apk", "dos.apk")):
+            adb("push", str(build_test_apk(pathlib.Path(tmp), package, label)), f"{folder}/{name}")
+    # Lo que el usuario concede en «Instalar apps desconocidas».
+    adb("shell", "appops", "set", ui.PACKAGE, "REQUEST_INSTALL_PACKAGES", "allow")
+    try:
+        # Instalar: dos APK elegidos en el explorador; Android pide confirmar cada uno.
+        open_test_folder()
+        tap(find("apks").get("text"))
+        long_press("uno.apk")
+        tap("dos.apk")
+        menu_option("Instalar 2 APK")
+        answer_system_dialogs(
+            ["Install", "INSTALL", "Install anyway", "Don't send"],
+            lambda: all(installed(p) for p in packages),
+            "No se instalaron los dos APK")
+        wait_text("Instaladas 2 de 2")
+        # Desinstalar: las dos apps elegidas en Aplicaciones.
+        launch_home()
+        ui.drawer("Aplicaciones")
+        fill("Buscar app…", "Prueba")
+        wait("Prueba uno")
+        wait("Prueba dos")
+        press_and_hold("Prueba uno")
+        wait("1 seleccionada(s)")
+        tap("Prueba dos")
+        wait("2 seleccionada(s)")
+        tap("Desinstalar seleccionadas")
+        answer_system_dialogs(
+            ["OK"], lambda: not any(installed(p) for p in packages), "No se desinstalaron las dos apps")
+        wait_text("Desinstaladas 2 de 2")
+        assert installed(ui.PACKAGE), "Se desinstaló OI Archivos"
+    finally:
+        for package in packages:
+            sh("pm", "uninstall", package, check=False)
+
+
 @check("editor-sangria-y-guardado-automatico")
 def editor_options():
     push_bytes(b"  hola", f"{DIR}/codigo.txt")

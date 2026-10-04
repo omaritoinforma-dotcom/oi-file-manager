@@ -100,7 +100,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | --- | --- | --- |
 | Lista de apps, abrir, desinstalar, compartir, información | 🟡 | Lista y búsqueda usadas en el emulador; faltan abrir, desinstalar y compartir |
 | Copia de seguridad de APK (también divididos) | ✅ | Emulador Android 15 (APK simple) |
-| Instalar o desinstalar varias apps a la vez | ❌ | |
+| Instalar o desinstalar varias apps a la vez | 🟡 | Varios APK desde el explorador y varias apps desde Aplicaciones (mantener pulsado), de una en una con la confirmación de Android; comprobación en el emulador preparada |
 | Copia antes de desinstalar, limpiar carpetas asociadas | 🟠 | Copia del APK antes de desinstalar comprobada en el emulador; los restos de apps desinstaladas se limpian desde «Limpiar basura» |
 | Desinstalar apps del sistema (root) | ❌ | |
 | Ver el contenido de un APK | ✅ | Emulador Android 15 |
@@ -154,19 +154,18 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | Estado | Funciones |
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 32 |
-| 🟡 Implementadas, sin comprobar | 17 |
+| 🟡 Implementadas, sin comprobar | 18 |
 | 🟠 Parciales | 13 |
-| ❌ Faltan | 17 |
+| ❌ Faltan | 16 |
 | **Total de filas** | **79** |
 
 **OI Archivos no cubre todavía el mínimo.** Las funciones que faltan más grandes, por valor para el usuario:
 
 1. Copia automática a la nube.
 2. Enviar a la TV por Chromecast (DLNA ya está).
-3. Instalación y desinstalación por lotes.
-4. Enviar entre teléfonos por punto de acceso o código QR.
-5. Idioma y temas dentro de la app; barra lateral personalizable.
+3. Enviar entre teléfonos por punto de acceso o código QR.
+4. Idioma y temas dentro de la app; barra lateral personalizable.
 
-Hechos y pendientes de su comprobación en el emulador (CI en curso): listas de reproducción, aviso de archivos nuevos y aviso de poco espacio.
+Hechos y pendientes de su comprobación en el emulador (CI en curso): listas de reproducción, aviso de archivos nuevos, aviso de poco espacio e instalar y desinstalar apps por lotes.
 
 Los recuentos son por fila de esta matriz; una fila puede agrupar varias funciones pequeñas. Solo 32 de 79 cumplen ya el criterio de terminación (conectadas y comprobadas en su entorno real).
