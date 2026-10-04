@@ -673,6 +673,9 @@ INTERNAL = "/storage/emulated/0"
 
 def settings(section):
     """Abre Ajustes y una de sus secciones (Pantalla, Limpieza, Carpetas…)."""
+    # launch_home() cierra la app a la fuerza. Android guarda los ajustes en disco en segundo
+    # plano: si el paso anterior acaba de cambiar uno, se espera a que quede guardado.
+    time.sleep(2)
     launch_home()
     ui.drawer("Ajustes")
     tap(find(section).get("text"))
@@ -810,6 +813,7 @@ def start_window():
         settings("Carpetas")
         if nodes("Restablecer", hierarchy()):
             tap("Restablecer")
+        time.sleep(2)
     launch_home()
 
 
@@ -828,6 +832,7 @@ def download_folder():
         settings("Carpetas")
         if nodes("Restablecer", hierarchy()):
             tap("Restablecer")
+        time.sleep(2)
 
 
 def create_password():
