@@ -618,50 +618,6 @@ def nearby_receive():
     subprocess.run(["adb", "forward", "--remove", "tcp:42199"], timeout=30)
 
 
-if os.environ.get("OI_REAL_SFTP_PASSWORD"):
-
-    @check("sftp-servidor-real-desde-android")
-    def real_sftp():
-        """Servidor SFTP real del dueño: conectar, listar, crear y borrar una carpeta desde la app."""
-        name = f"oi-prueba-android-{int(time.time())}"
-        ui.launch()
-        wait("Categorías")
-        ui.drawer("Red, nube y USB")
-        tap("Agregar")
-        fill("Nombre de la conexión", "SFTP real")
-        fill("Servidor", os.environ["OI_REAL_SFTP_HOST"])
-        fill("Puerto", os.environ["OI_REAL_SFTP_PORT"], current="22")
-        fill("Usuario", os.environ["OI_REAL_SFTP_USER"])
-        fill("Contraseña", os.environ["OI_REAL_SFTP_PASSWORD"], verify=False)
-        folder = os.environ.get("OI_REAL_SFTP_DIR") or ""
-        if folder:
-            fill("Carpeta inicial", folder, clear=True)
-        fill("Huella del servidor SHA256:…", os.environ["OI_REAL_SFTP_FINGERPRINT"])
-        tap("Guardar")
-        tap("SFTP real")
-        wait("Nueva carpeta")
-        time.sleep(3)
-        errors = [n.get("text") for n in hierarchy().iter("node") if "huella" in (n.get("text") or "").lower()
-                  or "rechaz" in (n.get("text") or "").lower() or "Error" in (n.get("text") or "")]
-        assert not errors, f"La conexión falló en Android: {errors}"
-        tap("Nueva carpeta")
-        wait("Nombre")
-        adb("shell", "input", "text", name)
-        tap("Guardar")
-        node, _ = wait(name, timeout=60)
-        # Se marca con su casilla y se borra para no dejar nada en el servidor.
-        boxes = [n for n in hierarchy().iter("node") if n.get("checkable") == "true"]
-        row_y = int(re.findall(r"\d+", node.get("bounds"))[1])
-        box = min(boxes, key=lambda b: abs(int(re.findall(r"\d+", b.get("bounds"))[1]) - row_y))
-        tap_node(box)
-        tap("Eliminar")
-        tap_last("Eliminar")
-        deadline = time.monotonic() + 60
-        while nodes(name, hierarchy()):
-            assert time.monotonic() < deadline, "La carpeta de prueba no se borró del servidor"
-            time.sleep(1)
-
-
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()

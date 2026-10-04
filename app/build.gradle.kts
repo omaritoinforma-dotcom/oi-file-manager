@@ -58,12 +58,6 @@ android {
         resources { excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "META-INF/DEPENDENCIES", "META-INF/LICENSE*", "META-INF/NOTICE*", "META-INF/versions/9/OSGI-INF/MANIFEST.MF") }
     }
 
-    testOptions {
-        unitTests.all {
-            // The owner's real SFTP server is tested only when CI has its password (-PrealSftp).
-            if (!project.hasProperty("realSftp")) it.exclude("**/RealSftpServerTest*")
-        }
-    }
     lint {
         checkReleaseBuilds = false
         abortOnError = true
