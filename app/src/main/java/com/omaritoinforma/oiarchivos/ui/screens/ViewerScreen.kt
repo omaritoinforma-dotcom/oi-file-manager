@@ -51,7 +51,9 @@ fun ViewerScreen(vm: MainViewModel, path: String) {
             }
         }) { pad ->
             when (kind) {
-                FileKind.IMAGE -> ImageGallery(path, Modifier.fillMaxSize().padding(pad))
+                FileKind.IMAGE ->
+                    ImageGallery(
+                        path, Modifier.fillMaxSize().padding(pad), onEdit = { vm.goTo(Screen.ImageEdit(it.path)) })
                 FileKind.PDF -> PdfViewer(file, Modifier.fillMaxSize().padding(pad))
                 else -> MediaViewer(file, Modifier.fillMaxSize().padding(pad))
             }
@@ -59,7 +61,7 @@ fun ViewerScreen(vm: MainViewModel, path: String) {
 }
 
 @Composable
-private fun ImageGallery(path: String, modifier: Modifier) {
+private fun ImageGallery(path: String, modifier: Modifier, onEdit: (File) -> Unit) {
     val images =
         remember(path) {
             File(path)
@@ -114,14 +116,19 @@ private fun ImageGallery(path: String, modifier: Modifier) {
                     Text("Siguiente")
                 }
             }
-        TextButton(
-            onClick = {
-                zoom = 1f
-                x = 0f
-                y = 0f
-            }) {
-                Text("Restablecer zoom")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            TextButton(
+                onClick = {
+                    zoom = 1f
+                    x = 0f
+                    y = 0f
+                }) {
+                    Text("Restablecer zoom")
+                }
+            TextButton(onClick = { onEdit(images.getOrNull(index) ?: File(path)) }) {
+                Text("Editar imagen")
             }
+        }
     }
 }
 

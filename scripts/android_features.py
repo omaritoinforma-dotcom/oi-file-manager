@@ -435,6 +435,57 @@ def search_types_hidden_subfolders():
     assert "nota-bt.txt" in shown and "profundo-bt.txt" not in shown, f"Entró en las subcarpetas: {shown}"
 
 
+@check("editar-imagen-girar-recortar-y-guardar")
+def edit_image():
+    folder = f"{DIR}/editar-img"
+    sh("rm", "-rf", q(folder), check=False)
+    sh("mkdir", "-p", q(folder))
+    # 64×32: mitad izquierda roja y mitad derecha azul.
+    push_bytes(png_image(64, 32, lambda x, y: (255, 0, 0) if x < 32 else (0, 0, 255)), f"{folder}/mitad.png")
+
+    def open_editor():
+        open_test_folder()
+        tap_node(find("editar-img"))
+        long_press("mitad.png")
+        menu_option("Recortar o girar imagen")
+        wait_text("Recorte: 64 × 32 px de 64 × 32")
+
+    open_editor()
+    evidence("editar-imagen-editor")
+    # Girar a la derecha: el lado izquierdo (rojo) pasa arriba y la imagen queda de 32 × 64.
+    tap("Girar a la derecha")
+    wait_text("de 32 × 64")
+    # Recuadro 1:1: el cuadrado más grande y centrado, de 32 × 32.
+    tap("1:1")
+    wait_text("Recorte: 32 × 32 px de 32 × 64")
+    evidence("editar-imagen-recorte-cuadrado")
+    tap("Guardar copia")
+    copy = f"{folder}/mitad (editada).png"
+    until(lambda: exists(copy), "No se guardó la copia editada", 40)
+    time.sleep(1)
+    width, height, rows = decode_png(read_bytes(copy))
+    assert (width, height) == (32, 32), f"Tamaño de la copia: {width}×{height}"
+    top, bottom = rows[2][16], rows[29][16]
+    assert top == (255, 0, 0), f"Arriba debía ser rojo y es {top}"
+    assert bottom == (0, 0, 255), f"Abajo debía ser azul y es {bottom}"
+    # El original no se tocó.
+    width, height, _ = decode_png(read_bytes(f"{folder}/mitad.png"))
+    assert (width, height) == (64, 32), "La copia modificó el original"
+    # Reemplazar: girar a la izquierda y sustituir la original (pide confirmación).
+    open_editor()
+    tap("Girar a la izquierda")
+    wait_text("de 32 × 64")
+    tap("Reemplazar")
+    wait("¿Reemplazar la imagen?")
+    tap_last("Reemplazar")
+    until(lambda: decode_png(read_bytes(f"{folder}/mitad.png"))[:2] == (32, 64), "No se reemplazó la imagen", 40)
+    _, _, rows = decode_png(read_bytes(f"{folder}/mitad.png"))
+    # A la izquierda: el lado izquierdo (rojo) pasa abajo y el derecho (azul) arriba.
+    assert rows[2][16] == (0, 0, 255), f"Arriba debía ser azul y es {rows[2][16]}"
+    assert rows[60][16] == (255, 0, 0), f"Abajo debía ser rojo y es {rows[60][16]}"
+    assert not exists(f"{folder}/.mitad.png.oi-tmp"), "Quedó un temporal"
+
+
 @check("analizar-espacio-grandes-y-duplicados")
 def analysis():
     open_test_folder()
@@ -780,6 +831,60 @@ def png(rgb, size=64):
     row = b"\x00" + bytes(rgb) * size
     return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 2, 0, 0, 0))
             + chunk(b"IDAT", zlib.compress(row * size)) + chunk(b"IEND", b""))
+
+
+def png_image(width, height, color_at):
+    """PNG RGB de [width]×[height]; [color_at](x, y) da el color de cada píxel."""
+    import zlib
+
+    def chunk(kind, data):
+        body = kind + data
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body) & 0xffffffff)
+
+    rows = b"".join(b"\x00" + b"".join(bytes(color_at(x, y)) for x in range(width)) for y in range(height))
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
+
+
+def decode_png(data):
+    """Lee un PNG de 8 bits sin entrelazar (RGB o RGBA): devuelve (ancho, alto, filas de (r, g, b))."""
+    import zlib
+
+    assert data[:8] == b"\x89PNG\r\n\x1a\n", "No es un PNG"
+    pos, idat = 8, b""
+    while pos < len(data):
+        length, kind = struct.unpack(">I4s", data[pos:pos + 8])
+        body = data[pos + 8:pos + 8 + length]
+        pos += 12 + length
+        if kind == b"IHDR":
+            width, height, depth, ctype, _, _, interlace = struct.unpack(">IIBBBBB", body)
+        elif kind == b"IDAT":
+            idat += body
+    assert depth == 8 and interlace == 0 and ctype in (2, 6), f"PNG no admitido: {depth} {ctype} {interlace}"
+    bpp = 3 if ctype == 2 else 4
+    stride = width * bpp
+    raw = zlib.decompress(idat)
+    rows, prev, i = [], bytearray(stride), 0
+    for _ in range(height):
+        kind, line = raw[i], bytearray(raw[i + 1:i + 1 + stride])
+        i += 1 + stride
+        for x in range(stride):
+            a = line[x - bpp] if x >= bpp else 0
+            b = prev[x]
+            c = prev[x - bpp] if x >= bpp else 0
+            if kind == 1:
+                line[x] = (line[x] + a) & 255
+            elif kind == 2:
+                line[x] = (line[x] + b) & 255
+            elif kind == 3:
+                line[x] = (line[x] + ((a + b) >> 1)) & 255
+            elif kind == 4:
+                p = a + b - c
+                pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+                line[x] = (line[x] + (a if pa <= pb and pa <= pc else b if pb <= pc else c)) & 255
+        rows.append(line)
+        prev = line
+    return width, height, [[tuple(r[x * bpp:x * bpp + 3]) for x in range(width)] for r in rows]
 
 
 def push_bytes(data, path):

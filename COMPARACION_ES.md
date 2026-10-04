@@ -82,7 +82,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Función de ES | OI | Nota |
 | --- | --- | --- |
 | Visor de imágenes, zoom, deslizar | ✅ | Emulador |
-| Recortar imagen y fijarla como fondo | 🟠 | Fondo sí; falta recortar |
+| Recortar imagen y fijarla como fondo | 🟡 | Fondo de pantalla desde el menú «Más». Editor de imagen (visor → «Editar imagen», o «Más» → «Recortar o girar imagen»): recuadro que se arrastra por el centro o por las esquinas, proporciones libre, 1:1, 4:3, 3:4, 16:9 y 9:16, girar a izquierda o derecha y voltear; se guarda como copia («foto (editada).jpg») o reemplazando la original con confirmación, siempre vía un temporal, y respeta la orientación EXIF. Las cuentas del recuadro tienen pruebas JVM; comprobación en el emulador con píxeles preparada |
 | Reproductor de audio y vídeo, aleatorio y repetir | 🟡 | El audio suena en el emulador; faltan vídeo, aleatorio y repetir |
 | Listas de reproducción guardadas | 🟡 | Listas M3U8: crear, añadir desde el explorador, reordenar, quitar, renombrar y reproducir; comprobación en el emulador preparada |
 | Audio en segundo plano con notificación | ✅ | Emulador Android 15: sigue sonando al salir, con notificación |

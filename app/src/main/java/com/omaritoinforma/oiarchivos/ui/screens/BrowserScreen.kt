@@ -566,6 +566,11 @@ private fun SelectionBottomBar(
                             menu = false
                             setDialog(BrowserDialog.InspectApk(single))
                         }
+                    if (Kinds.ofExt(single.extension) == FileKind.IMAGE)
+                        MenuItem("Recortar o girar imagen", Icons.Filled.Image) {
+                            menu = false
+                            vm.goTo(Screen.ImageEdit(single.path))
+                        }
                     if (Kinds.ofExt(single.extension) ==
                         com.omaritoinforma.oiarchivos.util.FileKind.IMAGE)
                         MenuItem("Establecer fondo de pantalla", Icons.Filled.Image) {

@@ -161,6 +161,7 @@ private fun MainContent(vm: MainViewModel) {
             Screen.History -> HistoryScreen(vm)
             Screen.RootTools -> RootToolsScreen(vm)
             is Screen.VideoEdit -> VideoEditScreen(vm, screen.path)
+            is Screen.ImageEdit -> ImageEditScreen(vm, screen.path)
             is Screen.DualPane -> DualPaneScreen(vm, screen.path)
             is Screen.Stream -> StreamScreen(vm, screen.url, screen.title)
             Screen.Cast -> CastScreen(vm)

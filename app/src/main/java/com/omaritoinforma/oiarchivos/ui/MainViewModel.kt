@@ -102,6 +102,9 @@ sealed interface Screen {
 
     data class VideoEdit(val path: String) : Screen
 
+    /** Girar, voltear y recortar una imagen. */
+    data class ImageEdit(val path: String) : Screen
+
     data class DualPane(val path: String) : Screen
 
     /** Reproducir un audio o vídeo de la red sin descargarlo. */
