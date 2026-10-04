@@ -72,5 +72,5 @@
     }
   ],
   "lint_status": "Completed: 0 errors, 21 warnings (see lint-results-debug.txt)",
-  "android_integration_status": "Pending: emulator run in CI (scripts/smoke_android.py)"
+  "android_integration_status": "Android 15 emulator (CI run 37180055226): all smoke checks passed, including network-download-survives-process-death (SFTP, partial 5404575 bytes, SHA-256 matched)"
 }

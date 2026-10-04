@@ -21,7 +21,7 @@ Este punto de control añade la pausa y la recuperación persistente de transfer
 
 Resultado con servidores reales: listar, crear, subir, leer, leer desde un desplazamiento, renombrar y borrar; descarga movida interrumpida y reanudada por bytes; subida movida interrumpida y reanudada sin restos. Las tres pruebas pasan en SFTP, FTP y WebDAV. SMB, FTPS (requiere certificado de confianza) y las nubes siguen sin servidor real.
 
-La prueba en el emulador Android 15 de CI añade ahora un recorrido real: crear una conexión SFTP desde la interfaz contra un servidor lento en el equipo de CI, iniciar una descarga, matar la aplicación (`am force-stop`) a mitad, reabrirla, reanudar desde Transferencias y comparar el SHA-256 con el original.
+**Comprobado en Android 15 (emulador de CI, ejecución 37180055226):** se creó una conexión SFTP desde la interfaz contra un servidor real en el equipo de CI, se inició una descarga de 24 MiB, se mató la aplicación (`am force-stop`) con 5.404.575 bytes descargados, se reabrió, se reanudó desde Transferencias y el SHA-256 del archivo final coincidió con el original; el original se conservó en el servidor y no quedaron archivos parciales. Los 14 pasos anteriores de la prueba del emulador también pasaron.
 
 ## Base de la aplicación
 
@@ -76,7 +76,7 @@ be58a167b31d49752f399c33ba46bcb23606f307475b45ef745bf5e4053e257b  app-release.ap
 
 ## Trabajo que falta
 
-1. **Transferencias de red/nube:** el registro persistente cubre descargas y subidas y ya se comprobó con servidores SFTP, FTP y WebDAV reales en el host. Falta confirmar el recorrido en Android (prueba del emulador añadida), probar SMB, FTPS y las nubes con servidores y cuentas reales, y llevar el mismo registro al pegado de remoto a remoto, que todavía usa una copia temporal sin reanudación. Una pausa larga mantiene abierta la conexión; si el servidor la corta, la transferencia queda en error y se reanuda desde Transferencias. Si un archivo remoto cambia sin cambiar de tamaño, no se detecta al reanudar una descarga parcial (los servidores no ofrecen una suma de comprobación común).
+1. **Transferencias de red/nube:** el registro persistente cubre descargas y subidas y ya se comprobó con servidores SFTP, FTP y WebDAV reales en el host. En Android 15 (emulador) ya se comprobó la descarga SFTP reanudada tras la muerte del proceso. Falta probar en Android la subida y la pausa manual, probar SMB, FTPS y las nubes con servidores y cuentas reales, y llevar el mismo registro al pegado de remoto a remoto, que todavía usa una copia temporal sin reanudación. Una pausa larga mantiene abierta la conexión; si el servidor la corta, la transferencia queda en error y se reanuda desde Transferencias. Si un archivo remoto cambia sin cambiar de tamaño, no se detecta al reanudar una descarga parcial (los servidores no ofrecen una suma de comprobación común).
 2. **Nubes:** registrar/configurar el acceso OAuth de la aplicación y comprobar inicio de sesión, renovación, navegación, subida, descarga, creación, cambio de nombre y borrado con cuentas reales, incluidos Baidu y SugarSync.
 3. **APK nuevo en Android:** verificar las transferencias de red/nube reanudables, RAR/7z nativo, arrastrar entre paneles, gestos, edición/exportación de video con imágenes/fondos/SRT y audio en segundo plano. Las pruebas previas de versiones anteriores no sustituyen esta comprobación.
 4. **Red y hardware:** probar servidores HTTP/FTP y clientes con servidores reales; Bluetooth OBEX, SD/USB y root en dispositivos compatibles y autorizados.

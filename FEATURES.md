@@ -29,7 +29,7 @@ Referencia de funciones: ficha del desarrollador de ES en [Xiaomi](https://app.m
 
 ## Pendientes para la equivalencia completa
 
-1. Confirmar en Android la recuperación de transferencias (prueba del emulador añadida), probarla con SMB, FTPS y cuentas de nube reales, y extenderla al pegado de remoto a remoto.
+1. La descarga SFTP reanudada tras la muerte del proceso ya pasa en el emulador Android 15; falta comprobar en Android subidas y pausa manual, probarla con SMB, FTPS y cuentas de nube reales, y extenderla al pegado de remoto a remoto.
 2. Registrar/configurar OAuth para las nubes y probar cada operación y la renovación con cuentas reales, incluidos Baidu/SugarSync.
 3. Ejecutar el APK nuevo en Android para probar el motor RAR/7z, arrastrar/soltar, gestos, edición de video y audio en segundo plano.
 4. Probar servidores HTTP/FTP y clientes de red con servidores reales; Bluetooth, SD/USB y root en hardware compatible.
