@@ -1011,6 +1011,42 @@ def backup_before_uninstall():
             tap("Restablecer")
 
 
+
+def media_playing():
+    sessions = sh("dumpsys", "media_session")
+    owner = [block for block in sessions.split("\n\n") if ui.PACKAGE in block]
+    # Según la versión de Android, el estado sale como «state=3» o «PLAYING(3)».
+    return bool(owner) and any("state=3" in b or "PLAYING" in b for b in owner)
+
+
+if os.environ.get("OI_REMOTE_TEST_ROOT"):
+
+    @check("reproducir-desde-red-sin-descargar")
+    def stream_from_network():
+        """Servidor SFTP de CI limitado a 256 KB/s: descargar 19 MB tardaría más de un minuto, así
+        que si suena en menos de 25 s se está reproduciendo sin descargar."""
+        root = pathlib.Path(os.environ["OI_REMOTE_TEST_ROOT"])
+        with wave.open(str(root / "largo.wav"), "wb") as audio:
+            audio.setnchannels(1)
+            audio.setsampwidth(2)
+            audio.setframerate(16000)
+            second = b"".join(
+                struct.pack("<h", int(6000 * math.sin(2 * math.pi * 330 * i / 16000))) for i in range(16000))
+            audio.writeframes(second * 600)
+        launch_home()
+        ui.drawer("Red, nube y USB")
+        tap("SFTP prueba")
+        node = find("largo.wav")
+        started = time.monotonic()
+        tap_node(node)
+        wait("Desde la red, sin descargar")
+        until(media_playing, "El audio de la red no empezó a sonar", 25)
+        elapsed = time.monotonic() - started
+        assert elapsed < 25, f"Tardó {elapsed:.0f} s: parece que se descargó antes de sonar"
+        print(f"  sonó a los {elapsed:.1f} s", flush=True)
+        ui.launch()  # Detiene la reproducción.
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()

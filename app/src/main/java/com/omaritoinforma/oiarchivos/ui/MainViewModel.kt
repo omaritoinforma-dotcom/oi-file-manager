@@ -101,6 +101,9 @@ sealed interface Screen {
     data class VideoEdit(val path: String) : Screen
 
     data class DualPane(val path: String) : Screen
+
+    /** Reproducir un audio o vídeo de la red sin descargarlo. */
+    data class Stream(val url: String, val title: String) : Screen
 }
 
 data class PendingPaste(

@@ -125,10 +125,11 @@ private fun ImageGallery(path: String, modifier: Modifier) {
     }
 }
 
+/** Algo que el reproductor puede abrir: un archivo del teléfono o un enlace de streaming. */
+private class PlayItem(val uri: Uri, val id: String, val title: String)
+
 @Composable
-@androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
 private fun MediaViewer(file: File, modifier: Modifier) {
-    val ctx = LocalContext.current
     val audio = Kinds.ofExt(file.extension.lowercase()) == FileKind.AUDIO
     val files =
         remember(file) {
@@ -142,9 +143,58 @@ private fun MediaViewer(file: File, modifier: Modifier) {
                 .orEmpty()
                 .ifEmpty { listOf(file) }
         }
-    var player by remember(file) { mutableStateOf<Player?>(null) }
-    var playbackError by remember(file) { mutableStateOf<String?>(null) }
-    DisposableEffect(file, audio) {
+    val items = remember(files) { files.map { PlayItem(Uri.fromFile(it), it.path, it.name) } }
+    MediaPlayer(items, files.indexOf(file).coerceAtLeast(0), audio, modifier)
+}
+
+/**
+ * Reproduce desde la red sin descargar: el enlace es del servidor local de streaming, que lee el
+ * archivo remoto por rangos (ver StreamServer).
+ */
+@Composable
+fun StreamScreen(vm: MainViewModel, url: String, title: String) {
+    val ctx = LocalContext.current
+    val kind = Kinds.ofExt(title.substringAfterLast('.', "").lowercase())
+    val items = remember(url) { listOf(PlayItem(Uri.parse(url), url, title)) }
+    ToolPage(
+        title,
+        vm,
+        actions = {
+            TextButton(
+                onClick = {
+                    runCatching {
+                        val view =
+                            android.content.Intent(android.content.Intent.ACTION_VIEW)
+                                .setDataAndType(
+                                    Uri.parse(url),
+                                    if (kind == FileKind.AUDIO) "audio/*" else "video/*")
+                        ctx.startActivity(
+                            android.content.Intent.createChooser(view, "Abrir con")
+                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                }) {
+                    Text("Abrir con…")
+                }
+        }) { pad ->
+            Column(Modifier.fillMaxSize().padding(pad)) {
+                Text(
+                    "Desde la red, sin descargar",
+                    Modifier.padding(horizontal = 16.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                MediaPlayer(items, 0, kind == FileKind.AUDIO, Modifier.weight(1f).fillMaxWidth())
+            }
+        }
+}
+
+@Composable
+@androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
+private fun MediaPlayer(items: List<PlayItem>, start: Int, audio: Boolean, modifier: Modifier) {
+    val ctx = LocalContext.current
+    val first = items[start]
+    var player by remember(items) { mutableStateOf<Player?>(null) }
+    var playbackError by remember(items) { mutableStateOf<String?>(null) }
+    DisposableEffect(items, audio) {
         var disposed = false
         val future =
             if (audio)
@@ -159,16 +209,16 @@ private fun MediaViewer(file: File, modifier: Modifier) {
                     .buildAsync()
             else null
         fun prepare(p: Player) {
-            if (p.currentMediaItem?.mediaId != file.path || p.mediaItemCount == 0) {
+            if (p.currentMediaItem?.mediaId != first.id || p.mediaItemCount == 0) {
                 p.setMediaItems(
-                    files.map {
+                    items.map {
                         MediaItem.Builder()
-                            .setUri(Uri.fromFile(it))
-                            .setMediaId(it.path)
-                            .setMediaMetadata(MediaMetadata.Builder().setTitle(it.name).build())
+                            .setUri(it.uri)
+                            .setMediaId(it.id)
+                            .setMediaMetadata(MediaMetadata.Builder().setTitle(it.title).build())
                             .build()
                     },
-                    files.indexOf(file).coerceAtLeast(0),
+                    start,
                     0)
                 p.prepare()
             }
@@ -192,7 +242,7 @@ private fun MediaViewer(file: File, modifier: Modifier) {
             player = null
         }
     }
-    var title by remember { mutableStateOf(file.name) }
+    var title by remember { mutableStateOf(first.title) }
     var shuffle by remember(player) { mutableStateOf(player?.shuffleModeEnabled ?: false) }
     var repeat by
         remember(player) { mutableIntStateOf(player?.repeatMode ?: Player.REPEAT_MODE_OFF) }
@@ -201,7 +251,7 @@ private fun MediaViewer(file: File, modifier: Modifier) {
         val listener =
             object : Player.Listener {
                 override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
-                    title = File(item?.mediaId ?: file.path).name
+                    title = items.firstOrNull { it.id == item?.mediaId }?.title ?: first.title
                 }
             }
         currentPlayer?.addListener(listener)

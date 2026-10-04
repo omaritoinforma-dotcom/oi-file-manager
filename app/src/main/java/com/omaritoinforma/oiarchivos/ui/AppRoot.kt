@@ -156,6 +156,7 @@ private fun MainContent(vm: MainViewModel) {
             Screen.RootTools -> RootToolsScreen(vm)
             is Screen.VideoEdit -> VideoEditScreen(vm, screen.path)
             is Screen.DualPane -> DualPaneScreen(vm, screen.path)
+            is Screen.Stream -> StreamScreen(vm, screen.url, screen.title)
         }
     }
     Overlays(vm)

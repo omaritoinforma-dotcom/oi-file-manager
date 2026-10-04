@@ -11,16 +11,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.omaritoinforma.oiarchivos.data.*
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
+import com.omaritoinforma.oiarchivos.ui.Screen
 import com.omaritoinforma.oiarchivos.util.*
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun RemoteScreen(vm: MainViewModel, id: String) {
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
     var connection by remember(id) { mutableStateOf<Connection?>(null) }
     val stack = remember(id) { mutableStateListOf<String>() }
     var list by remember { mutableStateOf<List<RemoteEntry>>(emptyList()) }
@@ -219,6 +222,18 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                                         else if (selected.isNotEmpty()) {
                                             if (entry.path in selected) selected.remove(entry.path)
                                             else selected[entry.path] = entry
+                                        } else if (c != null && streamable(entry.name)) {
+                                            // Audio y vídeo se reproducen sin descargarlos, como en ES.
+                                            scope.launch {
+                                                val url =
+                                                    withContext(Dispatchers.IO) {
+                                                        runCatching { StreamServer.url(c, entry) }
+                                                    }
+                                                url.onSuccess { vm.goTo(Screen.Stream(it, entry.name)) }
+                                                    .onFailure {
+                                                        vm.toast(it.message ?: "No se pudo reproducir")
+                                                    }
+                                            }
                                         } else if (c != null) {
                                             vm.runTask("Abriendo archivo remoto") { report ->
                                                 val preview =
@@ -304,3 +319,7 @@ fun RemoteNameDialog(
         },
         dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } })
 }
+
+/** Audio y vídeo que se pueden reproducir desde la red sin descargarlos. */
+private fun streamable(name: String) =
+    Kinds.ofExt(name.substringAfterLast('.', "").lowercase()) in setOf(FileKind.AUDIO, FileKind.VIDEO)
