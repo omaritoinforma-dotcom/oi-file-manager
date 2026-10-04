@@ -1245,8 +1245,12 @@ def clipboard_from_several_folders():
     tap(wait("3 elemento(s) para copiar · Ver")[0].get("text"))
     wait("uno.txt")
     tap("Quitar tres.txt")
-    wait_text("2 elemento(s) para copiar")
+    # La barra queda detrás del diálogo (no sale en la jerarquía): se comprueba la lista del diálogo.
+    until(lambda: not nodes("tres.txt", hierarchy()), "tres.txt sigue en el portapapeles", 10)
+    tree = hierarchy()
+    assert nodes("uno.txt", tree) and nodes("dos.txt", tree), "Faltan elementos que no se quitaron"
     tap("Cerrar")
+    wait_text("2 elemento(s) para copiar")
     adb("shell", "input", "keyevent", "4")
     tap(find("clipDestino").get("text"))
     tap("Pegar aquí")
@@ -1271,8 +1275,10 @@ def set_ringtone():
         until(lambda: sh("settings", "get", "system", "ringtone").strip() not in (before, ""),
               "No cambió el tono de llamada", 30)
         uri = sh("settings", "get", "system", "ringtone").strip()
-        assert uri.startswith("content://media/"), uri
-        name = sh("content", "query", "--uri", uri.split("?")[0], "--projection", "_display_name", check=False)
+        # Android guarda el tono con el usuario delante: content://0@media/...
+        assert re.match(r"content://(\d+@)?media/", uri), uri
+        plain = re.sub(r"^content://\d+@", "content://", uri).split("?")[0]
+        name = sh("content", "query", "--uri", plain, "--projection", "_display_name", check=False)
         assert "tono.wav" in name, f"El tono no es tono.wav: {uri} → {name}"
     finally:
         if before and before != "null":
