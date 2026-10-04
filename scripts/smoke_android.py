@@ -331,7 +331,7 @@ def main():
     for label, title, name in [
         ("Red, nube y USB", "Agregar", "03-connections"),
         ("Transferencias", "Transferencias", "04-transfers"),
-        ("Historial", "Historial de carpetas", "05-history"),
+        ("Historial", "Historial", "05-history"),
     ]:
         drawer(label)
         checkpoint(name, title)

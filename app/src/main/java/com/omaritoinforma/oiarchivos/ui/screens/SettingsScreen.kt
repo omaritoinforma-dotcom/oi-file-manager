@@ -2,46 +2,104 @@
 
 package com.omaritoinforma.oiarchivos.ui.screens
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.omaritoinforma.oiarchivos.BuildConfig
 import com.omaritoinforma.oiarchivos.data.GestureAction
+import com.omaritoinforma.oiarchivos.data.Prefs
+import com.omaritoinforma.oiarchivos.data.SettingsBackup
+import com.omaritoinforma.oiarchivos.data.StartWindow
 import com.omaritoinforma.oiarchivos.data.ThemeMode
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
+import com.omaritoinforma.oiarchivos.ui.PrefState
+import com.omaritoinforma.oiarchivos.ui.components.FolderPickerDialog
 import com.omaritoinforma.oiarchivos.ui.components.SectionTitle
+import com.omaritoinforma.oiarchivos.util.PathUtil
+import com.omaritoinforma.oiarchivos.util.formatDate
+import com.omaritoinforma.oiarchivos.util.formatSize
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+/** Secciones de Ajustes, con el mismo orden y agrupación que la configuración de ES. */
+private enum class Section(val group: String, val title: String, val summary: String) {
+    DISPLAY("General", "Pantalla", "Archivos ocultos, miniaturas, historial, tamaño y tema"),
+    CLEANUP("General", "Limpieza", "Borrar el historial y la caché"),
+    FOLDERS("General", "Carpetas", "Carpeta de inicio y carpeta de descargas"),
+    START("General", "Ventana inicial", "Qué se abre al iniciar la app"),
+    NOTIFICATIONS("General", "Notificaciones", "Aviso al terminar las tareas"),
+    PASSWORD("Seguridad", "Contraseña", "Proteger la app, las conexiones y los archivos ocultos"),
+    BACKUP("Seguridad", "Copia de ajustes", "Guardar y restaurar los ajustes"),
+    APPS("Herramientas", "Aplicaciones", "Copia del APK y carpeta de copias"),
+    TRASH("Herramientas", "Papelera", "Usar la papelera al eliminar"),
+    GESTURES("Herramientas", "Gestos", "Deslizar en el explorador"),
+    ABOUT("Sistema", "Acerca de", "Versión de OI Archivos")
+}
+
+/** Dónde se guarda la copia de ajustes. */
+private val settingsBackupFolder: File
+    get() = File(PathUtil.internalRoot, "OI Archivos")
 
 @Composable
 fun SettingsScreen(vm: MainViewModel) {
+    var open by rememberSaveable { mutableStateOf<String?>(null) }
+    val section = open?.let { name -> Section.entries.firstOrNull { it.name == name } }
+    BackHandler(enabled = section != null) { open = null }
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ajustes") },
+                title = { Text(section?.title ?: "Ajustes") },
                 navigationIcon = {
-                    IconButton(onClick = vm::back) {
+                    IconButton(onClick = { if (section != null) open = null else vm.back() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás")
                     }
                 },
@@ -49,68 +107,441 @@ fun SettingsScreen(vm: MainViewModel) {
         },
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding)) {
-            item {
-                SwitchRow(
-                    "Mostrar archivos ocultos",
-                    "Archivos y carpetas que empiezan con punto",
-                    vm.showHidden) {
-                        vm.toggleHidden()
-                    }
-            }
-            item {
-                SwitchRow(
-                    "Usar la papelera",
-                    "Al eliminar, mover a la papelera para poder restaurar",
-                    vm.useTrash) {
-                        vm.updateUseTrash(it)
-                    }
-            }
-            item {
-                androidx.compose.foundation.layout.Column(Modifier.padding(16.dp)) {
-                    Text("Tamaño de las celdas: ${vm.gridSize}")
-                    androidx.compose.material3.Slider(
-                        value = vm.gridSize.toFloat(),
-                        onValueChange = { vm.updateGridSize(it.toInt()) },
-                        valueRange = 72f..160f,
-                        steps = 10)
+            when (section) {
+                null -> sectionList { open = it.name }
+                Section.DISPLAY -> item { DisplaySettings(vm) }
+                Section.CLEANUP -> item { CleanupSettings(vm) }
+                Section.FOLDERS -> item { FolderSettings(vm) }
+                Section.START -> item { StartSettings(vm) }
+                Section.NOTIFICATIONS -> item { NotificationSettings(vm) }
+                Section.PASSWORD -> item { PasswordSettings(vm) }
+                Section.BACKUP -> item { BackupSettings(vm) }
+                Section.APPS -> item { AppSettings(vm) }
+                Section.TRASH -> item {
+                    SwitchRow(
+                        "Usar la papelera",
+                        "Al eliminar, mover a la papelera para poder restaurar",
+                        vm.useTrash) {
+                            vm.updateUseTrash(it)
+                        }
                 }
-            }
-            item {
-                SectionTitle("Gestos del explorador", Modifier.padding(start = 16.dp, top = 16.dp))
-            }
-            item {
-                GestureRow("Deslizar a la izquierda", vm.swipeLeft) { vm.updateGesture(true, it) }
-            }
-            item {
-                GestureRow("Deslizar a la derecha", vm.swipeRight) { vm.updateGesture(false, it) }
-            }
-            item {
-                Text(
-                    "Cuando actives un gesto, abre el menú lateral con su botón.",
-                    Modifier.padding(16.dp))
-            }
-            item { SectionTitle("Tema", Modifier.padding(start = 16.dp, top = 16.dp)) }
-            items(ThemeMode.entries.toList()) { m ->
-                ListItem(
-                    headlineContent = { Text(m.label) },
-                    leadingContent = {
-                        RadioButton(selected = vm.themeMode == m, onClick = { vm.updateTheme(m) })
-                    },
-                    modifier = Modifier.clickable { vm.updateTheme(m) },
-                )
-            }
-            item { SectionTitle("Acerca de", Modifier.padding(start = 16.dp, top = 16.dp)) }
-            item {
-                ListItem(
-                    headlineContent = { Text("OI Archivos ${BuildConfig.VERSION_NAME}") },
-                    supportingContent = {
-                        Text(
-                            "Uso personal. Sin anuncios ni rastreo. La red se usa para las conexiones y transferencias que activas.")
-                    },
-                )
+                Section.GESTURES -> item { GestureSettings(vm) }
+                Section.ABOUT -> item { About() }
             }
         }
     }
+}
+
+private fun LazyListScope.sectionList(onOpen: (Section) -> Unit) {
+    Section.entries.groupBy { it.group }.forEach { (group, sections) ->
+        item { SectionTitle(group, Modifier.padding(start = 16.dp, top = 16.dp)) }
+        items(sections) { s ->
+            ListItem(
+                headlineContent = { Text(s.title) },
+                supportingContent = { Text(s.summary) },
+                trailingContent = {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+                },
+                modifier = Modifier.clickable { onOpen(s) })
+        }
+    }
+}
+
+@Composable
+private fun DisplaySettings(vm: MainViewModel) {
+    Column {
+        SwitchRow(
+            "Mostrar archivos ocultos",
+            "Archivos y carpetas que empiezan con punto",
+            vm.showHidden) {
+                vm.toggleHidden()
+            }
+        SwitchRow(
+            "Miniaturas",
+            "Vista previa de imágenes, videos y APK en lugar de iconos",
+            vm.thumbnails)
+        SwitchRow(
+            "Solo carpetas en el historial",
+            "No mostrar en el historial los archivos abiertos",
+            vm.historyFoldersOnly)
+        Column(Modifier.padding(16.dp)) {
+            Text("Tamaño de las celdas: ${vm.gridSize}")
+            Slider(
+                value = vm.gridSize.toFloat(),
+                onValueChange = { vm.updateGridSize(it.toInt()) },
+                valueRange = 72f..160f,
+                steps = 10)
+        }
+        SectionTitle("Tema", Modifier.padding(start = 16.dp, top = 8.dp))
+        ThemeMode.entries.forEach { m ->
+            ListItem(
+                headlineContent = { Text(m.label) },
+                leadingContent = {
+                    RadioButton(selected = vm.themeMode == m, onClick = { vm.updateTheme(m) })
+                },
+                modifier = Modifier.clickable { vm.updateTheme(m) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun CleanupSettings(vm: MainViewModel) {
+    var size by remember { mutableLongStateOf(-1L) }
+    var reload by remember { mutableIntStateOf(0) }
+    LaunchedEffect(reload) { size = withContext(Dispatchers.IO) { vm.cacheSize() } }
+    Column {
+        SwitchRow(
+            "Borrar el historial al salir",
+            "Al tocar «Salir» en el menú lateral se borra el historial",
+            vm.clearHistoryOnExit)
+        SwitchRow(
+            "Borrar la caché al salir",
+            "Al tocar «Salir» se borran las miniaturas y vistas previas guardadas",
+            vm.clearCacheOnExit)
+        ListItem(
+            headlineContent = { Text("Borrar la caché ahora") },
+            supportingContent = {
+                Text(
+                    if (size < 0) "Calculando…"
+                    else "Miniaturas y vistas previas guardadas: ${formatSize(size)}")
+            },
+            modifier = Modifier.clickable { vm.clearCache { reload++ } })
+        ListItem(
+            headlineContent = { Text("Borrar el historial ahora") },
+            supportingContent = { Text("Carpetas y archivos abiertos") },
+            modifier =
+                Modifier.clickable {
+                    vm.clearHistory()
+                    vm.toast("Historial borrado")
+                })
+    }
+}
+
+@Composable
+private fun FolderSettings(vm: MainViewModel) {
+    var picking by remember { mutableStateOf<PrefState<String>?>(null) }
+    Column {
+        ListItem(
+            headlineContent = { Text("Carpeta de inicio") },
+            supportingContent = {
+                Text("${vm.homeFolder.value}\nSe abre con la ventana inicial «Carpeta de inicio»")
+            },
+            trailingContent = { ResetButton(vm.homeFolder, PathUtil.internalRoot) },
+            modifier = Modifier.clickable { picking = vm.homeFolder })
+        ListItem(
+            headlineContent = { Text("Carpeta de descargas") },
+            supportingContent = {
+                Text(
+                    "${vm.downloadFolder.value}\nDescargas de red y nube, lo recibido de otro " +
+                        "teléfono y lo copiado desde USB")
+            },
+            trailingContent = { ResetButton(vm.downloadFolder, Prefs.defaultDownloadFolder) },
+            modifier = Modifier.clickable { picking = vm.downloadFolder })
+    }
+    picking?.let { setting ->
+        FolderPickerDialog(
+            title =
+                if (setting === vm.homeFolder) "Carpeta de inicio" else "Carpeta de descargas",
+            start = setting.value,
+            onDismiss = { picking = null },
+            onPick = {
+                setting.value = it
+                picking = null
+            })
+    }
+}
+
+@Composable
+private fun StartSettings(vm: MainViewModel) {
+    Column {
+        Text(
+            "Qué se muestra al abrir OI Archivos:",
+            Modifier.padding(16.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        StartWindow.entries.forEach { w ->
+            ListItem(
+                headlineContent = { Text(w.label) },
+                supportingContent = {
+                    when (w) {
+                        StartWindow.HOME -> Text("Categorías, almacenamiento y accesos")
+                        StartWindow.HOME_FOLDER -> Text(vm.homeFolder.value)
+                        StartWindow.LAST_FOLDER -> Text("La carpeta que estaba abierta al salir")
+                    }
+                },
+                leadingContent = {
+                    RadioButton(
+                        selected = vm.startWindow.value == w,
+                        onClick = { vm.startWindow.value = w })
+                },
+                modifier = Modifier.clickable { vm.startWindow.value = w })
+        }
+    }
+}
+
+@Composable
+private fun NotificationSettings(vm: MainViewModel) {
+    val ctx = LocalContext.current
+    Column {
+        SwitchRow(
+            "Cerrar la notificación al terminar",
+            "Si está desactivado, al terminar una copia, descarga u otra tarea queda un aviso con el resultado",
+            vm.closeNotificationWhenDone)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val granted =
+                ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED
+            ListItem(
+                headlineContent = { Text("Permiso de notificaciones") },
+                supportingContent = {
+                    Text(
+                        if (granted) "Permitidas"
+                        else "Bloqueadas: no se verá el progreso ni el aviso al terminar. Toca para permitirlas")
+                },
+                modifier =
+                    Modifier.clickable {
+                        runCatching {
+                            ctx.startActivity(
+                                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                    .putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        }
+                    })
+        }
+    }
+}
+
+private enum class PasswordDialog { CREATE, CHECK, CHANGE }
+
+@Composable
+private fun PasswordSettings(vm: MainViewModel) {
+    var dialog by remember { mutableStateOf<Pair<PasswordDialog, PrefState<Boolean>?>?>(null) }
+    fun toggle(option: PrefState<Boolean>, enable: Boolean) {
+        dialog =
+            when {
+                !enable -> PasswordDialog.CHECK to option
+                !vm.hasPassword -> PasswordDialog.CREATE to option
+                else -> {
+                    vm.enableLock(option)
+                    null
+                }
+            }
+    }
+    Column {
+        SwitchRow(
+            "Proteger al abrir la app",
+            "Pedir la contraseña para entrar en OI Archivos",
+            vm.lockStart.value) {
+                toggle(vm.lockStart, it)
+            }
+        SwitchRow(
+            "Proteger las conexiones de red",
+            "Pedir la contraseña para abrir servidores, nubes y Bluetooth",
+            vm.lockNetwork.value) {
+                toggle(vm.lockNetwork, it)
+            }
+        SwitchRow(
+            "Proteger los archivos ocultos",
+            "Pedir la contraseña para mostrar los archivos ocultos",
+            vm.lockHidden.value) {
+                toggle(vm.lockHidden, it)
+            }
+        ListItem(
+            headlineContent = { Text("Cambiar la contraseña") },
+            supportingContent = {
+                Text(
+                    if (vm.hasPassword) "Déjala vacía para quitar la contraseña y las protecciones"
+                    else "Aún no hay contraseña")
+            },
+            modifier =
+                Modifier.clickable(enabled = vm.hasPassword) {
+                    dialog = PasswordDialog.CHANGE to null
+                })
+        Text(
+            "Basta con escribirla una vez mientras uses la app; se vuelve a pedir tras cinco " +
+                "minutos fuera de ella o al tocar «Salir». Si la olvidas, solo se puede quitar " +
+                "borrando los datos de OI Archivos en los ajustes de Android.",
+            Modifier.padding(16.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    dialog?.let { (kind, option) ->
+        PasswordFormDialog(
+            kind,
+            onDismiss = { dialog = null },
+            onSubmit = { old, new, confirm ->
+                when (kind) {
+                    PasswordDialog.CREATE ->
+                        if (new != confirm) "Las contraseñas no coinciden"
+                        else vm.enableLock(option!!, new)
+                    PasswordDialog.CHECK -> vm.disableLock(option!!, old)
+                    PasswordDialog.CHANGE -> vm.changePassword(old, new, confirm)
+                }.also { if (it == null) dialog = null }
+            })
+    }
+}
+
+/** Formulario de contraseña; [onSubmit] devuelve un mensaje de error o null si todo fue bien. */
+@Composable
+private fun PasswordFormDialog(
+    kind: PasswordDialog,
+    onDismiss: () -> Unit,
+    onSubmit: (old: String, new: String, confirm: String) -> String?
+) {
+    var old by remember { mutableStateOf("") }
+    var new by remember { mutableStateOf("") }
+    var confirm by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    @Composable
+    fun field(label: String, value: String, onChange: (String) -> Unit) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {
+                onChange(it)
+                error = null
+            },
+            label = { Text(label) },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                when (kind) {
+                    PasswordDialog.CREATE -> "Crear contraseña"
+                    PasswordDialog.CHECK -> "Quitar protección"
+                    PasswordDialog.CHANGE -> "Cambiar la contraseña"
+                })
+        },
+        text = {
+            Column {
+                if (kind != PasswordDialog.CREATE) field("Contraseña actual", old) { old = it }
+                if (kind != PasswordDialog.CHECK) {
+                    field("Contraseña nueva", new) { new = it }
+                    field("Repetir contraseña", confirm) { confirm = it }
+                }
+                error?.let {
+                    Spacer(Modifier.height(8.dp))
+                    Text(it, color = MaterialTheme.colorScheme.error)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { error = onSubmit(old, new, confirm) },
+                enabled =
+                    when (kind) {
+                        PasswordDialog.CREATE -> new.isNotEmpty()
+                        PasswordDialog.CHECK -> old.isNotEmpty()
+                        PasswordDialog.CHANGE -> old.isNotEmpty()
+                    }) {
+                    Text("Aceptar")
+                }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+}
+
+@Composable
+private fun BackupSettings(vm: MainViewModel) {
+    val file = File(settingsBackupFolder, SettingsBackup.FILE_NAME)
+    var confirm by remember { mutableStateOf(false) }
+    var modified by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(Unit) { modified = withContext(Dispatchers.IO) { file.lastModified() } }
+    Column {
+        ListItem(
+            headlineContent = { Text("Guardar copia de los ajustes") },
+            supportingContent = { Text("En ${file.absolutePath}") },
+            modifier =
+                Modifier.clickable {
+                    vm.exportSettings(settingsBackupFolder)
+                    modified = System.currentTimeMillis()
+                })
+        ListItem(
+            headlineContent = { Text("Restaurar los ajustes") },
+            supportingContent = {
+                Text(
+                    if (modified > 0) "Copia del ${formatDate(modified)}"
+                    else "No hay ninguna copia guardada")
+            },
+            modifier = Modifier.clickable(enabled = modified > 0) { confirm = true })
+        Text(
+            "La copia no incluye la contraseña ni las conexiones de red y nube, que llevan " +
+                "credenciales.",
+            Modifier.padding(16.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    if (confirm)
+        AlertDialog(
+            onDismissRequest = { confirm = false },
+            title = { Text("Restaurar los ajustes") },
+            text = { Text("Los ajustes actuales se sustituirán por los de la copia.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirm = false
+                        vm.importSettings(file)
+                    }) {
+                        Text("Restaurar")
+                    }
+            },
+            dismissButton = { TextButton(onClick = { confirm = false }) { Text("Cancelar") } })
+}
+
+@Composable
+private fun AppSettings(vm: MainViewModel) {
+    var picking by remember { mutableStateOf(false) }
+    Column {
+        SwitchRow(
+            "Copia antes de desinstalar",
+            "Guardar el APK de una app antes de desinstalarla",
+            vm.backupBeforeUninstall)
+        ListItem(
+            headlineContent = { Text("Carpeta de copias de apps") },
+            supportingContent = { Text(vm.appBackupFolder.value) },
+            trailingContent = { ResetButton(vm.appBackupFolder, Prefs.defaultAppBackupFolder) },
+            modifier = Modifier.clickable { picking = true })
+    }
+    if (picking)
+        FolderPickerDialog(
+            title = "Carpeta de copias de apps",
+            start = vm.appBackupFolder.value,
+            onDismiss = { picking = false },
+            onPick = {
+                vm.appBackupFolder.value = it
+                picking = false
+            })
+}
+
+/** Vuelve a la carpeta predeterminada; solo se muestra si se cambió. */
+@Composable
+private fun ResetButton(setting: PrefState<String>, default: String) {
+    if (setting.value != default)
+        TextButton(onClick = { setting.value = default }) { Text("Restablecer") }
+}
+
+@Composable
+private fun GestureSettings(vm: MainViewModel) {
+    Column {
+        GestureRow("Deslizar a la izquierda", vm.swipeLeft) { vm.updateGesture(true, it) }
+        GestureRow("Deslizar a la derecha", vm.swipeRight) { vm.updateGesture(false, it) }
+        Text(
+            "Cuando actives un gesto, abre el menú lateral con su botón.",
+            Modifier.padding(16.dp))
+    }
+}
+
+@Composable
+private fun About() {
+    ListItem(
+        headlineContent = { Text("OI Archivos ${BuildConfig.VERSION_NAME}") },
+        supportingContent = {
+            Text(
+                "Uso personal. Sin anuncios ni rastreo. La red se usa para las conexiones y transferencias que activas.")
+        },
+    )
 }
 
 @Composable
@@ -133,6 +564,10 @@ private fun GestureRow(title: String, action: GestureAction, onChange: (GestureA
         }
     }
 }
+
+@Composable
+private fun SwitchRow(title: String, subtitle: String, setting: PrefState<Boolean>) =
+    SwitchRow(title, subtitle, setting.value) { setting.value = it }
 
 @Composable
 private fun SwitchRow(

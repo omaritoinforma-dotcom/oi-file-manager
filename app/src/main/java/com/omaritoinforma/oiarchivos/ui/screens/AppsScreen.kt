@@ -177,14 +177,7 @@ private fun AppRow(vm: MainViewModel, app: AppInfo) {
                     if (!app.isSystem) {
                         MenuItem("Desinstalar", Icons.Filled.Delete) {
                             menu = false
-                            runCatching {
-                                ctx.startActivity(
-                                    Intent(
-                                            Intent.ACTION_DELETE,
-                                            Uri.parse("package:${app.packageName}"))
-                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                                )
-                            }
+                            vm.uninstall(app)
                         }
                     }
                 }

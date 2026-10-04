@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,6 +46,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -61,6 +63,9 @@ import com.omaritoinforma.oiarchivos.util.formatDate
 import com.omaritoinforma.oiarchivos.util.formatSize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+
+/** «Miniaturas» de Ajustes → Pantalla: si es falso se muestran iconos en vez de vistas previas. */
+val LocalThumbnails = compositionLocalOf { true }
 
 fun subtitle(item: FileItem): String =
     if (item.isDirectory) "${formatDate(item.lastModified)} · ${item.childCount} elementos"
@@ -152,6 +157,7 @@ fun GridCell(item: FileItem, selected: Boolean, onClick: () -> Unit, onLongClick
 @Composable
 fun FileThumb(item: FileItem, size: Dp, selected: Boolean) {
     val kind = Kinds.of(item)
+    val previews = LocalThumbnails.current
     Box(Modifier.size(size), contentAlignment = Alignment.Center) {
         when {
             selected ->
@@ -166,7 +172,7 @@ fun FileThumb(item: FileItem, size: Dp, selected: Boolean) {
                         contentDescription = "Seleccionado",
                         tint = MaterialTheme.colorScheme.onPrimary)
                 }
-            kind == FileKind.IMAGE || kind == FileKind.VIDEO -> {
+            previews && (kind == FileKind.IMAGE || kind == FileKind.VIDEO) -> {
                 val fallback = rememberVectorPainter(Kinds.icon(kind))
                 AsyncImage(
                     model = item.file,
@@ -174,10 +180,11 @@ fun FileThumb(item: FileItem, size: Dp, selected: Boolean) {
                     contentScale = ContentScale.Crop,
                     placeholder = fallback,
                     error = fallback,
-                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
+                    modifier =
+                        Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)).testTag("miniatura"),
                 )
             }
-            kind == FileKind.APK -> ApkThumb(item.path)
+            previews && kind == FileKind.APK -> ApkThumb(item.path)
             else ->
                 Icon(
                     Kinds.icon(kind),

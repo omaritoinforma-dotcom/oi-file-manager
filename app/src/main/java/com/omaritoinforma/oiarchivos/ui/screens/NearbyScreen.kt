@@ -16,7 +16,6 @@ import com.omaritoinforma.oiarchivos.data.Nearby
 import com.omaritoinforma.oiarchivos.data.NearbyReceiver
 import com.omaritoinforma.oiarchivos.data.OperationResult
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
-import com.omaritoinforma.oiarchivos.util.PathUtil
 import com.omaritoinforma.oiarchivos.util.formatSize
 import java.io.File
 import java.util.concurrent.CompletableFuture
@@ -35,7 +34,7 @@ fun NearbyScreen(vm: MainViewModel) {
             .getOrNull()
             ?.takeIf { it.isNotBlank() } ?: Build.MODEL
     }
-    val destination = remember { File(PathUtil.internalRoot, "Download/OI Archivos/Recibidos") }
+    val destination = remember { File(vm.downloadFolder.value, "Recibidos") }
     var receiving by remember { mutableStateOf(false) }
     var address by remember { mutableStateOf("") }
     var incoming by remember { mutableStateOf<IncomingOffer?>(null) }
@@ -114,7 +113,7 @@ fun NearbyScreen(vm: MainViewModel) {
                 }
                 if (received.isNotEmpty())
                     Text(
-                        "Recibidos en Descargas/OI Archivos/Recibidos: ${received.joinToString()}",
+                        "Recibidos en ${destination.absolutePath}: ${received.joinToString()}",
                         Modifier.padding(top = 8.dp))
             }
             item {

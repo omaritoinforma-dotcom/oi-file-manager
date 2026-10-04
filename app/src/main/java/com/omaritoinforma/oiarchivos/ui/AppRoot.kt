@@ -1,10 +1,11 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 
 package com.omaritoinforma.oiarchivos.ui
 
 import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -14,17 +15,22 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Delete
@@ -32,6 +38,7 @@ import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.SdCard
 import androidx.compose.material.icons.filled.Settings
@@ -47,10 +54,12 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -59,16 +68,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import androidx.core.content.ContextCompat
 import com.omaritoinforma.oiarchivos.data.Conflict
 import com.omaritoinforma.oiarchivos.data.GestureAction
 import com.omaritoinforma.oiarchivos.data.OpProgress
+import com.omaritoinforma.oiarchivos.ui.components.LocalThumbnails
 import com.omaritoinforma.oiarchivos.ui.screens.*
 import com.omaritoinforma.oiarchivos.ui.screens.AppsScreen
 import com.omaritoinforma.oiarchivos.ui.screens.BrowserScreen
@@ -81,10 +98,22 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun AppRoot(vm: MainViewModel) {
-    if (!vm.hasPermission) {
-        PermissionScreen(vm)
-        return
+    // Las etiquetas de prueba (testTag) aparecen como resource-id para las pruebas en Android.
+    Box(Modifier.fillMaxSize().semantics { testTagsAsResourceId = true }) {
+        when {
+            vm.locked -> LockScreen(vm)
+            !vm.hasPermission -> PermissionScreen(vm)
+            else ->
+                CompositionLocalProvider(LocalThumbnails provides vm.thumbnails.value) {
+                    MainContent(vm)
+                }
+        }
     }
+}
+
+@Composable
+private fun MainContent(vm: MainViewModel) {
+    NotificationPermission(vm)
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val openDrawer: () -> Unit = { scope.launch { drawerState.open() } }
@@ -130,6 +159,113 @@ fun AppRoot(vm: MainViewModel) {
         }
     }
     Overlays(vm)
+}
+
+/** Android 13 y posteriores piden permiso para las notificaciones de progreso y de tarea terminada. */
+@Composable
+private fun NotificationPermission(vm: MainViewModel) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    val ctx = LocalContext.current
+    val launcher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    LaunchedEffect(Unit) {
+        val granted =
+            ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+        if (!granted && vm.askNotificationPermissionOnce())
+            launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+}
+
+/** «Iniciar protección» de ES: la app no muestra nada hasta escribir la contraseña. */
+@Composable
+private fun LockScreen(vm: MainViewModel) {
+    var password by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    val unlock = {
+        if (!vm.unlock(password)) {
+            error = "Contraseña incorrecta"
+            password = ""
+        }
+    }
+    Column(
+        modifier = Modifier.fillMaxSize().systemBarsPadding().imePadding().padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Icon(
+            Icons.Filled.Lock,
+            contentDescription = null,
+            modifier = Modifier.size(72.dp),
+            tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(24.dp))
+        Text(
+            "OI Archivos está protegido",
+            style = MaterialTheme.typography.headlineSmall,
+            textAlign = TextAlign.Center)
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "Escribe la contraseña para continuar.",
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(24.dp))
+        OutlinedTextField(
+            value = password,
+            onValueChange = {
+                password = it
+                error = null
+            },
+            label = { Text("Contraseña") },
+            singleLine = true,
+            isError = error != null,
+            supportingText = { error?.let { Text(it) } },
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions =
+                KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { unlock() }),
+            modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.height(16.dp))
+        Button(onClick = unlock, enabled = password.isNotEmpty()) { Text("Desbloquear") }
+    }
+}
+
+/** Pide la contraseña antes de una acción protegida (conexiones de red, archivos ocultos). */
+@Composable
+private fun UnlockDialog(vm: MainViewModel, request: MainViewModel.UnlockRequest) {
+    var password by remember(request) { mutableStateOf("") }
+    var error by remember(request) { mutableStateOf<String?>(null) }
+    val confirm = {
+        if (!vm.unlock(password)) {
+            error = "Contraseña incorrecta"
+            password = ""
+        }
+    }
+    AlertDialog(
+        onDismissRequest = vm::dismissUnlock,
+        icon = { Icon(Icons.Filled.Lock, contentDescription = null) },
+        title = { Text("Contraseña") },
+        text = {
+            Column {
+                Text("«${request.reason}» está protegido con contraseña.")
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = {
+                        password = it
+                        error = null
+                    },
+                    label = { Text("Contraseña") },
+                    singleLine = true,
+                    isError = error != null,
+                    supportingText = { error?.let { Text(it) } },
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password))
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = confirm, enabled = password.isNotEmpty()) { Text("Aceptar") }
+        },
+        dismissButton = { TextButton(onClick = vm::dismissUnlock) { Text("Cancelar") } })
 }
 
 @Composable
@@ -274,6 +410,12 @@ private fun AppDrawer(vm: MainViewModel, close: () -> Unit) {
                 vm.goTo(Screen.Settings)
                 close()
             }
+            val activity = LocalContext.current as? android.app.Activity
+            DrawerItem("Salir", Icons.AutoMirrored.Filled.ExitToApp) {
+                close()
+                vm.exit()
+                activity?.finishAndRemoveTask()
+            }
         }
     }
 }
@@ -323,6 +465,8 @@ private fun Overlays(vm: MainViewModel) {
                         ({ com.omaritoinforma.oiarchivos.data.TransferService.pause(ctx, !paused) })
                     else null)
         }
+
+    vm.unlockRequest?.let { UnlockDialog(vm, it) }
 
     vm.pendingPaste?.let { p ->
         AlertDialog(

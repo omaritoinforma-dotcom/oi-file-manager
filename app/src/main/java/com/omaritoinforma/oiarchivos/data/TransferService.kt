@@ -28,7 +28,7 @@ data class TransferRecord(
 
 data class OperationResult(val message: String?, val changed: List<File> = emptyList())
 
-/** Operations belong to the service, not to a Compose screen or Activity. */
+/** Las operaciones pertenecen al servicio, no a una pantalla de Compose ni a la Activity. */
 class TransferService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var job: Job? = null
@@ -96,6 +96,7 @@ class TransferService : Service() {
                     record(
                         this@TransferService,
                         TransferRecord(id, title, System.currentTimeMillis(), "Completado", detail))
+                    notifyDone(title, detail, failed = false)
                     completion.value = System.nanoTime() to detail
                 } catch (e: CancellationException) {
                     if (userCanceled)
@@ -114,12 +115,43 @@ class TransferService : Service() {
                     record(
                         this@TransferService,
                         TransferRecord(id, title, System.currentTimeMillis(), "Error", detail))
+                    notifyDone(title, detail, failed = true)
                     completion.value = System.nanoTime() to "Error: $detail"
                 } finally {
                     finish()
                 }
             }
         return START_NOT_STICKY
+    }
+
+    /**
+     * Aviso al terminar, como en ES: queda en la barra de notificaciones hasta tocarlo, salvo que
+     * esté activado «Cerrar la notificación al terminar».
+     */
+    private fun notifyDone(title: String, detail: String, failed: Boolean) {
+        if (Prefs(this).closeNotificationWhenDone) return
+        val open =
+            PendingIntent.getActivity(
+                this,
+                4,
+                Intent(this, MainActivity::class.java)
+                    .putExtra("screen", "transfers")
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val notification =
+            NotificationCompat.Builder(this, "transfers")
+                .setSmallIcon(
+                    if (failed) android.R.drawable.stat_notify_error
+                    else android.R.drawable.stat_sys_download_done)
+                .setContentTitle(if (failed) "$title: error" else "$title: terminado")
+                .setContentText(detail)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(detail))
+                .setContentIntent(open)
+                .setAutoCancel(true)
+                .build()
+        runCatching {
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(DONE_ID, notification)
+        }
     }
 
     private fun finish() {
@@ -144,6 +176,8 @@ class TransferService : Service() {
     }
 
     companion object {
+        /** Identificador del aviso de tarea terminada (el de progreso es el 11). */
+        const val DONE_ID = 12
         val progress = MutableStateFlow<OpProgress?>(null)
         val completion = MutableStateFlow<Pair<Long, String>?>(null)
         val paused = MutableStateFlow(false)
@@ -152,6 +186,10 @@ class TransferService : Service() {
         private var pendingWork: (suspend ((OpProgress) -> Unit) -> OperationResult)? = null
         private var pendingTitle = "Operación"
         @Volatile private var busy = false
+
+        /** Verdadero mientras hay una operación en curso. */
+        val isBusy: Boolean
+            get() = busy
 
         fun submit(
             ctx: Context,

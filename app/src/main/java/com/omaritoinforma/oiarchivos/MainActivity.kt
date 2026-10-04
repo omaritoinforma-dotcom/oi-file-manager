@@ -61,6 +61,22 @@ class MainActivity : ComponentActivity() {
         vm.onResume()
     }
 
+    override fun onStart() {
+        super.onStart()
+        vm.onForeground()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) vm.onBackground()
+    }
+
+    override fun onDestroy() {
+        // Salir con «Atrás» (en Android 11 y anteriores cierra la Activity) cuenta como salir de la app.
+        if (isFinishing && !isChangingConfigurations) vm.exit()
+        super.onDestroy()
+    }
+
     private companion object {
         val LIGHT_SCRIM = Color.argb(0xe6, 0xFF, 0xFF, 0xFF)
         val DARK_SCRIM = Color.argb(0x80, 0x1b, 0x1b, 0x1b)

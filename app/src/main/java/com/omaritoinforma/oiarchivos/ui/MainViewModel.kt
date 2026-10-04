@@ -11,6 +11,8 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.omaritoinforma.oiarchivos.data.AppInfo
+import com.omaritoinforma.oiarchivos.data.AppLock
+import com.omaritoinforma.oiarchivos.data.CacheCleaner
 import com.omaritoinforma.oiarchivos.data.AppsRepo
 import com.omaritoinforma.oiarchivos.data.AnalysisTools
 import com.omaritoinforma.oiarchivos.data.ArchiveTools
@@ -35,6 +37,7 @@ import com.omaritoinforma.oiarchivos.data.SearchFilter
 import com.omaritoinforma.oiarchivos.data.SortBy
 import com.omaritoinforma.oiarchivos.data.Sorter
 import com.omaritoinforma.oiarchivos.data.StorageInfo
+import com.omaritoinforma.oiarchivos.data.StartWindow
 import com.omaritoinforma.oiarchivos.data.StorageVolumeInfo
 import com.omaritoinforma.oiarchivos.data.ThemeMode
 import com.omaritoinforma.oiarchivos.data.TransferService
@@ -195,6 +198,56 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     val bookmarks = mutableStateListOf<String>().apply { addAll(prefs.bookmarks) }
 
+    // ---- Ajustes al estilo de ES ----
+
+    val thumbnails = PrefState({ prefs.thumbnails }, { prefs.thumbnails = it })
+    val historyFoldersOnly = PrefState({ prefs.historyFoldersOnly }, { prefs.historyFoldersOnly = it })
+    val clearHistoryOnExit = PrefState({ prefs.clearHistoryOnExit }, { prefs.clearHistoryOnExit = it })
+    val clearCacheOnExit = PrefState({ prefs.clearCacheOnExit }, { prefs.clearCacheOnExit = it })
+    val homeFolder = PrefState({ prefs.homeFolder }, { prefs.homeFolder = it })
+    val downloadFolder = PrefState({ prefs.downloadFolder }, { prefs.downloadFolder = it })
+    val startWindow = PrefState({ prefs.startWindow }, { prefs.startWindow = it })
+    val closeNotificationWhenDone =
+        PrefState({ prefs.closeNotificationWhenDone }, { prefs.closeNotificationWhenDone = it })
+    val backupBeforeUninstall =
+        PrefState({ prefs.backupBeforeUninstall }, { prefs.backupBeforeUninstall = it })
+    val appBackupFolder = PrefState({ prefs.appBackupFolder }, { prefs.appBackupFolder = it })
+    val lockStart = PrefState({ prefs.lockStart }, { prefs.lockStart = it })
+    val lockNetwork = PrefState({ prefs.lockNetwork }, { prefs.lockNetwork = it })
+    val lockHidden = PrefState({ prefs.lockHidden }, { prefs.lockHidden = it })
+    var hasPassword by mutableStateOf(prefs.lockHash.isNotEmpty())
+        private set
+
+    private val esSettings =
+        listOf(
+            thumbnails,
+            historyFoldersOnly,
+            clearHistoryOnExit,
+            clearCacheOnExit,
+            homeFolder,
+            downloadFolder,
+            startWindow,
+            closeNotificationWhenDone,
+            backupBeforeUninstall,
+            appBackupFolder,
+            lockStart,
+            lockNetwork,
+            lockHidden)
+
+    /** Pantalla de contraseña al abrir la app («Iniciar protección» de ES). */
+    var locked by mutableStateOf(AppLock.needsStart(prefs))
+        private set
+
+    /** Petición de contraseña pendiente: al escribirla bien se ejecuta la acción protegida. */
+    class UnlockRequest(val reason: String, val onSuccess: () -> Unit)
+
+    var unlockRequest by mutableStateOf<UnlockRequest?>(null)
+        private set
+
+    // Declaradas antes de init, que ya abre la ventana inicial.
+    private var startOpened = false
+    private var exited = false
+
     val volumes = mutableStateListOf<StorageVolumeInfo>()
     var clipboard by mutableStateOf<Clipboard?>(null)
 
@@ -215,7 +268,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val trash = mutableStateListOf<RecycleBin.Entry>()
 
     init {
-        if (hasPermission) refreshVolumes()
+        if (hasPermission) {
+            refreshVolumes()
+            openStartWindow()
+        }
         viewModelScope.launch {
             TransferService.completion.collect { completed ->
                 if (completed != null) {
@@ -233,6 +289,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun receive(intent: android.content.Intent) {
         intent.getStringExtra("folder")?.let { if (File(it).isDirectory) openFolder(it) }
+        if (intent.getStringExtra("screen") == "transfers") goTo(Screen.Transfers)
         if (intent.action in
             setOf(
                 android.content.Intent.ACTION_SEND, android.content.Intent.ACTION_SEND_MULTIPLE)) {
@@ -282,6 +339,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         hasPermission = Perms.hasStorage(ctx)
         if (hasPermission) {
             refreshVolumes()
+            if (!had) openStartWindow()
             if (incoming != null) importIncoming()
             if (had && screen == Screen.Browser) refresh()
         }
@@ -294,6 +352,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- Navegación ----------------
 
     fun goTo(s: Screen) {
+        if (s is Screen.Remote && needsNetworkUnlock(s.id)) {
+            requestUnlock("Conexiones de red") { goTo(s) }
+            return
+        }
         if (s == Screen.Home) {
             screens.clear()
             screens.add(Screen.Home)
@@ -351,14 +413,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun openFolder(path: String) {
-        prefs.history = (listOf(path) + prefs.history).distinct().take(100)
+        addToHistory(path)
         navigate(Location.Folder(path))
     }
 
-    fun history(): List<String> = prefs.history
+    private fun addToHistory(path: String) {
+        prefs.history = (listOf(path) + prefs.history).distinct().take(100)
+    }
+
+    /** Carpetas y archivos abiertos; solo carpetas si así se eligió en Ajustes → Pantalla. */
+    fun history(): List<String> =
+        prefs.history.let { all ->
+            if (historyFoldersOnly.value) all.filter { File(it).isDirectory } else all
+        }
 
     fun clearHistory() {
         prefs.history = emptyList()
+        prefs.lastFolder = ""
     }
 
     fun showResults(items: List<FileItem>, root: String, query: String, filter: SearchFilter) {
@@ -371,6 +442,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openFile(path: String) {
         val file = File(path)
+        if (!file.isDirectory) addToHistory(path)
         when {
             file.isDirectory -> openFolder(path)
             ArchiveTools.supports(file) && file.extension != "apk" -> goTo(Screen.Archive(path))
@@ -499,6 +571,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun load(tab: TabState) {
         val loc = tab.location
+        if (loc is Location.Folder) prefs.lastFolder = loc.path
         tab.job?.cancel()
         tab.items.clear()
         tab.cache[loc]?.let { tab.items.addAll(it) }
@@ -615,6 +688,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun toggleHidden() {
+        // Mostrar los ocultos puede requerir la contraseña («Protección de la lista de ocultos»).
+        if (!showHidden && AppLock.needsHidden(prefs)) {
+            requestUnlock("Archivos ocultos") { toggleHidden() }
+            return
+        }
         showHidden = !showHidden
         prefs.showHidden = showHidden
         tabs.forEach { it.cache.clear() }
@@ -840,7 +918,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     data class OpResult(val message: String?, val changed: List<File> = emptyList())
 
-    /** The service owns the operation so leaving the Activity does not cancel it. */
+    /** La operación pertenece al servicio: salir de la Activity no la cancela. */
     fun runTask(title: String, block: suspend ((OpProgress) -> Unit) -> OperationResult) {
         try {
             if (!TransferService.submit(ctx, title, block))
@@ -857,6 +935,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     ) {
         runTask(title) { report ->
             val result = block(report)
+            withContext(Dispatchers.Main) { onDone() }
             OperationResult(result.message, result.changed)
         }
     }
@@ -885,10 +964,212 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 currentCoroutineContext().ensureActive()
                 report(
                     OpProgress("Respaldando apps", a.label, doneFiles = i, totalFiles = list.size))
-                runCatching { AppsRepo.backup(a) }.onSuccess { out += it }
+                runCatching { AppsRepo.backup(a, File(appBackupFolder.value)) }.onSuccess { out += it }
             }
-            OpResult("APK guardados en «OI Archivos/Apps» (${out.size} de ${list.size})", out)
+            OpResult("APK guardados en «${PathUtil.displayName(appBackupFolder.value)}» (${out.size} de ${list.size})", out)
         }
+    }
+
+    /** Desinstala [app]; antes guarda su APK si así se eligió en Ajustes → Aplicaciones. */
+    fun uninstall(app: AppInfo) {
+        val startUninstall = {
+            runCatching {
+                ctx.startActivity(
+                    android.content.Intent(
+                            android.content.Intent.ACTION_DELETE,
+                            android.net.Uri.parse("package:${app.packageName}"))
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+            }
+            Unit
+        }
+        if (!backupBeforeUninstall.value) return startUninstall()
+        val folder = File(appBackupFolder.value)
+        runTask("Copia antes de desinstalar") { report ->
+            report(OpProgress("Copia antes de desinstalar", app.label))
+            val copy = AppsRepo.backup(app, folder)
+            withContext(Dispatchers.Main) { startUninstall() }
+            OperationResult("Copia guardada: ${copy.name}", listOf(copy))
+        }
+    }
+
+    // ---------------- Ajustes: ventana inicial, salir y limpieza ----------------
+
+    /** Abre la ventana elegida en Ajustes → Ventana inicial, una vez por apertura de la app. */
+    private fun openStartWindow() {
+        if (startOpened) return
+        startOpened = true
+        val target =
+            when (startWindow.value) {
+                StartWindow.HOME -> null
+                StartWindow.HOME_FOLDER -> homeFolder.value
+                StartWindow.LAST_FOLDER -> prefs.lastFolder.ifBlank { null }
+            }
+        if (target != null && File(target).isDirectory) navigate(Location.Folder(target))
+    }
+
+    /** «Salir» del menú lateral: limpia lo elegido en Ajustes → Limpieza y cierra la sesión. */
+    fun exit() {
+        if (exited) return
+        exited = true
+        if (clearHistoryOnExit.value) clearHistory()
+        if (clearCacheOnExit.value) {
+            val app = ctx
+            Thread { runCatching { CacheCleaner.clear(app) } }.start()
+        }
+        AppLock.lock()
+    }
+
+    fun cacheSize(): Long = CacheCleaner.size(ctx)
+
+    fun clearCache(onDone: (Long) -> Unit) {
+        if (TransferService.isBusy) {
+            toast("Espera a que termine la operación actual")
+            return
+        }
+        viewModelScope.launch {
+            val freed = withContext(Dispatchers.IO) { CacheCleaner.clear(ctx) }
+            toast("Caché eliminada: ${com.omaritoinforma.oiarchivos.util.formatSize(freed)}")
+            onDone(freed)
+        }
+    }
+
+    // ---------------- Ajustes: contraseña ----------------
+
+    private fun needsNetworkUnlock(id: String): Boolean {
+        if (!AppLock.needsNetwork(prefs)) return false
+        // El explorador root no es un recurso de red.
+        val protocol =
+            runCatching {
+                    com.omaritoinforma.oiarchivos.data.ConnectionStore(ctx).load()
+                        .firstOrNull { it.id == id }
+                        ?.protocol
+                }
+                .getOrNull()
+        return protocol != com.omaritoinforma.oiarchivos.data.Protocol.ROOT
+    }
+
+    fun requestUnlock(reason: String, onSuccess: () -> Unit) {
+        unlockRequest = UnlockRequest(reason, onSuccess)
+    }
+
+    fun dismissUnlock() {
+        unlockRequest = null
+    }
+
+    /** Comprueba la contraseña; si es correcta, quita el bloqueo y hace la acción pendiente. */
+    fun unlock(password: String): Boolean {
+        if (!AppLock.unlock(prefs, password)) return false
+        locked = false
+        val pending = unlockRequest
+        unlockRequest = null
+        pending?.onSuccess?.invoke()
+        return true
+    }
+
+    fun onForeground() {
+        AppLock.onForeground()
+        if (AppLock.needsStart(prefs)) locked = true
+    }
+
+    fun onBackground() = AppLock.onBackground()
+
+    /** Verdadero solo la primera vez: el permiso de notificaciones se pide una sola vez. */
+    fun askNotificationPermissionOnce(): Boolean {
+        if (prefs.notificationPermissionAsked) return false
+        prefs.notificationPermissionAsked = true
+        return true
+    }
+
+    /** Crea la contraseña (si aún no hay) y activa una protección. */
+    fun enableLock(option: PrefState<Boolean>, newPassword: String? = null): String? {
+        if (!hasPassword) {
+            if (newPassword.isNullOrEmpty()) return "Escribe una contraseña"
+            prefs.lockHash = AppLock.encode(newPassword)
+            hasPassword = true
+            AppLock.unlock(prefs, newPassword)
+        }
+        option.value = true
+        return null
+    }
+
+    /** Desactiva una protección si [password] es correcta; sin protecciones se borra la contraseña. */
+    fun disableLock(option: PrefState<Boolean>, password: String): String? {
+        if (!AppLock.matches(password, prefs.lockHash)) return "Contraseña incorrecta"
+        option.value = false
+        if (!AppLock.anyEnabled(prefs)) removePassword()
+        return null
+    }
+
+    /** Como en ES: una contraseña nueva vacía quita la contraseña y todas las protecciones. */
+    fun changePassword(old: String, new: String, confirm: String): String? {
+        if (!AppLock.matches(old, prefs.lockHash)) return "La contraseña actual no es correcta"
+        if (new != confirm) return "Las contraseñas nuevas no coinciden"
+        if (new.isEmpty()) {
+            lockStart.value = false
+            lockNetwork.value = false
+            lockHidden.value = false
+            removePassword()
+            toast("Contraseña quitada; ya no hay protecciones")
+        } else {
+            prefs.lockHash = AppLock.encode(new)
+            toast("Contraseña cambiada")
+        }
+        return null
+    }
+
+    private fun removePassword() {
+        prefs.lockHash = ""
+        hasPassword = false
+    }
+
+    // ---------------- Ajustes: copia y restauración ----------------
+
+    /** Guarda los ajustes (sin contraseña ni conexiones) en [folder]. */
+    fun exportSettings(folder: File) {
+        runTask("Copia de ajustes") {
+            val target = File(folder, com.omaritoinforma.oiarchivos.data.SettingsBackup.FILE_NAME)
+            if (!folder.isDirectory && !folder.mkdirs())
+                throw java.io.IOException("No se pudo crear la carpeta")
+            val json = com.omaritoinforma.oiarchivos.data.SettingsBackup.export(prefs.snapshot())
+            SafeFiles.writeAtomic(target) { it.writeText(json) }
+            OperationResult("Ajustes guardados en ${target.absolutePath}", listOf(target))
+        }
+    }
+
+    /** Restaura los ajustes desde una copia; si no es válida, no se cambia nada. */
+    fun importSettings(file: File) {
+        viewModelScope.launch {
+            val result =
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        com.omaritoinforma.oiarchivos.data.SettingsBackup.parse(file.readText())
+                    }
+                }
+            result
+                .onSuccess { values ->
+                    prefs.restore(values)
+                    reloadSettings()
+                    toast("Ajustes restaurados (${values.size})")
+                }
+                .onFailure { toast(it.message ?: "No se pudo leer la copia") }
+        }
+    }
+
+    private fun reloadSettings() {
+        esSettings.forEach { it.reload() }
+        viewMode = prefs.viewMode
+        sortBy = prefs.sortBy
+        ascending = prefs.ascending
+        showHidden = prefs.showHidden
+        useTrash = prefs.useTrash
+        themeMode = prefs.themeMode
+        gridSize = prefs.gridSize
+        swipeLeft = prefs.swipeLeft
+        swipeRight = prefs.swipeRight
+        bookmarks.clear()
+        bookmarks.addAll(prefs.bookmarks)
+        tabs.forEach { it.cache.clear() }
+        refresh()
     }
 
     // ---------------- Papelera ----------------

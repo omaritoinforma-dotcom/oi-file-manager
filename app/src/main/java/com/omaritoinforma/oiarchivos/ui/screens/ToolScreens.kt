@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -45,7 +47,7 @@ fun ToolPage(
 fun HistoryScreen(vm: MainViewModel) {
     var history by remember { mutableStateOf(vm.history()) }
     ToolPage(
-        "Historial de carpetas",
+        "Historial",
         vm,
         actions = {
             TextButton(
@@ -57,11 +59,23 @@ fun HistoryScreen(vm: MainViewModel) {
                 }
         }) { pad ->
             LazyColumn(Modifier.fillMaxSize().padding(pad)) {
+                if (history.isEmpty())
+                    item { Text("El historial está vacío.", Modifier.padding(16.dp)) }
                 items(history) { path ->
+                    val folder = remember(path) { File(path).isDirectory }
                     ListItem(
                         headlineContent = { Text(PathUtil.displayName(path)) },
                         supportingContent = { Text(path) },
-                        modifier = Modifier.clickable { vm.openFolder(path) })
+                        leadingContent = {
+                            Icon(
+                                if (folder) Icons.Filled.Folder
+                                else Icons.AutoMirrored.Filled.InsertDriveFile,
+                                contentDescription = if (folder) "Carpeta" else "Archivo")
+                        },
+                        modifier =
+                            Modifier.clickable {
+                                if (folder) vm.openFolder(path) else vm.openFile(path)
+                            })
                 }
             }
         }

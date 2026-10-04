@@ -135,14 +135,12 @@ fun DocumentsScreen(vm: MainViewModel, uri: String) {
                         TextButton(
                             onClick = {
                                 val chosen = selected.values.toList()
+                                val folder = vm.downloadFolder.value
                                 vm.runTask("Importando documentos") { report ->
-                                    val dest =
-                                        File(PathUtil.internalRoot, "Download/OI Archivos").apply {
-                                            mkdirs()
-                                        }
+                                    val dest = File(folder).apply { mkdirs() }
                                     val outputs =
                                         chosen.map { importDocument(ctx, it, dest, report) }
-                                    OperationResult("Guardados en Descargas/OI Archivos", outputs)
+                                    OperationResult("Guardados en ${dest.absolutePath}", outputs)
                                 }
                             }) {
                                 Text("Copiar al teléfono")

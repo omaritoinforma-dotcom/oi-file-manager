@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.Environment
 import java.io.File
 
 data class AppInfo(
@@ -18,9 +17,6 @@ data class AppInfo(
 )
 
 object AppsRepo {
-    val backupDir: File
-        get() = File(Environment.getExternalStorageDirectory(), "OI Archivos/Apps")
-
     fun list(ctx: Context, includeSystem: Boolean): List<AppInfo> {
         val pm = ctx.packageManager
         val packages =
@@ -48,8 +44,10 @@ object AppsRepo {
             .sortedBy { it.label.lowercase() }
     }
 
-    suspend fun backup(app: AppInfo): File {
-        val dir = backupDir.apply { mkdirs() }
+    /** Guarda el APK (o el conjunto de APK divididos en un .apks) en [folder]. */
+    suspend fun backup(app: AppInfo, folder: File): File {
+        val dir = folder.apply { mkdirs() }
+        if (!dir.isDirectory) throw java.io.IOException("No se pudo crear la carpeta de copias")
         val extension = if (app.splits.isEmpty()) "apk" else "apks"
         val safe =
             "${app.label}_${app.versionName}.$extension".replace(Regex("[\\\\/:*?\"<>|]"), "_")

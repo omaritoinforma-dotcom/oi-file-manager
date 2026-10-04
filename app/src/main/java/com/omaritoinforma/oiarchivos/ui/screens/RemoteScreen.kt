@@ -176,7 +176,7 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                                         c,
                                         entries,
                                         path,
-                                        File(PathUtil.internalRoot, "Download/OI Archivos"),
+                                        File(vm.downloadFolder.value),
                                         false)
                             }) {
                                 Text("Descargar")

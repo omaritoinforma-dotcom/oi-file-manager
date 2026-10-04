@@ -124,9 +124,34 @@ def seed():
     sh("content", "call", "--uri", "content://media", "--method", "scan_volume", "--arg", "external_primary", check=False)
 
 
-def open_test_folder():
+def launch_home():
+    """Abre la app y llega a Inicio, aunque la ventana inicial sea otra o pida la contraseña."""
     ui.launch()
+    for _ in range(4):
+        tree = wait_any("Categorías", "Menú", "OI Archivos está protegido")
+        if nodes("Categorías", tree):
+            return
+        if nodes("OI Archivos está protegido", tree):
+            fill("Contraseña", PASSWORD_APP, verify=False)
+            tap("Desbloquear")
+        else:
+            adb("shell", "input", "keyevent", "4")
+        time.sleep(1)
     wait("Categorías")
+
+
+def wait_any(*labels, timeout=30):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        tree = hierarchy()
+        if any(nodes(label, tree) for label in labels):
+            return tree
+        time.sleep(0.5)
+    raise AssertionError(f"No se ve ninguno de: {labels}")
+
+
+def open_test_folder():
+    launch_home()
     ui.drawer("Descargas")
     tap("OIPrueba")
     wait("a.txt")
@@ -367,8 +392,7 @@ def bookmarks():
     wait("Nueva")
     # Un marcador debe seguir ahí tras cerrar la app.
     time.sleep(2)
-    ui.launch()
-    wait("Categorías")
+    launch_home()
     tap("Menú")
     wait("Nueva")
 
@@ -385,17 +409,14 @@ def tabs():
 
 @check("categoria-documentos")
 def category():
-    ui.launch()
-    wait("Categorías")
+    launch_home()
     tap("Documentos")
     find("buscar_me.txt")
 
 
 @check("gestos-configurables")
 def gestures():
-    ui.launch()
-    wait("Categorías")
-    ui.drawer("Ajustes")
+    settings("Gestos")
     tap("Deslizar a la derecha")
     tap("Carpeta superior")
     wait("Carpeta superior")
@@ -409,9 +430,7 @@ def gestures():
 
 @check("tema-claro-y-oscuro")
 def theme():
-    ui.launch()
-    wait("Categorías")
-    ui.drawer("Ajustes")
+    settings("Pantalla")
     tap(find("Claro").get("text"))
     time.sleep(1)
     light = brightness()
@@ -425,8 +444,7 @@ def theme():
 @check("apps-respaldar-apk")
 def apps_backup():
     sh("rm", "-rf", q("/sdcard/OI Archivos/Apps"), check=False)
-    ui.launch()
-    wait("Categorías")
+    launch_home()
     ui.drawer("Aplicaciones")
     fill("Buscar app…", "OI Arch")
     wait("OI Archivos")
@@ -494,8 +512,7 @@ def sort_size():
 @check("red-local-encontrar-servidor")
 def lan_scan():
     """El equipo de CI escucha como FTP en el 21; el emulador debe encontrarlo como 10.0.2.2:21."""
-    ui.launch()
-    wait("Categorías")
+    launch_home()
     ui.drawer("Red, nube y USB")
     tap("Buscar en la red local")
     tap(wait("FTP · 10.0.2.2:21", timeout=120)[0].get("text"))
@@ -569,14 +586,19 @@ def nearby_send():
         server.shutdown()
 
 
-@check("recibir-de-otro-telefono")
-def nearby_receive():
+def device_sha256(path):
+    """SHA-256 calculado en el propio emulador, sin depender de cómo adb transporta los bytes."""
+    out = sh("sha256sum", q(path), check=False).split()
+    return out[0] if out else ""
+
+
+def receive_from_computer(name):
+    """Recibe [name] desde el equipo de CI por «Enviar a otro teléfono», aceptando en el diálogo.
+    Devuelve los datos enviados."""
     import threading
     import urllib.request
 
-    sh("rm", "-rf", q("/sdcard/Download/OI Archivos/Recibidos"), check=False)
-    ui.launch()
-    wait("Categorías")
+    launch_home()
     ui.drawer("Red, nube y USB")
     tap("Enviar a otro teléfono")
     tap("Empezar a recibir")
@@ -584,7 +606,7 @@ def nearby_receive():
     subprocess.run(["adb", "forward", "tcp:42199", "tcp:42137"], check=True, timeout=30)
     data = ("contenido recibido " * 5000).encode()
     base = "http://127.0.0.1:42199/oi-enviar/v1"
-    offer = {"from": "PC de prueba", "files": [{"name": "recibido ñ.txt", "size": len(data),
+    offer = {"from": "PC de prueba", "files": [{"name": name, "size": len(data),
                                                  "sha256": hashlib.sha256(data).hexdigest()}]}
     result = {}
 
@@ -599,23 +621,394 @@ def nearby_receive():
 
     sender = threading.Thread(target=offer_and_send)
     sender.start()
-    wait("Archivos entrantes", timeout=30)
-    wait_text("PC de prueba")
-    tap("Aceptar")
-    sender.join(90)
-    assert result.get("code") == 200, result
+    try:
+        wait("Archivos entrantes", timeout=30)
+        wait_text("PC de prueba")
+        tap("Aceptar")
+        sender.join(90)
+        assert result.get("code") == 200, result
+        tap("Dejar de recibir")
+    finally:
+        subprocess.run(["adb", "forward", "--remove", "tcp:42199"], timeout=30)
+    return data
+
+
+@check("recibir-de-otro-telefono")
+def nearby_receive():
+    sh("rm", "-rf", q("/sdcard/Download/OI Archivos/Recibidos"), check=False)
+    data = receive_from_computer("recibido ñ.txt")
     target = "/sdcard/Download/OI Archivos/Recibidos/recibido ñ.txt"
     until(lambda: exists(target), "El archivo recibido no está en Recibidos")
-    # Se compara la huella calculada en el propio emulador: así no influye cómo adb transporta
-    # los bytes. Si no coincide, el mensaje muestra tamaño y huella para saber qué llegó.
+    # Si no coincide, el mensaje muestra tamaño y huella para saber qué llegó.
     expected = hashlib.sha256(data).hexdigest()
-    on_device = sh("sha256sum", q(target), check=False).split()
     size = sh("stat", "-c", "%s", q(target), check=False).strip()
-    assert on_device and on_device[0] == expected, (
+    assert device_sha256(target) == expected, (
         f"El archivo recibido no coincide: {size} bytes (esperados {len(data)}), "
-        f"SHA-256 {on_device[:1]} (esperado {expected})")
-    tap("Dejar de recibir")
-    subprocess.run(["adb", "forward", "--remove", "tcp:42199"], timeout=30)
+        f"SHA-256 {device_sha256(target)} (esperado {expected})")
+
+
+# ---------------- Ajustes al estilo de ES ----------------
+
+PASSWORD_APP = "clave123"
+INTERNAL = "/storage/emulated/0"
+
+
+def settings(section):
+    """Abre Ajustes y una de sus secciones (Pantalla, Limpieza, Carpetas…)."""
+    launch_home()
+    ui.drawer("Ajustes")
+    tap(find(section).get("text"))
+    time.sleep(1)
+
+
+def replace_field(value):
+    """Sustituye el texto del primer campo visible (por ejemplo, la ruta del selector de carpetas)."""
+    field = next(n for n in hierarchy().iter("node") if n.get("class") == "android.widget.EditText")
+    tap_node(field)
+    adb("shell", "input", "keyevent", "KEYCODE_MOVE_END")
+    for _ in range(len(field.get("text") or "") + 5):
+        adb("shell", "input", "keyevent", "KEYCODE_DEL")
+    adb("shell", "input", "text", "'" + value.replace(" ", "%s") + "'")
+    time.sleep(0.5)
+
+
+def pick_folder(setting, path):
+    """Elige una carpeta en el selector escribiendo su ruta."""
+    tap(find(setting).get("text"))
+    wait("Elegir esta carpeta")
+    replace_field(path)
+    tap("Ir")
+    time.sleep(1)
+    tap("Elegir esta carpeta")
+    wait_text(path.replace("/sdcard", INTERNAL))
+
+
+def switch_state(title):
+    """Estado del interruptor de la fila cuyo título es [title]."""
+    tree = hierarchy()
+    row = nodes(title, tree)[0]
+    row_y = int(re.findall(r"\d+", row.get("bounds"))[1])
+    switches = [n for n in tree.iter("node") if n.get("checkable") == "true"]
+    switch = min(switches, key=lambda n: abs(int(re.findall(r"\d+", n.get("bounds"))[1]) - row_y))
+    return switch.get("checked") == "true"
+
+
+def set_switch(title, on):
+    if switch_state(title) != on:
+        tap(title)
+        time.sleep(1)
+    assert switch_state(title) == on, f"«{title}» no quedó {'activado' if on else 'desactivado'}"
+
+
+def png(rgb, size=64):
+    """PNG de un solo color, sin bibliotecas externas."""
+    import zlib
+
+    def chunk(kind, data):
+        body = kind + data
+        return struct.pack(">I", len(data)) + body + struct.pack(">I", zlib.crc32(body) & 0xffffffff)
+
+    row = b"\x00" + bytes(rgb) * size
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(row * size)) + chunk(b"IEND", b""))
+
+
+def push_bytes(data, path):
+    with tempfile.TemporaryDirectory() as tmp:
+        local = pathlib.Path(tmp) / "f"
+        local.write_bytes(data)
+        adb("push", str(local), path)
+
+
+def blue_share(left, top, right, bottom):
+    """Proporción de píxeles azul puro en un rectángulo de la pantalla."""
+    raw = subprocess.check_output(["adb", "exec-out", "screencap"], timeout=30)
+    width, height = struct.unpack("<II", raw[:8])
+    pixels = raw[len(raw) - width * height * 4:]
+    total = blue = 0
+    for y in range(top, bottom, 3):
+        for x in range(left, right, 3):
+            i = (y * width + x) * 4
+            total += 1
+            if pixels[i + 2] > 200 and pixels[i] < 80 and pixels[i + 1] < 80:
+                blue += 1
+    return blue / max(total, 1)
+
+
+def thumbnail_blue(name):
+    node = find(name)
+    time.sleep(2)  # Las miniaturas se cargan en segundo plano.
+    x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds")))
+    # La miniatura está a la izquierda del nombre, a la altura de la fila (nombre y detalle).
+    return blue_share(16, y1, x1 - 8, y2 + 32)
+
+
+@check("ajustes-miniaturas")
+def thumbnails_setting():
+    push_bytes(png((0, 0, 255)), f"{DIR}/azul.png")
+    try:
+        open_test_folder()
+        shown = thumbnail_blue("azul.png")
+        assert shown > 0.3, f"Con miniaturas activadas no se ve la imagen ({shown:.2f})"
+        settings("Pantalla")
+        set_switch("Miniaturas", False)
+        open_test_folder()
+        hidden = thumbnail_blue("azul.png")
+        assert hidden < 0.02, f"Con miniaturas desactivadas sigue la vista previa ({hidden:.2f})"
+    finally:
+        settings("Pantalla")
+        set_switch("Miniaturas", True)
+
+
+@check("ajustes-ventana-inicial-y-carpeta-de-inicio")
+def start_window():
+    sh("mkdir", "-p", q(f"{DIR}/ultima"), check=False)
+    push_bytes(b"dentro", f"{DIR}/ultima/dentro.txt")
+    try:
+        settings("Carpetas")
+        pick_folder("Carpeta de inicio", DIR)
+        settings("Ventana inicial")
+        tap("Carpeta de inicio")
+        ui.launch()
+        wait("buscar_me.txt")
+        assert not nodes("Categorías", hierarchy()), "Se abrió Inicio en vez de la carpeta de inicio"
+        settings("Ventana inicial")
+        tap("Última carpeta abierta")
+        open_test_folder()
+        tap(find("ultima").get("text"))
+        wait("dentro.txt")
+        time.sleep(2)
+        ui.launch()
+        wait("dentro.txt")
+    finally:
+        settings("Ventana inicial")
+        tap("Inicio (categorías)")
+        settings("Carpetas")
+        if nodes("Restablecer", hierarchy()):
+            tap("Restablecer")
+    launch_home()
+
+
+@check("ajustes-carpeta-de-descargas")
+def download_folder():
+    sh("rm", "-rf", q(f"{DIR}/descargas"), check=False)
+    sh("mkdir", "-p", q(f"{DIR}/descargas"))
+    try:
+        settings("Carpetas")
+        pick_folder("Carpeta de descargas", f"{DIR}/descargas")
+        data = receive_from_computer("a descargas.txt")
+        target = f"{DIR}/descargas/Recibidos/a descargas.txt"
+        until(lambda: exists(target), "Lo recibido no está en la carpeta de descargas elegida")
+        assert device_sha256(target) == hashlib.sha256(data).hexdigest(), "El archivo recibido no coincide"
+    finally:
+        settings("Carpetas")
+        if nodes("Restablecer", hierarchy()):
+            tap("Restablecer")
+
+
+def create_password():
+    wait("Crear contraseña")
+    fill("Contraseña nueva", PASSWORD_APP, verify=False)
+    fill("Repetir contraseña", PASSWORD_APP, verify=False)
+    tap("Aceptar")
+    time.sleep(1)
+
+
+def remove_password():
+    """Como en ES, una contraseña nueva vacía quita la contraseña y todas las protecciones."""
+    settings("Contraseña")
+    if not any(switch_state(t) for t in (
+            "Proteger al abrir la app", "Proteger las conexiones de red", "Proteger los archivos ocultos")):
+        return
+    tap("Cambiar la contraseña")
+    fill("Contraseña actual", PASSWORD_APP, verify=False)
+    tap_last("Aceptar")
+    time.sleep(1)
+    for title in ("Proteger al abrir la app", "Proteger las conexiones de red", "Proteger los archivos ocultos"):
+        assert not switch_state(title), f"«{title}» sigue activado tras quitar la contraseña"
+
+
+@check("contrasena-al-abrir-la-app")
+def password_start():
+    try:
+        settings("Contraseña")
+        tap("Proteger al abrir la app")
+        create_password()
+        assert switch_state("Proteger al abrir la app"), "La protección no quedó activada"
+        ui.launch()
+        wait("OI Archivos está protegido")
+        assert not nodes("Categorías", hierarchy()), "Se ve la app sin escribir la contraseña"
+        fill("Contraseña", "equivocada", verify=False)
+        tap("Desbloquear")
+        wait_text("Contraseña incorrecta")
+        fill("Contraseña", PASSWORD_APP, verify=False)
+        tap("Desbloquear")
+        wait("Categorías")
+    finally:
+        remove_password()
+
+
+
+@check("contrasena-conexiones-y-ocultos")
+def password_network_hidden():
+    push_bytes(b"secreto", f"{DIR}/.oculto.txt")
+    try:
+        settings("Contraseña")
+        tap("Proteger las conexiones de red")
+        create_password()
+        set_switch("Proteger los archivos ocultos", True)
+        # Proceso nuevo: la contraseña aún no se escribió en esta sesión.
+        launch_home()
+        ui.drawer("Red, nube y USB")
+        tap("Agregar")
+        fill("Nombre de la conexión", "Protegida")
+        tap("FTP")  # SFTP exige la huella del servidor; para esta prueba basta FTP.
+        fill("Servidor", "10.0.2.2")
+        tap("Guardar")
+        time.sleep(1)
+        tap("Protegida")
+        wait_text("«Conexiones de red» está protegido con contraseña")
+        tap("Cancelar")
+        time.sleep(1)
+        assert nodes("Agregar", hierarchy()), "Se abrió la conexión sin la contraseña"
+        tap("Protegida")
+        fill("Contraseña", PASSWORD_APP, verify=False)
+        tap("Aceptar")
+        time.sleep(2)
+        assert not nodes("Agregar", hierarchy()), "No se abrió la conexión tras escribir la contraseña"
+        # Archivos ocultos, en otro proceso para que vuelva a pedirla.
+        open_test_folder()
+        assert not nodes(".oculto.txt", hierarchy()), "Los ocultos ya se veían"
+        tap("Más opciones")
+        tap("Mostrar archivos ocultos")
+        wait_text("«Archivos ocultos» está protegido con contraseña")
+        fill("Contraseña", PASSWORD_APP, verify=False)
+        tap("Aceptar")
+        find(".oculto.txt")
+        tap("Más opciones")
+        tap("Ocultar archivos ocultos")
+    finally:
+        remove_password()
+        sh("rm", "-f", q(f"{DIR}/.oculto.txt"), check=False)
+
+
+@check("limpieza-al-salir")
+def cleanup_on_exit():
+    try:
+        settings("Limpieza")
+        set_switch("Borrar el historial al salir", True)
+        open_test_folder()
+        ui.drawer("Historial")
+        wait("OIPrueba")
+        ui.drawer("Salir")
+        time.sleep(2)
+        adb("shell", "am", "start", "-W", "-n", f"{ui.PACKAGE}/.MainActivity")
+        wait("Categorías")
+        ui.drawer("Historial")
+        wait("El historial está vacío.")
+        cached = f"/sdcard/Android/data/{ui.PACKAGE}/cache/prueba-cache.bin"
+        sh("mkdir", "-p", q(f"/sdcard/Android/data/{ui.PACKAGE}/cache"), check=False)
+        push_bytes(b"\x01" * 200_000, cached)
+        settings("Limpieza")
+        tap("Borrar la caché ahora")
+        until(lambda: not exists(cached), "«Borrar la caché ahora» no borró la caché")
+    finally:
+        settings("Limpieza")
+        set_switch("Borrar el historial al salir", False)
+
+
+@check("copia-y-restauracion-de-ajustes")
+def settings_backup():
+    backup = "/sdcard/OI Archivos/ajustes-oi-archivos.json"
+    sh("rm", "-f", q(backup), check=False)
+    try:
+        settings("Pantalla")
+        tap(find("Oscuro").get("text"))
+        time.sleep(1)
+        dark = brightness()
+        settings("Copia de ajustes")
+        tap("Guardar copia de los ajustes")
+        until(lambda: exists(backup), "No se guardó la copia de ajustes")
+        content = json.loads(read(backup))
+        assert content["formato"] == "OI Archivos ajustes", content
+        assert content["ajustes"]["theme"] == "DARK", content
+        assert "lock_hash" not in content["ajustes"], "La copia lleva la contraseña"
+        settings("Pantalla")
+        tap(find("Claro").get("text"))
+        time.sleep(1)
+        light = brightness()
+        settings("Copia de ajustes")
+        tap("Restaurar los ajustes")
+        tap_last("Restaurar")
+        time.sleep(2)
+        restored = brightness()
+        assert restored < light - 60, (
+            f"No se restauró el tema oscuro (oscuro {dark:.0f}, claro {light:.0f}, restaurado {restored:.0f})")
+    finally:
+        settings("Pantalla")
+        tap(find("Según el sistema").get("text"))
+
+
+@check("aviso-al-terminar-una-tarea")
+def done_notification():
+    def notified():
+        out = sh("dumpsys", "notification", "--noredact", check=False)
+        return f"|{ui.PACKAGE}|12|" in out
+
+    def copy(name):
+        push_bytes(b"aviso", f"{DIR}/{name}")
+        sh("mkdir", "-p", q(f"{DIR}/aviso-destino"), check=False)
+        open_test_folder()
+        find(name)
+        long_press(name)
+        tap("Copiar")
+        tap(find("aviso-destino").get("text"))
+        tap("Pegar aquí")
+        until(lambda: exists(f"{DIR}/aviso-destino/{name}"), "La copia no llegó")
+        time.sleep(2)
+
+    settings("Notificaciones")
+    set_switch("Cerrar la notificación al terminar", False)
+    copy("aviso1.txt")
+    assert notified(), "No quedó el aviso de tarea terminada"
+    ui.launch()  # Detener la app borra sus avisos.
+    try:
+        settings("Notificaciones")
+        set_switch("Cerrar la notificación al terminar", True)
+        copy("aviso2.txt")
+        assert not notified(), "Quedó un aviso aunque se pidió cerrarlo al terminar"
+    finally:
+        settings("Notificaciones")
+        set_switch("Cerrar la notificación al terminar", False)
+
+
+@check("apps-copia-antes-de-desinstalar")
+def backup_before_uninstall():
+    folder = f"{DIR}/copias-apk"
+    sh("rm", "-rf", q(folder), check=False)
+    sh("mkdir", "-p", q(folder))
+    try:
+        settings("Aplicaciones")
+        set_switch("Copia antes de desinstalar", True)
+        pick_folder("Carpeta de copias de apps", folder)
+        launch_home()
+        ui.drawer("Aplicaciones")
+        fill("Buscar app…", "OI Arch")
+        wait("OI Archivos")
+        tap("Opciones")
+        tap("Desinstalar")
+        until(lambda: "OI Archivos_" in sh("ls", q(folder), check=False), "No se guardó el APK antes de desinstalar", 60)
+        # Se cancela el diálogo de Android: la prueba no debe desinstalar la app que se está probando.
+        node, _ = wait("Cancel", timeout=30)
+        assert node.get("package") != ui.PACKAGE, "El diálogo no es el de Android"
+        tap_node(node)
+        time.sleep(1)
+        assert ui.PACKAGE in sh("pm", "list", "packages", ui.PACKAGE), "La app se desinstaló"
+    finally:
+        settings("Aplicaciones")
+        set_switch("Copia antes de desinstalar", False)
+        if nodes("Restablecer", hierarchy()):
+            tap("Restablecer")
 
 
 def main():
