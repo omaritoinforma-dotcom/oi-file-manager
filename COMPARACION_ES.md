@@ -79,6 +79,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Analizador de apps (permisos sensibles, tamaño, memoria) | 🟡 | Aplicaciones → «Analizar permisos»: qué apps piden ubicación, cámara, micrófono, contactos, SMS, llamadas, calendario, salud, archivos, dispositivos cercanos o ver todas las apps (concedido o solo solicitado), con filtro por permiso, tamaño del APK y versión de Android a la que apuntan. Android no deja a una app ver la memoria de las demás, así que ese dato no se puede dar; comprobación en el emulador preparada |
 | Informe diario de archivos nuevos y aviso de archivos nuevos | 🟡 | Aviso de archivos nuevos (Registrador) por tipo, lanzado por Android al cambiar MediaStore, y un informe cada día con el recuento por tipo (sin nombrar archivos); comprobaciones en el emulador preparadas |
 | Aviso de poco espacio | 🟡 | Revisión cada hora con umbral elegible; el aviso abre «Limpiar basura» |
+| Uso del almacenamiento en la barra de estado («Mostrar tarjeta SD en la barra de estado» de ES) | 🟡 | Ajustes → «Notificaciones» → «Mostrar el uso del almacenamiento»: notificación fija y silenciosa con el espacio libre, el total y el % usado del teléfono y de la tarjeta SD, que se actualiza cada hora y se quita al apagarlo; al tocarla abre «Limpiar basura». Va en la copia de ajustes; prueba JVM del texto y comprobación en el emulador preparada |
 
 ### Multimedia y editores
 

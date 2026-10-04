@@ -875,6 +875,10 @@ private fun NotificationSettings(vm: MainViewModel) {
             }
         }
         SwitchRow(
+            "Mostrar el uso del almacenamiento",
+            "Una notificación fija con el espacio libre del teléfono y de la tarjeta SD (se actualiza cada hora)",
+            vm.storageNotification)
+        SwitchRow(
             "Avisar de archivos nuevos",
             "Como el Registrador de ES: una notificación cuando aparecen fotos, vídeos, música, documentos o APK nuevos",
             vm.newFilesNotify)

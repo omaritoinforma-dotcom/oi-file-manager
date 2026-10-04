@@ -96,7 +96,7 @@ object StorageWatch {
             work.cancelUniqueWork(NEW_FILES)
             prefs.newFilesSince = 0L
         }
-        if (prefs.lowSpaceWarning)
+        if (prefs.lowSpaceWarning || prefs.storageNotification)
             work.enqueueUniquePeriodicWork(
                 SPACE,
                 ExistingPeriodicWorkPolicy.KEEP,
@@ -214,6 +214,45 @@ object StorageWatch {
                 .build())
     }
 
+    const val STORAGE_ID = 32
+
+    /** Una línea por volumen: «Almacenamiento interno: 12 GB libres de 64 GB (80 % usado)». */
+    fun storageLines(volumes: List<StorageVolumeInfo>): List<String> =
+        volumes
+            .filter { it.total > 0 }
+            .map {
+                val used = ((it.total - it.free).coerceAtLeast(0) * 100 / it.total).toInt()
+                "${it.name}: ${formatSize(it.free)} libres de ${formatSize(it.total)} ($used % usado)"
+            }
+
+    /** Notificación fija con el uso del almacenamiento, o la quita si el ajuste está apagado. */
+    fun updateStorageNotification(ctx: Context, enabled: Boolean) {
+        val manager = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (!enabled) {
+            manager.cancel(STORAGE_ID)
+            return
+        }
+        val lines = storageLines(StorageInfo.volumes(ctx))
+        if (lines.isEmpty()) return
+        // Silenciosa: es información permanente, no un aviso que moleste.
+        manager.createNotificationChannel(
+            NotificationChannel("almacenamiento", "Uso del almacenamiento", NotificationManager.IMPORTANCE_LOW))
+        val style = NotificationCompat.InboxStyle().setBigContentTitle("Almacenamiento")
+        lines.forEach { style.addLine(it) }
+        notify(
+            ctx,
+            STORAGE_ID,
+            NotificationCompat.Builder(ctx, "almacenamiento")
+                .setSmallIcon(android.R.drawable.stat_notify_sync_noanim)
+                .setContentTitle("Almacenamiento")
+                .setContentText(lines.first())
+                .setStyle(style)
+                .setContentIntent(open(ctx, 32, "screen" to "cleaner"))
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .build())
+    }
+
     /** Informe diario: resumen de lo que apareció; al tocarlo se abre «Recientes». */
     fun notifyReport(ctx: Context, text: String) {
         channel(ctx)
@@ -255,6 +294,7 @@ class StorageWatchWorker(ctx: Context, params: WorkerParameters) : CoroutineWork
     override suspend fun doWork(): Result {
         val ctx = applicationContext
         val prefs = Prefs(ctx)
+        StorageWatch.updateStorageNotification(ctx, prefs.storageNotification)
         if (prefs.lowSpaceWarning) {
             val free = StorageWatch.freeBytes()
             val check = StorageWatch.checkSpace(free, prefs.lowSpaceMb, prefs.lowSpaceWarned)

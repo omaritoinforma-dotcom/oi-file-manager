@@ -2775,6 +2775,28 @@ def install_permission_notice():
         sh("pm", "uninstall", package, check=False)
 
 
+@check("notificacion-fija-con-el-uso-del-almacenamiento")
+def storage_notification():
+    def shown():
+        out = sh("dumpsys", "notification", "--noredact", check=False)
+        return "usado)" in out and "libres de" in out and "Almacenamiento" in out
+
+    adb("shell", "pm", "grant", ui.PACKAGE, "android.permission.POST_NOTIFICATIONS")
+    try:
+        settings("Notificaciones")
+        set_switch("Mostrar el uso del almacenamiento", True)
+        until(shown, "No salió la notificación del uso del almacenamiento", 45)
+        (OUTPUT / "notificacion-almacenamiento.txt").write_text(
+            "\n".join(line for line in sh("dumpsys", "notification", "--noredact", check=False).splitlines()
+                      if "libres de" in line or "Almacenamiento" in line), encoding="utf-8")
+        set_switch("Mostrar el uso del almacenamiento", False)
+        until(lambda: not shown(), "La notificación siguió al apagar el ajuste", 45)
+    finally:
+        settings("Notificaciones")
+        set_switch("Mostrar el uso del almacenamiento", False)
+        time.sleep(2)
+
+
 @check("informe-diario-de-archivos-nuevos")
 def daily_report():
     folder = "/sdcard/DCIM/OIInforme"

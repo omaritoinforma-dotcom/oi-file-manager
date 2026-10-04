@@ -50,4 +50,18 @@ class StorageWatchTest {
         val bad = json.replace("IMAGES,APK", "IMAGES,BORRAR_TODO")
         assertThrows(java.io.IOException::class.java) { SettingsBackup.parse(bad) }
     }
+
+    @Test
+    fun storageLinesShowFreeTotalAndUsedPercentForEachVolume() {
+        val gb = 1024L * 1024 * 1024
+        val lines =
+            StorageWatch.storageLines(
+                listOf(
+                    StorageVolumeInfo("Almacenamiento interno", "/storage/emulated/0", 64 * gb, 16 * gb, false),
+                    StorageVolumeInfo("Tarjeta SD", "/storage/1234-5678", 32 * gb, 32 * gb, true),
+                    StorageVolumeInfo("Sin leer", "/x", 0, 0, true)))
+        assertEquals(2, lines.size)
+        assertEquals("Almacenamiento interno: 16.0 GB libres de 64.0 GB (75 % usado)", lines[0].replace(',', '.'))
+        assertTrue(lines[1].startsWith("Tarjeta SD: ") && lines[1].endsWith("(0 % usado)"))
+    }
 }

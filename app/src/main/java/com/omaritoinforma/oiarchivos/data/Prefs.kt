@@ -311,6 +311,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("app_permission_notify", true)
         set(v) = sp.edit().putBoolean("app_permission_notify", v).apply()
 
+    /** Notificación fija con el uso del almacenamiento («Mostrar tarjeta SD en la barra de estado» de ES). */
+    var storageNotification: Boolean
+        get() = sp.getBoolean("storage_notification", false)
+        set(v) = sp.edit().putBoolean("storage_notification", v).apply()
+
     var folderStyle: FolderStyle
         get() = enumOr(sp.getString("folder_style", null), FolderStyle.CLASSIC)
         set(v) = sp.edit().putString("folder_style", v.name).apply()

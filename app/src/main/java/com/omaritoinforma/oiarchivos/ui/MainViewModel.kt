@@ -275,6 +275,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             scheduleStorageWatch()
             if (it) checkSpaceNow()
         })
+    val storageNotification =
+        PrefState({ prefs.storageNotification }, {
+            prefs.storageNotification = it
+            scheduleStorageWatch()
+            checkSpaceNow()
+        })
     val toolbarActions = PrefState({ prefs.toolbarActions }, { prefs.toolbarActions = it })
     val backgroundImage = PrefState({ prefs.backgroundImage }, { prefs.backgroundImage = it })
     val backgroundStrength = PrefState({ prefs.backgroundStrength }, { prefs.backgroundStrength = it })
@@ -485,6 +491,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             closeNotificationWhenDone,
             lowSpaceWarning,
             lowSpaceMb,
+            storageNotification,
             ftpPort,
             ftpEncoding,
             toolbarActions,
