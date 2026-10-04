@@ -118,7 +118,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | FTP, SFTP, WebDAV | ✅ | Servidores reales en el host; descarga SFTP reanudada en el emulador |
 | FTPS, SMB 1/2 | ✅ | FTPS explícito e implícito (puerto 990, que antes se trataba como explícito y fallaba) probados con servidores reales, con certificado validado, nombre comprobado y reanudación. SMB 2/3 con firma obligatoria probado contra Samba: listar, subir, bajar, renombrar y borrar. SMB 1 no se ofrece a propósito (es inseguro y Android ya no lo admite) |
 | Buscar equipos en la red local (LAN) | ✅ | Emulador Android 15: encuentra el servidor FTP del equipo de CI (10.0.2.2:21) y abre la conexión ya rellenada. Anuncios mDNS y puertos 445, 21, 990 y 22; SFTP y FTP se confirman por su saludo |
-| NFS | ❌ | |
+| NFS | 🟡 | Cliente NFS versión 3 (biblioteca nfs-client de Dell EMC, Apache 2.0): listar, leer, leer desde un desplazamiento (reanudar), escribir de forma atómica (temporal y renombrado), renombrar, borrar y crear carpetas. Probado con un servidor NFS real (nfs-ganesha, que el CI inicia) en 3 pruebas JVM, entre ellas que una exportación inexistente se rechace; usuario y grupo numéricos (uid:gid, por omisión «nobody»). Sin cifrado, como el propio NFS 3. Comprobación en Android contra el servidor del CI preparada |
 | Google Drive, Dropbox, OneDrive, Box, Yandex, S3, Baidu, SugarSync | 🟡 | Faltan registros OAuth y cuentas reales |
 | MediaFire, Flickr, Instagram, Facebook, Nutstore (坚果云), China Mobile Cloud (中国移动云盘) | ❌ | |
 | Varias cuentas por servicio | 🟡 | |

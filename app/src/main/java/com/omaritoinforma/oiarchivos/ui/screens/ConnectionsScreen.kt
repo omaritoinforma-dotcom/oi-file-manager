@@ -317,6 +317,7 @@ private fun ConnectionDialog(
                                                         Protocol.FTPS_IMPLICIT -> "990"
                                                         Protocol.SFTP -> "22"
                                                         Protocol.SMB -> "445"
+                                                        Protocol.NFS -> "2049"
                                                         else -> "443"
                                                     }
                                                 root =
@@ -345,8 +346,21 @@ private fun ConnectionDialog(
                                     else "Servidor")
                             })
                     }
-                    item { OutlinedTextField(port, { port = it }, label = { Text("Puerto") }) }
-                    item { OutlinedTextField(user, { user = it }, label = { Text("Usuario") }) }
+                    // NFS encuentra sus puertos por el portmapper: no hay puerto que elegir.
+                    if (protocol != Protocol.NFS)
+                        item { OutlinedTextField(port, { port = it }, label = { Text("Puerto") }) }
+                    item {
+                        OutlinedTextField(
+                            user,
+                            { user = it },
+                            label = {
+                                Text(if (protocol == Protocol.NFS) "Usuario y grupo uid:gid" else "Usuario")
+                            },
+                            supportingText = {
+                                if (protocol == Protocol.NFS)
+                                    Text("Vacío: 65534:65534 («nobody»). NFS no cifra nada: úsalo en una red de confianza")
+                            })
+                    }
                 }
                 if (protocol == Protocol.SUGARSYNC) {
                     item {
@@ -360,7 +374,8 @@ private fun ConnectionDialog(
                             label = { Text("Identificador de tu aplicación SugarSync /sc/…") })
                     }
                 }
-                item {
+                if (protocol != Protocol.NFS)
+                  item {
                     OutlinedTextField(
                         secret,
                         { secret = it },
@@ -381,6 +396,7 @@ private fun ConnectionDialog(
                                 else if (protocol == Protocol.BOX) "ID de carpeta, 0 para la raíz"
                                 else if (protocol == Protocol.DRIVE) "ID de carpeta o root"
                                 else if (protocol == Protocol.SMB) "Carpeta compartida /nombre"
+                                else if (protocol == Protocol.NFS) "Ruta exportada /srv/datos"
                                 else "Carpeta inicial")
                         })
                 }

@@ -51,6 +51,8 @@ enum class Protocol(val label: String) {
     FTPS_IMPLICIT("FTPS implícito"),
     SFTP("SFTP"),
     SMB("Windows / SMB"),
+    /** NFS versión 3: el servidor exporta una carpeta y se entra con usuario y grupo numéricos (uid:gid). */
+    NFS("NFS"),
     WEBDAV("WebDAV"),
     DRIVE("Google Drive"),
     DROPBOX("Dropbox"),
@@ -201,6 +203,7 @@ object RemoteFiles {
             Protocol.FTPS_IMPLICIT -> FtpFs(c)
             Protocol.SFTP -> SftpFs(c)
             Protocol.SMB -> SmbFs(c)
+            Protocol.NFS -> NfsFs(c)
             Protocol.ROOT -> RootFs()
             Protocol.BLUETOOTH -> BluetoothFs(c, appContext)
             Protocol.BOX -> BoxFs(c)
@@ -620,6 +623,95 @@ private class SmbFs(c: Connection) : RemoteFs {
 
     override fun close() {
         context.close()
+    }
+}
+
+/**
+ * Cliente NFS versión 3 (carpetas exportadas por servidores Linux, NAS, routers…). NFS no tiene
+ * contraseña: el servidor decide por la dirección del cliente y por el usuario y grupo numéricos que
+ * se le envían («uid:gid»; por omisión 65534:65534, «nobody»). Los datos viajan sin cifrar: úsalo
+ * solo en una red de confianza.
+ */
+internal class NfsFs(c: Connection) : RemoteFs {
+    private val nfs: com.emc.ecs.nfsclient.nfs.nfs3.Nfs3
+
+    init {
+        val (uid, gid) = NfsFs.parseIds(c.user)
+        nfs =
+            com.emc.ecs.nfsclient.nfs.nfs3.Nfs3(
+                c.host,
+                c.root.ifBlank { "/" },
+                com.emc.ecs.nfsclient.rpc.CredentialUnix(uid, gid, null),
+                3)
+    }
+
+    private fun file(path: String) =
+        com.emc.ecs.nfsclient.nfs.io.Nfs3File(nfs, if (path.startsWith("/")) path else "/$path")
+
+    override fun list(path: String): List<RemoteEntry> =
+        file(path).listFiles().map { child ->
+            val directory = child.isDirectory
+            RemoteEntry(
+                path.trimEnd('/') + "/" + child.name,
+                child.name,
+                directory,
+                if (directory) 0 else child.lengthEx())
+        }
+
+    override fun read(path: String): InputStream =
+        com.emc.ecs.nfsclient.nfs.io.NfsFileInputStream(file(path))
+
+    /** NFS lee desde cualquier posición, así que siempre se puede reanudar. */
+    override fun readFrom(path: String, offset: Long): InputStream =
+        com.emc.ecs.nfsclient.nfs.io.NfsFileInputStream(file(path), offset, 1024 * 1024)
+
+    override fun write(parent: String, name: String, input: InputStream, size: Long): String {
+        val target = RemoteFiles.join(parent, name)
+        val partPath = RemoteFiles.partName(target)
+        var renamed = false
+        try {
+            val temp = file(partPath)
+            // Con permisos rw-r--r--: sin ellos el servidor crea el archivo con modo 000.
+            temp.create(com.emc.ecs.nfsclient.nfs.NfsCreateMode.UNCHECKED, attributes(FILE_MODE), null)
+            com.emc.ecs.nfsclient.nfs.io.NfsFileOutputStream(temp).use { input.copyTo(it) }
+            // El renombrado de NFS sustituye lo que hubiera en el destino de una sola vez.
+            if (!temp.renameTo(file(target))) throw IOException("El servidor NFS no renombró el archivo")
+            renamed = true
+        } finally {
+            // Con el archivo ya renombrado no se toca nada: la biblioteca guarda el manejador viejo y un
+            // «borrar» de ese objeto se llevaría el archivo bueno. Si falló, se borra el parcial con un objeto nuevo.
+            if (!renamed) runCatching { file(partPath).let { if (it.exists()) it.delete() } }
+        }
+        return target
+    }
+
+    override fun mkdir(parent: String, name: String): String =
+        RemoteFiles.join(parent, name).also { file(it).mkdir(attributes(DIRECTORY_MODE)) }
+
+    override fun rename(entry: RemoteEntry, name: String) {
+        val moved =
+            file(entry.path).renameTo(file(RemoteFiles.join(entry.path.substringBeforeLast('/'), name)))
+        if (!moved) throw IOException("El servidor NFS no cambió el nombre")
+    }
+
+    override fun delete(entry: RemoteEntry) {
+        file(entry.path).delete()
+    }
+
+    companion object {
+        private const val FILE_MODE = 420L // 0644
+        private const val DIRECTORY_MODE = 493L // 0755
+
+        private fun attributes(mode: Long) =
+            com.emc.ecs.nfsclient.nfs.NfsSetAttributes().apply { setMode(mode) }
+
+        /** «1000:1000» → (1000, 1000); vacío o mal escrito → «nobody» (65534:65534). */
+        fun parseIds(text: String): Pair<Int, Int> {
+            val parts = text.trim().split(':')
+            val uid = parts.getOrNull(0)?.toIntOrNull()?.takeIf { it >= 0 }
+            val gid = parts.getOrNull(1)?.toIntOrNull()?.takeIf { it >= 0 }
+            return if (uid != null && gid != null && parts.size == 2) uid to gid else 65534 to 65534
+        }
     }
 }
 

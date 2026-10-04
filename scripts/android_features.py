@@ -2957,6 +2957,35 @@ if os.environ.get("OI_REMOTE_TEST_ROOT"):
         assert remote.read_text() == "cambiado en el servidor por otra persona", "La copia no debe tocar el original"
 
 
+if os.environ.get("OI_REMOTE_TEST_NFS_EXPORT"):
+
+    @check("conexion-nfs-real-listar-y-abrir")
+    def nfs_connection():
+        """Conexión NFS desde la interfaz contra nfs-ganesha en el equipo de CI (10.0.2.2): listar y abrir un archivo."""
+        server = pathlib.Path(os.environ["OI_REMOTE_TEST_ROOT"])
+        (server / "nfs-hola-oi.txt").write_text("hola-desde-nfs-oi")
+        launch_home()
+        ui.drawer("Red, nube y USB")
+        tap("Agregar")
+        ui.keyboards(enable=False)
+        try:
+            fill("Nombre de la conexión", "NFS prueba")
+            tap("NFS")
+            fill("Servidor", "10.0.2.2")
+            fill("Usuario y grupo uid:gid", "0:0")
+            fill("Ruta exportada /srv/datos", os.environ["OI_REMOTE_TEST_NFS_EXPORT"], current="/")
+            evidence("conexion-nfs-formulario")
+            tap("Guardar")
+            until(lambda: not nodes("Nueva conexión", hierarchy()), "El diálogo no se cerró al guardar", 15)
+        finally:
+            ui.keyboards(enable=True)
+        tap("NFS prueba")
+        find("nfs-hola-oi.txt")
+        evidence("conexion-nfs-listado")
+        tap(find("nfs-hola-oi.txt").get("text"))
+        wait_text("hola-desde-nfs-oi", 60)
+
+
 @check("analizar-apps-permisos-delicados")
 def app_analysis():
     package = "com.omaritoinforma.prueba.permisos"

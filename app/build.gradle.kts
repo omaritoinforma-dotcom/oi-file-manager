@@ -108,6 +108,8 @@ dependencies {
     implementation("commons-net:commons-net:3.11.1")
     implementation("com.github.mwiede:jsch:0.2.21")
     implementation("eu.agno3.jcifs:jcifs-ng:2.1.10")
+    // NFSv3 (Dell EMC, Apache 2.0). Trae Netty 3, commons-lang3 y slf4j.
+    implementation("com.emc.ecs:nfs-client:1.1.0")
     implementation("org.nanohttpd:nanohttpd:2.3.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("androidx.work:work-runtime-ktx:2.9.1")
