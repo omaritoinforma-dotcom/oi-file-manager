@@ -44,6 +44,7 @@ enum class NewFileKind(val label: String, val kinds: Set<FileKind>) {
 object StorageWatch {
     private const val NEW_FILES = "registrador"
     private const val SPACE = "espacio"
+    private const val SPACE_NOW = "espacio-ahora"
     const val CHANNEL = "avisos"
     const val LOW_SPACE_ID = 30
     const val NEW_FILES_ID = 31
@@ -101,6 +102,15 @@ object StorageWatch {
                 ExistingPeriodicWorkPolicy.KEEP,
                 PeriodicWorkRequestBuilder<StorageWatchWorker>(1, TimeUnit.HOURS).build())
         else work.cancelUniqueWork(SPACE)
+    }
+
+    /**
+     * Revisa el espacio ya, sin esperar a la revisión de cada hora: al activar el aviso o cambiar el
+     * umbral se ve enseguida si hay poco espacio.
+     */
+    fun checkNow(ctx: Context) {
+        WorkManager.getInstance(ctx)
+            .enqueueUniqueWork(SPACE_NOW, ExistingWorkPolicy.REPLACE, OneTimeWorkRequestBuilder<StorageWatchWorker>().build())
     }
 
     /** Trabajo que Android lanza cuando cambia MediaStore; tras cada ejecución se vuelve a poner. */

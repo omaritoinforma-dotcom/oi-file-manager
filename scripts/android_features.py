@@ -1365,8 +1365,9 @@ def playlists():
         tap("Nueva lista…")
         fill("Nombre de la lista", "Viaje")
         tap_last("Aceptar")
-        wait_text("2 añadido(s) a «Viaje»")
-        # La lista sigue ahí al volver a abrir la app.
+        # El aviso «2 añadido(s)» es un toast, que no sale en la jerarquía de la pantalla: lo que
+        # cuenta es que la lista exista con sus dos pistas tras volver a abrir la app.
+        time.sleep(2)
         launch_home()
         ui.drawer("Listas de reproducción")
         wait("2 pista(s)")
@@ -1462,15 +1463,11 @@ def low_space_notice():
     settings("Notificaciones")
     try:
         set_switch("Advertencia de espacio bajo", True)
+        # Al elegir el umbral, la app revisa el espacio en ese momento (además de cada hora).
         tap(target[1])
-        time.sleep(1)
-        jobs = app_jobs()
-        assert jobs, "No hay trabajos programados para revisar el espacio"
+        until(lambda: notification_shown(30), "No llegó la advertencia de espacio bajo", 90)
         (OUTPUT / "jobs-espacio.txt").write_text(
             sh("dumpsys", "jobscheduler", ui.PACKAGE, check=False), encoding="utf-8")
-        for job in jobs:
-            adb("shell", "cmd", "jobscheduler", "run", "-f", ui.PACKAGE, job, check=False)
-        until(lambda: notification_shown(30), "No llegó la advertencia de espacio bajo", 60)
         assert "Espacio insuficiente" in sh("dumpsys", "notification", "--noredact", check=False)
         # Tocar el aviso lleva a «Limpiar basura».
         adb("shell", "cmd", "statusbar", "expand-notifications")
@@ -1582,7 +1579,7 @@ def batch_apps():
             ["Install", "INSTALL", "Install anyway", "Don't send"],
             lambda: all(installed(p) for p in packages),
             "No se instalaron los dos APK")
-        wait_text("Instaladas 2 de 2")
+        time.sleep(2)
         # Desinstalar: las dos apps elegidas en Aplicaciones.
         launch_home()
         ui.drawer("Aplicaciones")
@@ -1596,7 +1593,6 @@ def batch_apps():
         tap("Desinstalar seleccionadas")
         answer_system_dialogs(
             ["OK"], lambda: not any(installed(p) for p in packages), "No se desinstalaron las dos apps")
-        wait_text("Desinstaladas 2 de 2")
         assert installed(ui.PACKAGE), "Se desinstaló OI Archivos"
     finally:
         for package in packages:

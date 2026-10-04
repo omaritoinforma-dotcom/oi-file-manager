@@ -232,11 +232,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         PrefState({ prefs.lowSpaceWarning }, {
             prefs.lowSpaceWarning = it
             scheduleStorageWatch()
+            if (it) checkSpaceNow()
         })
     val lowSpaceMb = PrefState({ prefs.lowSpaceMb }, {
         prefs.lowSpaceMb = it
         prefs.lowSpaceWarned = false
+        checkSpaceNow()
     })
+
+    private fun checkSpaceNow() {
+        runCatching { com.omaritoinforma.oiarchivos.data.StorageWatch.checkNow(ctx) }
+    }
     val newFilesNotify =
         PrefState({ prefs.newFilesNotify }, {
             prefs.newFilesNotify = it
