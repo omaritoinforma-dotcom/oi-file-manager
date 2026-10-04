@@ -6,6 +6,11 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+# En un PR solo cuenta la última versión: un push nuevo cancela la ejecución anterior y ahorra
+# minutos de Actions. Las ejecuciones de main nunca se cancelan.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   build:
     runs-on: ubuntu-latest
