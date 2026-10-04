@@ -92,7 +92,8 @@ jobs:
           curl -sSfL -o rclone.zip https://downloads.rclone.org/v1.75.1/rclone-v1.75.1-linux-amd64.zip
           echo "982b5aa772841168f8e380f139e9e787b2a105403e32b94da8676a0e1c0a13ab  rclone.zip" | sha256sum -c -
           unzip -q rclone.zip
-          python3 -m pip install --quiet cryptography
+          # PyAV decodifica en el equipo de CI los fotogramas de los vídeos que exporta la app (intro y outro).
+          python3 -m pip install --quiet cryptography av==18.1.0
           RCLONE="$PWD/rclone-v1.75.1-linux-amd64/rclone" python3 scripts/remote_servers.py start >> "$GITHUB_ENV"
       - name: Servidor NFS real para la conexión NFS de Android
         run: |

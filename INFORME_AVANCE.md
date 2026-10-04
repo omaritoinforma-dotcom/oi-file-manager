@@ -13,8 +13,8 @@ La matriz completa está en [COMPARACION_ES.md](COMPARACION_ES.md). Se hizo a pa
 | Estado | Filas | Qué significa |
 | --- | ---: | --- |
 | ✅ | 40 | Implementado y comprobado en el emulador Android 15 del CI o contra un servidor real |
-| 🟡 | 33 | Implementado y conectado a la interfaz; su comprobación en el emulador ya está escrita y espera su pasada |
-| 🟠 | 3 | Parcial: Chromecast, punto de acceso Wi-Fi e intro/outro del editor de vídeo |
+| 🟡 | 34 | Implementado y conectado a la interfaz; su comprobación en el emulador ya está escrita y espera su pasada |
+| 🟠 | 2 | Parcial: Chromecast y envío entre teléfonos por punto de acceso Wi-Fi |
 | ❌ | 9 | Falta: idioma dentro de la app, funciones que exigen root (desinstalar apps del sistema, montar /system, editar hosts), Android TV por ADB, servidor OBEX, expulsar USB, punto de acceso propio y las nubes minoritarias |
 
 Lo que falta en ❌ y en 🟠 necesita casi siempre hardware, root o cuentas que el CI no tiene. La excepción es el idioma: hay que sacar a recursos los textos de la interfaz, que hoy están escritos en español dentro del código.
@@ -39,7 +39,7 @@ Además, el servidor FTP del propio teléfono se prueba con el cliente FTP de co
 El trabajo `smoke` arranca la app en un emulador Android 15 y ejecuta dos scripts:
 
 - `scripts/smoke_android.py` recorre la app de punta a punta. Incluye una descarga SFTP de 24 MiB que se reanuda tras matar el proceso y se compara por SHA-256.
-- `scripts/android_features.py` hace **81 comprobaciones**, una por función. Cada una guarda su captura, su jerarquía de pantalla y el resultado en `results.json`.
+- `scripts/android_features.py` hace **82 comprobaciones**, una por función. Cada una guarda su captura, su jerarquía de pantalla y el resultado en `results.json`.
 
 Desde ahora las comprobaciones se reparten en **tres emuladores nuevos en paralelo** (`OI_SHARD=k/3`). Así una sesión no pasa de unos 40 minutos.
 
@@ -62,11 +62,11 @@ Los 10 fallos eran de la prueba y están corregidos en `df93f9f`:
 - se leía un archivo del servidor justo mientras la app lo sustituía;
 - `am start -W` superó 30 s.
 
-Las 24 comprobaciones nuevas de este punto de control esperan su primera pasada.
+Las 25 comprobaciones nuevas de este punto de control esperan su primera pasada.
 
 ### Pruebas JVM
 
-Hay 212 pruebas en 42 archivos. En local pasan todas menos 9, que necesitan rclone y 7-Zip; en el CI pasan también.
+Hay 218 pruebas en 43 archivos. En local pasan todas menos 9, que necesitan rclone y 7-Zip; en el CI pasan también.
 
 ## Errores reales que encontraron las pruebas
 
@@ -76,6 +76,7 @@ Hay 212 pruebas en 42 archivos. En local pasan todas menos 9, que necesitan rclo
 | NFS | Las carpetas y archivos nuevos quedaban con permisos 000. Además, tras renombrar el temporal, el objeto viejo seguía apuntando al archivo y «borrar el temporal» se llevaba el archivo bueno | Prueba contra nfs-ganesha |
 | ZIP sin compresión | zip4j fallaba en modo STORE si no se indicaba el tamaño | Prueba JVM de niveles de compresión |
 | Recorte de imagen | Arrastrar una esquina más allá de la opuesta daba la vuelta al recuadro | Prueba JVM de `ImageCrop` |
+| Subtítulos del editor de vídeo | Entre dos subtítulos el texto quedaba vacío y Media3 intentaba crear una imagen de ancho 0: la exportación fallaba si el primer subtítulo no empezaba en 0 | Leyendo el código de `TextOverlay` de Media3 al añadir la intro; la comprobación nueva del emulador lo cubre |
 | Aviso de poco espacio | Al activarlo había que esperar a la revisión de cada hora; ahora revisa al momento | Emulador |
 | Búsqueda avanzada (anterior) | Siempre mostraba 0 resultados | Emulador |
 | Recepción entre teléfonos (anterior) | Dejaba bytes sin leer tras un error y estropeaba la solicitud siguiente | Emulador |
@@ -93,7 +94,8 @@ Hay 212 pruebas en 42 archivos. En local pasan todas menos 9, que necesitan rclo
 - **Inicio:** secciones e iconos que se pueden ocultar y reordenar, sección «Archivos nuevos» y buscador.
 - **Imagen y vídeo:**
   - Editor de imagen (recortar con proporciones, girar, voltear; copia o reemplazo atómico).
-  - La comprobación en el emulador del editor de vídeo usa vídeos reales grabados con `screenrecord`.
+  - Intro y outro en el editor de vídeo, como en ES: una foto recortada al centro, un texto sobre un color o ambos, de 2, 3 o 5 s.
+  - La comprobación en el emulador del editor de vídeo usa vídeos reales grabados con `screenrecord` y un vídeo con sonido hecho con PyAV, cuyos fotogramas y audio se decodifican para comprobar la intro, el outro, el texto y los subtítulos.
 - **Ajustes de ES que faltaban:**
   - orientación;
   - diseño grande;
@@ -111,12 +113,11 @@ Hay 212 pruebas en 42 archivos. En local pasan todas menos 9, que necesitan rclo
 
 ## Trabajo que falta
 
-1. **Pasada del emulador** de las 33 filas en 🟡, ya escritas: corregir lo que falle y pasar a ✅ lo que apruebe.
+1. **Pasada del emulador** de las 34 filas en 🟡, ya escritas: corregir lo que falle y pasar a ✅ lo que apruebe.
 2. **Idioma dentro de la app:** sacar los textos a `strings.xml` y añadir al menos inglés.
 3. **Nubes:** registrar el acceso OAuth de la aplicación y comprobar cada operación con cuentas reales (Drive, Dropbox, OneDrive, Box, Yandex, S3, Baidu, SugarSync).
 4. **Hardware y root, imposibles en el CI:** Chromecast, punto de acceso Wi-Fi, Android TV por ADB, Bluetooth OBEX (cliente con un dispositivo real; servidor por hacer), USB OTG, tarjeta SD y funciones root.
-5. **Editor de vídeo:** intro y outro.
-6. **Revisión estática:** `lintDebug` no tiene errores. Quedan 27 advertencias, sobre todo versiones nuevas de dependencias y la API objetivo 34; las dos de «TrustAllX509TrustManager» son de clases de commons-net que la app no usa.
+5. **Revisión estática:** `lintDebug` no tiene errores. Quedan 27 advertencias, sobre todo versiones nuevas de dependencias y la API objetivo 34; las dos de «TrustAllX509TrustManager» son de clases de commons-net que la app no usa.
 
 No se declara el proyecto completo.
 

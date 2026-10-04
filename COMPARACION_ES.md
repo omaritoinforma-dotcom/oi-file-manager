@@ -96,7 +96,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la última pasada completa de `scri
 | Visor de PDF | ✅ | Emulador |
 | Editor de texto: codificación, buscar y reemplazar, tamaño de letra | ✅ | Guardado comprobado en el emulador |
 | Editor de texto: resaltado de sintaxis, sangría automática, mayúsculas y minúsculas, duplicar línea, guardado automático | 🟡 | Sangría y guardado automáticos comprobados en el emulador; resaltado sencillo. Añadidos mayúsculas/minúsculas, duplicar línea, barra de símbolos con Tab (espacios o tabulador, tamaño 2/4/8), mostrar espacios en blanco y mayúscula automática; comprobación en el emulador preparada |
-| Editor de vídeo: recortar, rotar, velocidad, recorte de imagen, música, subtítulos, imágenes, fondo, intro/outro | 🟠 | Todo menos intro/outro. Comprobación en el emulador preparada con vídeos reales grabados con screenrecord: recortar de 1 s a 3 s, girar 90° y velocidad doble, leyendo la duración y el tamaño del MP4 resultante; música, subtítulos, imagen superpuesta y fondo sin comprobar |
+| Editor de vídeo: recortar, rotar, velocidad, recorte de imagen, música, subtítulos, imágenes, fondo, intro/outro | 🟡 | Todo, también intro y outro: una foto recortada al centro para llenar el cuadro, un texto sobre un color o ambos, de 2, 3 o 5 s, y el texto, los subtítulos y la imagen superpuesta no tapan la intro ni el outro. Comprobación en el emulador preparada con vídeos reales: grabaciones de screenrecord recortadas de 1 s a 3 s, giradas 90° y a doble velocidad (duración y tamaño del MP4), y un vídeo con sonido con intro azul, outro con foto, texto y subtítulos, comprobado decodificando sus fotogramas y su audio con PyAV. Música, imagen superpuesta y fondo sin comprobar |
 | Unir vídeos y convertir vídeo a GIF | 🟡 | Unir (suma de duraciones) y GIF (cabecera, tamaño y fotogramas) con comprobación en el emulador preparada; el codificador de GIF ya tenía pruebas JVM con el lector de GIF del JDK |
 
 ### Aplicaciones
@@ -160,8 +160,8 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | Estado | Filas |
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 40 |
-| 🟡 Implementadas; su comprobación en el emulador está escrita y espera su pasada | 33 |
-| 🟠 Parciales | 3 |
+| 🟡 Implementadas; su comprobación en el emulador está escrita y espera su pasada | 34 |
+| 🟠 Parciales | 2 |
 | ❌ Faltan | 9 |
 | **Total de filas** | **85** |
 
@@ -169,8 +169,7 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 
 1. Idioma dentro de la app: sacar los textos a recursos y añadir al menos inglés.
 2. Enviar a la TV por Chromecast (DLNA ya está) y enviar entre teléfonos por punto de acceso Wi-Fi (misma Wi-Fi y código QR ya están).
-3. Intro y outro en el editor de vídeo.
-4. Lo que exige hardware, root o cuentas que el CI no tiene: Android TV por ADB, servidor OBEX, expulsar USB, punto de acceso propio, funciones root y nubes minoritarias.
+3. Lo que exige hardware, root o cuentas que el CI no tiene: Android TV por ADB, servidor OBEX, expulsar USB, punto de acceso propio, funciones root y nubes minoritarias.
 
 Las filas en 🟡 pasan a ✅ cuando las aprueba una pasada del emulador en el CI.
 

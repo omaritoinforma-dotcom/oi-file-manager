@@ -29,6 +29,12 @@ fun VideoEditScreen(vm: MainViewModel, path: String) {
     var background by remember { mutableStateOf("") }
     var color by remember { mutableStateOf("#202020") }
     var canvas by remember { mutableIntStateOf(0) }
+    var introText by remember { mutableStateOf("") }
+    var introImage by remember { mutableStateOf("") }
+    var outroText by remember { mutableStateOf("") }
+    var outroImage by remember { mutableStateOf("") }
+    var cardColor by remember { mutableStateOf("#202020") }
+    var cardMs by remember { mutableLongStateOf(3000L) }
     var error by remember { mutableStateOf<String?>(null) }
     fun edit(): VideoEdit? {
         val lo = start.toDoubleOrNull()
@@ -41,7 +47,10 @@ fun VideoEditScreen(vm: MainViewModel, path: String) {
             return null
         }
         val additional = join.lines().map { it.trim() }.filter { it.isNotBlank() }
-        if ((additional + listOf(music, image, subtitles, background).filter { it.isNotBlank() })
+        if ((additional +
+                listOf(music, image, subtitles, background, introImage, outroImage).filter {
+                    it.isNotBlank()
+                })
             .any { !File(it).isFile }) {
             error = "Revisa los archivos adicionales"
             return null
@@ -50,6 +59,12 @@ fun VideoEditScreen(vm: MainViewModel, path: String) {
             runCatching { android.graphics.Color.parseColor(color) }
                 .getOrElse {
                     error = "Revisa el color de fondo, por ejemplo #202020"
+                    return null
+                }
+        val cards =
+            runCatching { android.graphics.Color.parseColor(cardColor) }
+                .getOrElse {
+                    error = "Revisa el color de la intro y el outro, por ejemplo #202020"
                     return null
                 }
         val size =
@@ -74,7 +89,13 @@ fun VideoEditScreen(vm: MainViewModel, path: String) {
             size.first,
             size.second,
             backgroundColor,
-            background)
+            background,
+            introText = introText,
+            introImage = introImage,
+            outroText = outroText,
+            outroImage = outroImage,
+            cardColor = cards,
+            cardMs = cardMs)
     }
     ToolPage("Editar ${source.name}", vm) { pad ->
         LazyColumn(
@@ -161,7 +182,7 @@ fun VideoEditScreen(vm: MainViewModel, path: String) {
                         { subtitles = it },
                         label = { Text("Archivo SRT (ruta opcional)") },
                         supportingText = {
-                            Text("Los tiempos corresponden al video exportado, desde 00:00.")
+                            Text("Los tiempos cuentan desde el inicio del video, después de la intro si la hay.")
                         },
                         modifier = Modifier.fillMaxWidth())
                 }
@@ -191,6 +212,51 @@ fun VideoEditScreen(vm: MainViewModel, path: String) {
                             { background = it },
                             label = { Text("Imagen de fondo (ruta opcional)") },
                             modifier = Modifier.fillMaxWidth())
+                    }
+                }
+                item {
+                    Text(
+                        "Intro y outro: una imagen fija al principio y al final del video. Puede ser una foto (se recorta al centro para llenar el cuadro), un texto sobre un color o el texto encima de la foto.",
+                        style = MaterialTheme.typography.bodySmall)
+                }
+                item {
+                    OutlinedTextField(
+                        introText,
+                        { introText = it },
+                        label = { Text("Texto de la intro") },
+                        modifier = Modifier.fillMaxWidth())
+                }
+                item {
+                    OutlinedTextField(
+                        introImage,
+                        { introImage = it },
+                        label = { Text("Imagen de la intro (ruta opcional)") },
+                        modifier = Modifier.fillMaxWidth())
+                }
+                item {
+                    OutlinedTextField(
+                        outroText,
+                        { outroText = it },
+                        label = { Text("Texto del outro") },
+                        modifier = Modifier.fillMaxWidth())
+                }
+                item {
+                    OutlinedTextField(
+                        outroImage,
+                        { outroImage = it },
+                        label = { Text("Imagen del outro (ruta opcional)") },
+                        modifier = Modifier.fillMaxWidth())
+                }
+                item {
+                    OutlinedTextField(
+                        cardColor,
+                        { cardColor = it },
+                        label = { Text("Color de la intro y el outro (#RRGGBB)") },
+                        modifier = Modifier.fillMaxWidth())
+                }
+                item {
+                    TextButton(onClick = { cardMs = VideoCards.nextDuration(cardMs) }) {
+                        Text("Duración de la intro y el outro: ${cardMs / 1000} s")
                     }
                 }
                 error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }

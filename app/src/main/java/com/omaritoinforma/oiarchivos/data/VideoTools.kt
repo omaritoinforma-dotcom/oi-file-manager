@@ -3,7 +3,6 @@ package com.omaritoinforma.oiarchivos.data
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.text.SpannableString
 import androidx.media3.common.*
 import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.effect.*
@@ -27,8 +26,18 @@ data class VideoEdit(
     val canvasWidth: Int = 0,
     val canvasHeight: Int = 0,
     val backgroundColor: Int = android.graphics.Color.BLACK,
-    val backgroundImage: String = ""
-)
+    val backgroundImage: String = "",
+    /** Intro y outro: texto, imagen o ambos; vacíos si no hay. */
+    val introText: String = "",
+    val introImage: String = "",
+    val outroText: String = "",
+    val outroImage: String = "",
+    val cardColor: Int = android.graphics.Color.BLACK,
+    val cardMs: Long = 3000
+) {
+    val hasIntro get() = introText.isNotBlank() || introImage.isNotBlank()
+    val hasOutro get() = outroText.isNotBlank() || outroImage.isNotBlank()
+}
 
 @androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
 object VideoTools {
@@ -41,6 +50,7 @@ object VideoTools {
     ) {
         val part = File.createTempFile(".oi-video-", ".mp4", target.parentFile)
         part.delete()
+        val cardFiles = ArrayList<File>()
         try {
             val cues =
                 if (edit.subtitles.isBlank()) emptyList()
@@ -50,9 +60,49 @@ object VideoTools {
                         throw IOException("Subtítulos demasiado grandes")
                     Subtitles.parseSrt(file.readText(Charsets.UTF_8))
                 }
+            // Intro y outro: se dibujan con el tamaño final del vídeo y se ponen antes y después.
+            var size: Pair<Int, Int>? = null
+            var intro: File? = null
+            var outro: File? = null
+            var window = 0L to Long.MAX_VALUE
+            if (edit.hasIntro || edit.hasOutro) {
+                withContext(Dispatchers.IO) {
+                    val (width, height, metadataRotation) = frameInfo(source)
+                    val (w, h) =
+                        VideoCards.outputSize(
+                            width,
+                            height,
+                            metadataRotation,
+                            edit.rotation,
+                            edit.crop,
+                            edit.canvasWidth,
+                            edit.canvasHeight)
+                    size = w to h
+                    val cacheDir = File(ctx.cacheDir, "video-cards").apply { mkdirs() }
+                    fun card(name: String, text: String, image: String) =
+                        File.createTempFile("$name-", ".png", cacheDir).also {
+                            cardFiles += it
+                            VideoCards.render(it, w, h, text, image, edit.cardColor)
+                        }
+                    if (edit.hasIntro) intro = card("intro", edit.introText, edit.introImage)
+                    if (edit.hasOutro) outro = card("outro", edit.outroText, edit.outroImage)
+                    val first = durationMs(source)?.let { minOf(it, edit.endMs) - edit.startMs }
+                    window =
+                        VideoCards.videoWindowUs(
+                            if (edit.hasIntro) edit.cardMs else 0,
+                            listOf(first) + edit.join.map { durationMs(File(it)) },
+                            edit.speed)
+                }
+            }
+            val visible = { timeUs: Long -> timeUs >= window.first && timeUs < window.second }
             withContext(Dispatchers.Main.immediate) {
                 val effects = ArrayList<Effect>()
                 val canvas = ArrayList<Effect>()
+                // Con intro u outro, todo se ajusta al mismo cuadro (sin lienzo, el del vídeo editado).
+                if (size != null && (edit.canvasWidth <= 0 || edit.canvasHeight <= 0))
+                    canvas +=
+                        Presentation.createForWidthAndHeight(
+                            size!!.first, size!!.second, Presentation.LAYOUT_SCALE_TO_FIT)
                 if (edit.rotation != 0f)
                     effects +=
                         ScaleAndRotateTransformation.Builder()
@@ -68,12 +118,9 @@ object VideoTools {
                             edit.backgroundColor,
                             edit.backgroundImage)
                 val overlays = ArrayList<TextureOverlay>()
-                if (edit.caption.isNotBlank())
-                    overlays +=
-                        TextOverlay.createStaticTextOverlay(
-                            SpannableString(edit.caption), OverlaySettings.Builder().build())
-                if (cues.isNotEmpty()) overlays += VideoOverlays.subtitles(cues)
-                if (edit.image.isNotBlank()) overlays += VideoOverlays.image(edit.image)
+                if (edit.caption.isNotBlank()) overlays += VideoOverlays.caption(edit.caption, visible)
+                if (cues.isNotEmpty()) overlays += VideoOverlays.subtitles(cues, window.first, visible)
+                if (edit.image.isNotBlank()) overlays += VideoOverlays.image(edit.image, visible)
                 if (overlays.isNotEmpty()) canvas += OverlayEffect(overlays)
                 val audio =
                     if (edit.speed != 1f)
@@ -101,8 +148,19 @@ object VideoTools {
                                 .setEffects(Effects(audio, effects))
                                 .build()
                         }
+                fun card(file: File?) =
+                    file?.let {
+                        EditedMediaItem.Builder(
+                                MediaItem.Builder()
+                                    .setUri(Uri.fromFile(it))
+                                    .setMimeType(MimeTypes.IMAGE_PNG)
+                                    .setImageDurationMs(edit.cardMs)
+                                    .build())
+                            .setFrameRate(30)
+                            .build()
+                    }
                 val sequences = ArrayList<EditedMediaItemSequence>()
-                sequences += EditedMediaItemSequence(items)
+                sequences += EditedMediaItemSequence(listOfNotNull(card(intro)) + items + listOfNotNull(card(outro)))
                 if (edit.music.isNotBlank())
                     sequences +=
                         EditedMediaItemSequence(
@@ -115,6 +173,8 @@ object VideoTools {
                     Composition.Builder(sequences)
                         .setEffects(Effects(emptyList(), canvas))
                         .setHdrMode(Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL)
+                        // Las imágenes no tienen audio: se rellena con silencio para que el del vídeo siga.
+                        .experimentalSetForceAudioTrack(intro != null || outro != null)
                         .build()
                 val done = CompletableDeferred<Unit>()
                 val transformer =
@@ -158,6 +218,35 @@ object VideoTools {
             SafeFiles.commit(part, target, false)
         } finally {
             part.delete()
+            cardFiles.forEach { it.delete() }
+        }
+    }
+
+    /** Ancho, alto y rotación guardada del vídeo. */
+    private fun frameInfo(file: File): Triple<Int, Int, Int> {
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(file.path)
+            fun int(key: Int) = retriever.extractMetadata(key)?.toIntOrNull() ?: 0
+            return Triple(
+                int(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH),
+                int(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT),
+                int(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION))
+        } finally {
+            retriever.release()
+        }
+    }
+
+    /** Duración en milisegundos, o null si no se puede leer. */
+    private fun durationMs(file: File): Long? {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(file.path)
+            retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+        } catch (e: RuntimeException) {
+            null
+        } finally {
+            retriever.release()
         }
     }
 

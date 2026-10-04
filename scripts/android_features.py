@@ -559,7 +559,7 @@ def video_editor():
     frames = gif.count(b"\x21\xf9\x04\x08")
     assert frames >= 10, f"El GIF solo tiene {frames} fotogramas"
     # Unir: sin giro ni velocidad, el primero recortado (2 s) y el segundo entero (≈ 3 s).
-    for _ in range(5):  # volver arriba: los controles de giro y velocidad están al principio del formulario
+    for _ in range(8):  # volver arriba: los controles de giro y velocidad están al principio del formulario
         adb("shell", "input", "swipe", "540", "700", "540", "1700", "250")
     for label in ("Rotación: 90°", "Rotación: 180°", "Rotación: 270°", "Velocidad: 2.0x", "Velocidad: 0.5x"):
         tap(label)
@@ -569,6 +569,168 @@ def video_editor():
     assert 3.8 <= joined["duration"] <= 6.5, f"Unir: dura {joined['duration']} s en vez de ≈ 5 s"
     assert abs(joined["width"] - source["width"]) <= 16, f"Unir: {joined['width']}×{joined['height']}"
     evidence("editor-de-video-unido")
+
+
+def synthetic_video(path, seconds=4, width=360, height=640, color=(128, 128, 128)):
+    """MP4 de un solo color con un tono de 440 Hz, como el de una cámara (H.264 baseline y AAC), hecho con PyAV."""
+    import fractions
+    import av
+
+    with av.open(str(path), "w", format="mp4") as out:
+        video = out.add_stream("libx264", rate=30)
+        video.width, video.height, video.pix_fmt = width, height, "yuv420p"
+        video.options = {"profile": "baseline", "crf": "20"}
+        audio = out.add_stream("aac", rate=44100, layout="mono")
+        frame = av.VideoFrame(width, height, "rgb24")
+        stride = frame.planes[0].line_size
+        frame.planes[0].update((bytes(color) * width + b"\0" * (stride - 3 * width)) * height)
+        for i in range(seconds * 30):
+            yuv = frame.reformat(format="yuv420p")
+            yuv.pts, yuv.time_base = i, fractions.Fraction(1, 30)
+            for packet in video.encode(yuv):
+                out.mux(packet)
+        for packet in video.encode():
+            out.mux(packet)
+        samples = 1024
+        for n in range(seconds * 44100 // samples):
+            sound = av.AudioFrame(format="s16", layout="mono", samples=samples)
+            sound.planes[0].update(b"".join(
+                struct.pack("<h", int(8000 * math.sin(2 * math.pi * 440 * (n * samples + k) / 44100)))
+                for k in range(samples)))
+            sound.rate, sound.pts, sound.time_base = 44100, n * samples, fractions.Fraction(1, 44100)
+            for packet in audio.encode(sound):
+                out.mux(packet)
+        for packet in audio.encode():
+            out.mux(packet)
+
+
+def analyze_mp4(data, times=()):
+    """Decodifica un MP4 con PyAV: primer y último fotograma, el más cercano a cada uno de [times] (en s)
+    y el nivel del audio (tiempo, RMS de 0 a 1) de cada trozo. Cada fotograma es (ancho, alto, paso, RGB)."""
+    import av
+
+    def rgb(frame):
+        image = frame.reformat(format="rgb24")
+        return image.width, image.height, image.planes[0].line_size, bytes(image.planes[0])
+
+    def level(frame):
+        kind, count = frame.format.name.rstrip("p"), frame.samples
+        raw = bytes(frame.planes[0])
+        if kind == "flt":
+            values = struct.unpack(f"<{count}f", raw[:4 * count])
+        elif kind == "s16":
+            values = [v / 32768 for v in struct.unpack(f"<{count}h", raw[:2 * count])]
+        else:
+            raise AssertionError(f"Formato de audio inesperado: {frame.format.name}")
+        return math.sqrt(sum(v * v for v in values) / max(1, count))
+
+    result = {"first": None, "last": None, "at": {}, "audio": []}
+    with tempfile.TemporaryDirectory() as tmp:
+        path = pathlib.Path(tmp) / "video.mp4"
+        path.write_bytes(data)
+        best, last = {}, None
+        with av.open(str(path)) as container:
+            for frame in container.decode(video=0):
+                if result["first"] is None:
+                    result["first"] = rgb(frame)
+                last = frame
+                for t in times:
+                    if t not in best or abs(frame.time - t) < abs(best[t].time - t):
+                        best[t] = frame
+        assert last is not None, "El vídeo no tiene fotogramas"
+        result["last"] = rgb(last)
+        result["at"] = {t: rgb(frame) for t, frame in best.items()}
+        with av.open(str(path)) as container:
+            if container.streams.audio:
+                result["audio"] = [(frame.time, level(frame)) for frame in container.decode(audio=0)]
+    return result
+
+
+def corner_colors(image):
+    """Color cerca de las cuatro esquinas: no depende de si el vídeo se guardó girado."""
+    width, height, stride, data = image
+    colors = []
+    for fx, fy in ((0.08, 0.08), (0.92, 0.08), (0.08, 0.92), (0.92, 0.92)):
+        at = int(height * fy) * stride + 3 * int(width * fx)
+        colors.append(tuple(data[at:at + 3]))
+    return colors
+
+
+def similar(color, expected, tolerance=45):
+    return all(abs(a - b) <= tolerance for a, b in zip(color, expected))
+
+
+def dark_share(image, limit=55):
+    """Parte de los píxeles casi negros (texto negro o el fondo oscuro de un subtítulo)."""
+    width, height, stride, data = image
+    total = dark = 0
+    for y in range(0, height, 2):
+        row = y * stride
+        for x in range(0, width, 2):
+            at = row + 3 * x
+            total += 1
+            dark += max(data[at], data[at + 1], data[at + 2]) < limit
+    return dark / total
+
+
+def loudness(audio, start, end):
+    levels = [value for t, value in audio if start <= t <= end]
+    return max(levels) if levels else None
+
+
+@check("editor-de-video-intro-y-outro")
+def video_intro_outro():
+    folder = f"{DIR}/oiintro"
+    sh("rm", "-rf", q(folder), check=False)
+    sh("mkdir", "-p", q(folder))
+    with tempfile.TemporaryDirectory() as tmp:
+        # Vídeo gris de 4 s con sonido: sobre él se distinguen bien el texto y los subtítulos.
+        source = pathlib.Path(tmp) / "gris.mp4"
+        synthetic_video(source)
+        adb("push", str(source), f"{folder}/gris.mp4")
+    # Foto del outro apaisada y roja: recortada al centro llena todo el cuadro vertical, sin bandas.
+    push_bytes(png_image(400, 200, lambda x, y: (229, 57, 53)), f"{folder}/outro.png")
+    # El primer subtítulo no empieza en 0: antes, el hueco sin texto hacía fallar la exportación.
+    push_bytes("1\n00:00:00,500 --> 00:00:01,500\nHola\n".encode("utf-8"), f"{folder}/subtitulos.srt")
+    launch_home()
+    open_test_folder()
+    tap_node(find("oiintro"))
+    tap("gris.mp4")
+    tap("Editar")
+    wait("Exportar MP4")
+    # 2 s de vídeo (de 1 s a 3 s) entre una intro de texto sobre azul y un outro con la foto, de 3 s cada uno.
+    fill("Inicio en segundos", "1", clear=True)
+    fill("Fin en segundos (vacío: hasta el final)", "3")
+    fill("Texto sobre el video", "Texto")
+    fill("Archivo SRT (ruta opcional)", f"{folder}/subtitulos.srt")
+    fill("Texto de la intro", "Bienvenida")
+    fill("Imagen del outro (ruta opcional)", f"{folder}/outro.png")
+    fill("Color de la intro y el outro (#RRGGBB)", "#1565C0", clear=True)
+    find("Duración de la intro y el outro: 3 s")
+    evidence("editor-de-video-intro-y-outro-formulario")
+    tap_node(find("Exportar MP4"))
+    path = f"{folder}/gris-editado.mp4"
+    until(lambda: exists(path) and mp4_info(read_bytes(path)), "No se creó el vídeo con intro y outro", 300)
+    data = read_bytes(path)
+    info = mp4_info(data)
+    assert 7.0 <= info["duration"] <= 9.5, f"Dura {info['duration']} s en vez de ≈ 8 s (3 + 2 + 3)"
+    assert sorted((info["width"], info["height"])) == [360, 640], f"Tamaño {info['width']}×{info['height']}"
+    # Intro de 0 a 3 s, vídeo de 3 a 5 s (subtítulo de 3,5 a 4,5 s) y outro de 5 a 8 s.
+    video = analyze_mp4(data, times=(1.5, 4.0, 4.8, 6.5))
+    intro, outro = corner_colors(video["first"]), corner_colors(video["last"])
+    assert all(similar(c, (21, 101, 192)) for c in intro), f"El primer fotograma no es la intro azul: {intro}"
+    assert all(similar(c, (229, 57, 53)) for c in outro), f"El último fotograma no es la foto del outro: {outro}"
+    dark = {t: round(100 * dark_share(image), 2) for t, image in video["at"].items()}
+    assert dark[1.5] < 0.3 and dark[6.5] < 0.3, f"El texto o el subtítulo tapan la intro o el outro (% oscuro): {dark}"
+    assert dark[4.8] >= 0.3, f"No se ve el texto sobre el vídeo (% oscuro): {dark}"
+    assert dark[4.0] >= dark[4.8] + 0.4, f"No se ve el subtítulo entre 3,5 y 4,5 s (% oscuro): {dark}"
+    # Las imágenes no tienen sonido: silencio en la intro y el outro, y el tono del vídeo en medio.
+    sound = {name: loudness(video["audio"], a, b)
+             for name, (a, b) in {"intro": (0.3, 2.7), "video": (3.3, 4.7), "outro": (5.3, 7.5)}.items()}
+    assert sound["video"] is not None and sound["video"] > 0.05, f"El audio del vídeo se perdió: {sound}"
+    assert sound["intro"] is not None and sound["intro"] < 0.02, f"La intro debería ser silencio: {sound}"
+    assert sound["outro"] is not None and sound["outro"] < 0.02, f"El outro debería ser silencio: {sound}"
+    evidence("editor-de-video-intro-y-outro-exportado")
 
 
 @check("seleccion-por-rango-copiar-ruta-y-vistas")
@@ -1222,7 +1384,8 @@ def decode_png(data):
 
 
 def mp4_info(data):
-    """Duración (s) y tamaño del vídeo de un MP4, leyendo sus cajas; None si aún no está terminado."""
+    """Duración (s) y tamaño del vídeo tal como se ve (ya girado) de un MP4, leyendo sus cajas; None si
+    aún no está terminado. Android guarda los vídeos verticales en horizontal con una rotación de 90°."""
 
     def boxes(start, end):
         pos = start
@@ -1254,6 +1417,10 @@ def mp4_info(data):
                     if kind3 == b"tkhd":
                         at = start3 + (88 if data[start3] == 1 else 76)
                         width, height = struct.unpack(">II", data[at:at + 8])
+                        # Matriz de presentación: con a = 0 el vídeo está girado 90° o 270°.
+                        a, b = struct.unpack(">ii", data[at - 36:at - 28])
+                        if a == 0 and b != 0:
+                            width, height = height, width
                         if width and height:
                             info["width"], info["height"] = width >> 16, height >> 16
     return info if info["duration"] is not None else None

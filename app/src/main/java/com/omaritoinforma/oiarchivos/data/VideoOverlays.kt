@@ -19,16 +19,32 @@ import java.io.IOException
 
 @androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
 object VideoOverlays {
-    fun subtitles(cues: List<SubtitleCue>): TextOverlay =
+    /**
+     * Subtítulos de un SRT. Sus tiempos cuentan desde [offsetUs] (el final de la intro) y no se ven
+     * fuera de [visible] (la intro y el outro).
+     */
+    fun subtitles(
+        cues: List<SubtitleCue>,
+        offsetUs: Long = 0,
+        visible: (Long) -> Boolean = { true }
+    ): TextOverlay =
         object : TextOverlay() {
             private var fontSize = 32
+
+            private fun textAt(presentationTimeUs: Long) =
+                if (!visible(presentationTimeUs)) ""
+                else Subtitles.textAt(cues, (presentationTimeUs - offsetUs) / 1000)
 
             override fun configure(videoSize: Size) {
                 fontSize = (videoSize.height * 0.055f).toInt().coerceIn(18, 64)
             }
 
-            override fun getText(presentationTimeUs: Long): SpannableString =
-                SpannableString(Subtitles.textAt(cues, presentationTimeUs / 1000)).apply {
+            override fun getText(presentationTimeUs: Long): SpannableString {
+                val text = textAt(presentationTimeUs)
+                // TextOverlay no admite texto vacío: crearía un mapa de bits de ancho 0 y la exportación
+                // fallaría. Entre subtítulos se dibuja un espacio sin fondo y además transparente.
+                if (text.isEmpty()) return SpannableString(" ")
+                return SpannableString(text).apply {
                     setSpan(AbsoluteSizeSpan(fontSize), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                     setSpan(
                         ForegroundColorSpan(Color.WHITE),
@@ -41,15 +57,29 @@ object VideoOverlays {
                         length,
                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                 }
+            }
 
             override fun getOverlaySettings(presentationTimeUs: Long): OverlaySettings =
                 OverlaySettings.Builder()
                     .setBackgroundFrameAnchor(0f, -0.8f)
                     .setOverlayFrameAnchor(0f, -1f)
+                    .setAlphaScale(if (textAt(presentationTimeUs).isEmpty()) 0f else 1f)
                     .build()
         }
 
-    fun image(path: String): BitmapOverlay =
+    /** Texto fijo sobre el vídeo; no se ve fuera de [visible]. */
+    fun caption(text: String, visible: (Long) -> Boolean = { true }): TextOverlay =
+        object : TextOverlay() {
+            private val value = SpannableString(text)
+
+            override fun getText(presentationTimeUs: Long): SpannableString = value
+
+            override fun getOverlaySettings(presentationTimeUs: Long): OverlaySettings =
+                OverlaySettings.Builder().setAlphaScale(if (visible(presentationTimeUs)) 1f else 0f).build()
+        }
+
+    /** Imagen en la esquina inferior derecha; no se ve fuera de [visible]. */
+    fun image(path: String, visible: (Long) -> Boolean = { true }): BitmapOverlay =
         object : BitmapOverlay() {
             private val bitmap = decode(path)
             private var scale = 1f
@@ -68,6 +98,7 @@ object VideoOverlays {
                     .setScale(scale, scale)
                     .setBackgroundFrameAnchor(0.9f, 0.9f)
                     .setOverlayFrameAnchor(1f, 1f)
+                    .setAlphaScale(if (visible(presentationTimeUs)) 1f else 0f)
                     .build()
 
             override fun release() {
