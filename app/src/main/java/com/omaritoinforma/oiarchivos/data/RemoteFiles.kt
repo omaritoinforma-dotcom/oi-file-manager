@@ -45,7 +45,10 @@ import org.w3c.dom.Element
 
 enum class Protocol(val label: String) {
     FTP("FTP"),
+    /** FTPS con TLS explícito: se conecta en claro y pasa a TLS con AUTH TLS (puerto 21). */
     FTPS("FTPS"),
+    /** FTPS implícito: TLS desde el primer byte (puerto 990), como los servidores que lo exigen. */
+    FTPS_IMPLICIT("FTPS implícito"),
     SFTP("SFTP"),
     SMB("Windows / SMB"),
     WEBDAV("WebDAV"),
@@ -194,7 +197,8 @@ object RemoteFiles {
             else CloudAuth.fresh(appContext, connection)
         return when (c.protocol) {
             Protocol.FTP,
-            Protocol.FTPS -> FtpFs(c)
+            Protocol.FTPS,
+            Protocol.FTPS_IMPLICIT -> FtpFs(c)
             Protocol.SFTP -> SftpFs(c)
             Protocol.SMB -> SmbFs(c)
             Protocol.ROOT -> RootFs()
@@ -333,8 +337,8 @@ object RemoteFiles {
 
 private class FtpFs(c: Connection) : RemoteFs {
     private val client: FTPClient =
-        if (c.protocol == Protocol.FTPS)
-            FTPSClient(false).apply {
+        if (c.protocol == Protocol.FTPS || c.protocol == Protocol.FTPS_IMPLICIT)
+            FTPSClient(c.protocol == Protocol.FTPS_IMPLICIT).apply {
                 isEndpointCheckingEnabled = true
                 trustManager =
                     javax.net.ssl.TrustManagerFactory.getInstance(

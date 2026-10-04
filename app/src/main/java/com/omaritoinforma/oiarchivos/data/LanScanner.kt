@@ -19,7 +19,7 @@ data class LanHost(val protocol: Protocol, val address: String, val port: Int, v
  */
 object LanScanner {
     val standardPorts =
-        listOf(Protocol.SMB to 445, Protocol.FTP to 21, Protocol.FTPS to 990, Protocol.SFTP to 22)
+        listOf(Protocol.SMB to 445, Protocol.FTP to 21, Protocol.FTPS_IMPLICIT to 990, Protocol.SFTP to 22)
 
     /** Dirección IPv4 y prefijo de cada interfaz privada activa (sin la de bucle local). */
     fun localNetworks(): List<Pair<Inet4Address, Int>> =

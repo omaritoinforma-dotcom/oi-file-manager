@@ -25,13 +25,19 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Preparar 7-Zip para las pruebas de RAR cifrado
         run: python3 scripts/build_archives.py --host
-      - name: Iniciar servidores SFTP, FTP y WebDAV reales para las pruebas de red
+      - name: Iniciar servidores SFTP, FTP, FTPS y WebDAV reales para las pruebas de red
+        env:
+          OI_REMOTE_FTPS: "1"
         run: |
           curl -sSfL -o rclone.zip https://downloads.rclone.org/v1.75.1/rclone-v1.75.1-linux-amd64.zip
           echo "982b5aa772841168f8e380f139e9e787b2a105403e32b94da8676a0e1c0a13ab  rclone.zip" | sha256sum -c -
           unzip -q rclone.zip
-          python3 -m pip install --quiet cryptography
+          python3 -m pip install --quiet cryptography pyftpdlib pyopenssl
           RCLONE="$PWD/rclone-v1.75.1-linux-amd64/rclone" python3 scripts/remote_servers.py start >> "$GITHUB_ENV"
+      - name: Iniciar un servidor SMB real (Samba, SMB 2/3 con firma obligatoria)
+        run: |
+          # Comparte la misma carpeta que los demás servidores; el cliente de la app solo usa el puerto 445.
+          scripts/smb_samba.sh start "$PWD/build/remote-servers/data" oi "$(python3 -c 'import secrets; print(secrets.token_urlsafe(16))')" >> "$GITHUB_ENV"
       - name: Pruebas y compilación
         env:
           OI_ARCHIVE_TEST_EXECUTABLE: ${{ github.workspace }}/build/native-archives/--host/7zz

@@ -314,6 +314,7 @@ private fun ConnectionDialog(
                                                     when (p) {
                                                         Protocol.FTP -> "21"
                                                         Protocol.FTPS -> "21"
+                                                        Protocol.FTPS_IMPLICIT -> "990"
                                                         Protocol.SFTP -> "22"
                                                         Protocol.SMB -> "445"
                                                         else -> "443"

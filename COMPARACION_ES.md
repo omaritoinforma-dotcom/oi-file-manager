@@ -110,7 +110,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Función de ES | OI | Nota |
 | --- | --- | --- |
 | FTP, SFTP, WebDAV | ✅ | Servidores reales en el host; descarga SFTP reanudada en el emulador |
-| FTPS, SMB 1/2 | 🟡 | Falta un servidor de prueba |
+| FTPS, SMB 1/2 | ✅ | FTPS explícito e implícito (puerto 990, que antes se trataba como explícito y fallaba) probados con servidores reales, con certificado validado, nombre comprobado y reanudación. SMB 2/3 con firma obligatoria probado contra Samba: listar, subir, bajar, renombrar y borrar. SMB 1 no se ofrece a propósito (es inseguro y Android ya no lo admite) |
 | Buscar equipos en la red local (LAN) | ✅ | Emulador Android 15: encuentra el servidor FTP del equipo de CI (10.0.2.2:21) y abre la conexión ya rellenada. Anuncios mDNS y puertos 445, 21, 990 y 22; SFTP y FTP se confirman por su saludo |
 | NFS | ❌ | |
 | Google Drive, Dropbox, OneDrive, Box, Yandex, S3, Baidu, SugarSync | 🟡 | Faltan registros OAuth y cuentas reales |

@@ -62,6 +62,18 @@ android {
         checkReleaseBuilds = false
         abortOnError = true
     }
+
+    testOptions {
+        unitTests.all { test ->
+            // Para probar FTPS contra un servidor de prueba con certificado propio: un almacén de
+            // confianza con los certificados del sistema y el del servidor (scripts/remote_servers.py).
+            System.getenv("OI_REMOTE_TEST_TRUSTSTORE")?.let {
+                test.systemProperty("javax.net.ssl.trustStore", it)
+                test.systemProperty("javax.net.ssl.trustStorePassword", "changeit")
+                test.systemProperty("javax.net.ssl.trustStoreType", "JKS")
+            }
+        }
+    }
 }
 
 dependencies {
