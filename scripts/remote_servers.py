@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-"""Start real SFTP, FTP and WebDAV servers for the network client tests.
+"""Arranca servidores SFTP, FTP y WebDAV reales para las pruebas de los clientes de red.
 
-The three servers share one temporary folder, so the tests can check on disk what
-the app's clients really wrote. Requires rclone (RCLONE or PATH) and the Python
-`cryptography` package for the SFTP host key.
+Los tres comparten una carpeta temporal, así las pruebas comprueban en disco lo que los
+clientes de la app escribieron de verdad. Necesita rclone (RCLONE o PATH) y el paquete
+de Python `cryptography` para la clave del servidor SFTP.
 
-    python3 scripts/remote_servers.py start   # prints the environment to export
+    python3 scripts/remote_servers.py start   # muestra las variables que hay que exportar
     python3 scripts/remote_servers.py stop
 
-Set OI_REMOTE_BWLIMIT (for example 256k) to throttle the servers.
+OI_REMOTE_BWLIMIT (por ejemplo 256k) limita la velocidad de los servidores.
 """
 import base64
 import hashlib

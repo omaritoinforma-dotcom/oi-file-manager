@@ -1,9 +1,9 @@
-"""Check OI Archivos features one by one on Android, as listed in COMPARACION_ES.md.
+"""Comprueba en Android, una a una, las funciones de OI Archivos de COMPARACION_ES.md.
 
-Every check runs on its own: a failure is recorded with a screenshot and the UI
-hierarchy, and the next check still runs, so one emulator run reports every feature.
-Results are verified on the device's disk, not only on screen. Run after
-smoke_android.py with the APK installed and storage permission granted.
+Cada comprobación es independiente: si falla se guarda una captura y la jerarquía de
+la pantalla, y se sigue con la siguiente, así una sola pasada informa de todas.
+Los resultados se verifican en el disco del dispositivo, no solo en pantalla. Se
+ejecuta después de smoke_android.py, con el APK instalado y el permiso concedido.
 """
 
 import hashlib
@@ -80,7 +80,7 @@ def check(name):
                 print(f"FAIL: {name}: {error}", flush=True)
                 traceback.print_exc()
             evidence(name)
-            # Saved after every check so a CI time limit still leaves the results.
+            # Se guarda tras cada comprobación para que, si CI corta por tiempo, queden los resultados.
             (OUTPUT / "results.json").write_text(
                 json.dumps(RESULTS, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -120,7 +120,7 @@ def seed():
     rar = ROOT / "app/src/test/resources/archives/test_read_format_rar5_encrypted_filenames.rar"
     adb("push", str(rar), f"{DIR}/cifrado.rar")
     adb("push", str(next(pathlib.Path("apk").glob("*.apk"))), f"{DIR}/oi.apk")
-    # Categories read MediaStore, which does not index files pushed over adb by itself.
+    # Las categorías leen MediaStore, que no indexa por sí solo lo copiado con adb.
     sh("content", "call", "--uri", "content://media", "--method", "scan_volume", "--arg", "external_primary", check=False)
 
 
@@ -143,7 +143,7 @@ def long_press(label):
 
 
 def tap_last(label):
-    """Taps the last visible match, e.g. a dialog button whose title has the same text."""
+    """Toca la última coincidencia visible, p. ej. el botón de un diálogo cuyo título dice lo mismo."""
     wait(label)
     tap_node(nodes(label, hierarchy())[-1])
 
@@ -158,7 +158,7 @@ def wait_text(fragment, timeout=30):
 
 
 def find(label, swipes=8):
-    """Scrolls the visible list until a control appears (lazy lists only compose what is shown)."""
+    """Desplaza la lista hasta que aparece el control (las listas perezosas solo crean lo visible)."""
     for _ in range(swipes):
         found = nodes(label, hierarchy())
         if found:
@@ -221,7 +221,7 @@ def rename():
     long_press("c.txt")
     tap("Renombrar")
     wait("Cancelar")
-    # The dialog selects the base name, so typing keeps the extension.
+    # El diálogo selecciona el nombre sin extensión, así al escribir se conserva la extensión.
     adb("shell", "input", "text", "renombrado")
     tap_last("Renombrar")
     until(lambda: read(f"{DIR}/renombrado.txt") == "contenido c", "No se renombró")
@@ -230,7 +230,7 @@ def rename():
 def move_to_trash():
     tap("Eliminar")
     wait("Mover a la papelera (se puede restaurar)")
-    # The option is a checkbox (on by default); confirm with the dialog's "Eliminar" button.
+    # La opción es una casilla (marcada por defecto); se confirma con el botón «Eliminar» del diálogo.
     box = [n for n in hierarchy().iter("node") if n.get("checkable") == "true"]
     assert box and box[0].get("checked") == "true", "La papelera no está marcada por defecto"
     tap_last("Eliminar")
@@ -365,7 +365,7 @@ def bookmarks():
     tap("Cancelar selección")
     tap("Menú")
     wait("Nueva")
-    # A bookmark must survive the app being closed.
+    # Un marcador debe seguir ahí tras cerrar la app.
     time.sleep(2)
     ui.launch()
     wait("Categorías")
@@ -378,7 +378,7 @@ def tabs():
     open_test_folder()
     long_press("Nueva")
     more("Abrir en pestaña nueva")
-    # The new tab shows "Nueva" in the title; the tab row still lists the first tab.
+    # La pestaña nueva muestra «Nueva» en el título; la fila de pestañas sigue mostrando la primera.
     wait("OIPrueba")
     wait("Nueva")
 
@@ -456,7 +456,7 @@ def background_audio():
         sessions = sh("dumpsys", "media_session")
         (OUTPUT / f"audio-media-session-{stage}.txt").write_text(sessions, encoding="utf-8")
         owner = [block for block in sessions.split("\n\n") if ui.PACKAGE in block]
-        # Depending on the Android version the state prints as "state=3" or "PLAYING(3)".
+        # Según la versión de Android, el estado sale como «state=3» o «PLAYING(3)».
         return owner and any("state=3" in b or "PLAYING" in b for b in owner)
 
     until(lambda: playing("en-la-app"), "El audio no empezó a reproducirse en la app", 20)
@@ -481,7 +481,7 @@ def sort_size():
     for n in tree.iter("node"):
         if n.get("text") in ("grande.bin", "dup1.bin", "buscar_me.txt"):
             y[n.get("text")] = int(re.findall(r"\d+", n.get("bounds"))[1])
-    # 3 MiB before 1 MiB; the small text file, if visible, comes after both.
+    # 3 MiB antes que 1 MiB; el texto pequeño, si se ve, va después de ambos.
     assert "grande.bin" in y and "dup1.bin" in y, f"No se ven los archivos: {y}"
     assert y["grande.bin"] < y["dup1.bin"] < y.get("buscar_me.txt", 10**9), f"Orden incorrecto: {y}"
     tap("Más opciones")
@@ -493,7 +493,7 @@ def sort_size():
 
 @check("red-local-encontrar-servidor")
 def lan_scan():
-    """The runner listens like FTP on 21; the emulator must find it as 10.0.2.2:21."""
+    """El equipo de CI escucha como FTP en el 21; el emulador debe encontrarlo como 10.0.2.2:21."""
     ui.launch()
     wait("Categorías")
     ui.drawer("Red, nube y USB")
@@ -506,7 +506,7 @@ def lan_scan():
 
 
 def nearby_peer_server(received):
-    """A receiver on the CI machine speaking OI Archivos' protocol; the emulator sees 10.0.2.2."""
+    """Receptor en el equipo de CI con el protocolo de OI Archivos; el emulador lo ve en 10.0.2.2."""
     import http.server
     import threading
 
@@ -606,7 +606,14 @@ def nearby_receive():
     assert result.get("code") == 200, result
     target = "/sdcard/Download/OI Archivos/Recibidos/recibido ñ.txt"
     until(lambda: exists(target), "El archivo recibido no está en Recibidos")
-    assert read_bytes(target) == data, "El archivo recibido no coincide"
+    # Se compara la huella calculada en el propio emulador: así no influye cómo adb transporta
+    # los bytes. Si no coincide, el mensaje muestra tamaño y huella para saber qué llegó.
+    expected = hashlib.sha256(data).hexdigest()
+    on_device = sh("sha256sum", q(target), check=False).split()
+    size = sh("stat", "-c", "%s", q(target), check=False).strip()
+    assert on_device and on_device[0] == expected, (
+        f"El archivo recibido no coincide: {size} bytes (esperados {len(data)}), "
+        f"SHA-256 {on_device[:1]} (esperado {expected})")
     tap("Dejar de recibir")
     subprocess.run(["adb", "forward", "--remove", "tcp:42199"], timeout=30)
 
@@ -615,7 +622,7 @@ if os.environ.get("OI_REAL_SFTP_PASSWORD"):
 
     @check("sftp-servidor-real-desde-android")
     def real_sftp():
-        """The owner's Internet SFTP server: connect, list, create and delete a folder from the app."""
+        """Servidor SFTP real del dueño: conectar, listar, crear y borrar una carpeta desde la app."""
         name = f"oi-prueba-android-{int(time.time())}"
         ui.launch()
         wait("Categorías")
@@ -642,7 +649,7 @@ if os.environ.get("OI_REAL_SFTP_PASSWORD"):
         adb("shell", "input", "text", name)
         tap("Guardar")
         node, _ = wait(name, timeout=60)
-        # Select it with its checkbox, then delete it so nothing is left on the server.
+        # Se marca con su casilla y se borra para no dejar nada en el servidor.
         boxes = [n for n in hierarchy().iter("node") if n.get("checkable") == "true"]
         row_y = int(re.findall(r"\d+", node.get("bounds"))[1])
         box = min(boxes, key=lambda b: abs(int(re.findall(r"\d+", b.get("bounds"))[1]) - row_y))

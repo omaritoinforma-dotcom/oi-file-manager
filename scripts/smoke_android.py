@@ -1,8 +1,9 @@
-"""Exercise the built APK on a disposable Android 15 emulator, saving visible evidence.
+"""Prueba el APK compilado en un emulador Android 15 desechable y guarda pruebas visibles.
 
-Uses seeded files, the app's own HTTP server and a real SFTP server on the runner
-(scripts/remote_servers.py, reached at 10.0.2.2). Cloud accounts, USB and root still
-need separate device/account verification. Run with an APK in ./apk/ and adb ready.
+Usa archivos de muestra, el servidor HTTP de la propia app y un servidor SFTP real en el
+equipo de CI (scripts/remote_servers.py, accesible en 10.0.2.2). Las cuentas en la nube,
+USB y root necesitan comprobarse aparte con un dispositivo o cuenta. Se ejecuta con un
+APK en ./apk/ y adb listo.
 """
 
 import base64
@@ -152,9 +153,9 @@ def seed_files():
 
 
 def keyboards(enable):
-    """The soft keyboard covers lower fields and is missing from the app's hierarchy dump, so
-    taps meant for a field type keys instead. `input text` sends hardware key events, which
-    Compose fields accept without a keyboard app, so the keyboard apps are disabled meanwhile."""
+    """El teclado en pantalla tapa los campos de abajo y no sale en la jerarquía de la app, así
+    que los toques para un campo acaban pulsando teclas. `input text` manda pulsaciones de
+    teclado físico, que Compose acepta sin app de teclado; por eso se desactivan mientras tanto."""
     global KEYBOARD_PACKAGES
     if not enable:
         KEYBOARD_PACKAGES = sorted({i.split("/")[0] for i in adb("shell", "ime", "list", "-s").split()})
@@ -171,7 +172,7 @@ def field_texts():
 
 
 def fill(label, value, current=None, clear=False, verify=True):
-    """Types into the dialog field found by label, hint or current value, scrolling if needed."""
+    """Escribe en el campo del diálogo hallado por etiqueta, pista o valor actual, desplazando si hace falta."""
     for _ in range(6):
         tree = hierarchy()
         found = nodes(label, tree) or [
@@ -186,7 +187,7 @@ def fill(label, value, current=None, clear=False, verify=True):
                 for _ in range(40 if clear else 8):
                     adb("shell", "input", "keyevent", "KEYCODE_DEL")
             adb("shell", "input", "text", "'" + value + "'")
-            # Password fields hide their text, so only visible values can be confirmed.
+            # Los campos de contraseña ocultan el texto; solo se confirman los valores visibles.
             if verify:
                 time.sleep(0.5)
                 texts = field_texts()
@@ -202,7 +203,7 @@ def remote_size(path):
 
 
 def verify_network_resume():
-    """Real SFTP server on the runner (10.0.2.2): kill the app mid-download, then resume."""
+    """Servidor SFTP real en el equipo de CI (10.0.2.2): matar la app a mitad de descarga y reanudar."""
     root = pathlib.Path(os.environ["OI_REMOTE_TEST_ROOT"])
     payload = os.urandom(24 * 1024 * 1024)
     (root / "reanudar.bin").write_bytes(payload)
@@ -250,7 +251,7 @@ def verify_network_resume():
             part = names[0]
         time.sleep(0.5)
     checkpoint("15-network-download-running", "reanudar.bin")
-    # Process death in the middle of the transfer, as when Android reclaims the app.
+    # Se mata el proceso a mitad de la transferencia, como cuando Android recupera memoria.
     adb("shell", "am", "force-stop", PACKAGE)
     partial = remote_size("'/sdcard/Download/OI Archivos/" + part + "'")
     assert 0 < partial < len(payload), partial
@@ -282,8 +283,8 @@ def verify_http():
     password = re.search(r"Contraseña: (\S+)", text).group(1)
     auth = "Basic " + base64.b64encode(f"oi:{password}".encode()).decode()
 
-    # Request the actual selected interface from inside Android. Emulator console
-    # redirection targets eth0; the server may intentionally bind the Wi-Fi IP.
+    # Se pide desde Android la interfaz elegida de verdad. La redirección de la consola
+    # del emulador apunta a eth0; el servidor puede escuchar a propósito en la IP de la Wi-Fi.
     def request(path, authorized=True, body=None, content_type=None):
         method = "POST" if body is not None else "GET"
         headers = [f"{method} {path} HTTP/1.1", f"Host: {address}:{port}", "Connection: close"]
@@ -379,10 +380,10 @@ def main():
     verify_http()
     adb("shell", "input", "keyevent", "4")
     adb("shell", "input", "keyevent", "4")
-    # Verify leaving/re-entering the Activity keeps normal file browsing usable.
+    # Comprobar que salir y volver a la Activity deja el explorador usable.
     adb("shell", "input", "keyevent", "3")
-    # Starting while Home is still animating is "delivered to top" and leaves the launcher
-    # in front, so wait until the app has really left the foreground first.
+    # Abrir mientras Inicio aún se anima se «entrega arriba» y deja el lanzador delante;
+    # por eso se espera a que la app haya salido de verdad del primer plano.
     focused = lambda: PACKAGE in adb("shell", "dumpsys", "window", "displays", check=False).split("mCurrentFocus", 1)[-1][:200]
     deadline = time.monotonic() + 15
     while focused() and time.monotonic() < deadline:
