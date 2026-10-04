@@ -1754,6 +1754,54 @@ def default_apps():
     ui.launch()
 
 
+@check("nivel-de-compresion-zip-y-7z")
+def compression_levels():
+    """Un archivo de 3 MB muy repetido: sin compresión el comprimido pesa lo mismo; con la máxima, casi nada."""
+    folder = f"{DIR}/nivel"
+    sh("rm", "-rf", q(folder), check=False)
+    sh("mkdir", "-p", q(folder))
+    sh("cp", q(f"{DIR}/grande.bin"), q(f"{folder}/datos.bin"))
+    original = int(sh("stat", "-c", "%s", q(f"{folder}/datos.bin")).strip())
+
+    def size(name):
+        return int(sh("stat", "-c", "%s", q(f"{folder}/{name}")).strip())
+
+    def compress(name, level):
+        open_test_folder()
+        tap(find("nivel").get("text"))
+        long_press("datos.bin")
+        more("Comprimir en ZIP")
+        wait("Nivel de compresión")
+        fill("Nombre: .zip, .7z, .tar o .tar.gz", name, clear=True)
+        tap(level)
+        tap("Comprimir")
+        until(lambda: exists(f"{folder}/{name}"), f"No se creó {name}", 90)
+        time.sleep(2)
+
+    compress("sin.zip", "Sin compresión")
+    compress("max.zip", "Máxima")
+    compress("sin.7z", "Sin compresión")
+    compress("max.7z", "Máxima")
+    sizes = {n: size(n) for n in ("sin.zip", "max.zip", "sin.7z", "max.7z")}
+    (OUTPUT / "nivel-de-compresion-tamanos.json").write_text(json.dumps({"original": original, **sizes}, indent=2))
+    assert sizes["sin.zip"] >= original, f"ZIP sin compresión más pequeño que el original: {sizes}"
+    assert sizes["sin.7z"] >= original, f"7z sin compresión más pequeño que el original: {sizes}"
+    assert sizes["max.zip"] < original // 20, f"ZIP máxima no comprimió: {sizes}"
+    assert sizes["max.7z"] < original // 20, f"7z máxima no comprimió: {sizes}"
+    head = sh("head", "-c", "6", q(f"{folder}/sin.7z"), "|", "od", "-An", "-tx1").split()
+    assert head == ["37", "7a", "bc", "af", "27", "1c"], f"No es un 7z: {head}"
+    # El nivel elegido se recuerda para la próxima vez.
+    open_test_folder()
+    tap(find("nivel").get("text"))
+    long_press("datos.bin")
+    more("Comprimir en ZIP")
+    wait("Nivel de compresión")
+    tree = hierarchy()
+    chip = next(n for n in tree.iter("node") if n.get("text") == "Máxima")
+    assert chip.get("selected") == "true" or chip.get("checked") == "true", "El último nivel no se recordó"
+    tap("Cancelar")
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()

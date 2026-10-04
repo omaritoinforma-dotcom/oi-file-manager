@@ -3,6 +3,7 @@ package com.omaritoinforma.oiarchivos.ui.screens
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +21,7 @@ import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Unarchive
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -186,8 +188,8 @@ fun BrowserDialogs(vm: MainViewModel, dialog: BrowserDialog, setDialog: (Browser
         is BrowserDialog.Properties -> PropertiesDialog(dialog.items, dismiss)
 
         is BrowserDialog.Compress ->
-            CompressDialog(dialog.items, dismiss) { name, password ->
-                vm.compress(dialog.items, name, password)
+            CompressDialog(dialog.items, vm.compressionLevel.value, dismiss) { name, password, level ->
+                vm.compress(dialog.items, name, password, level)
                 dismiss()
             }
 
@@ -532,13 +534,15 @@ private fun PasswordDialog(title: String, dismiss: () -> Unit, submit: (String) 
 @Composable
 private fun CompressDialog(
     items: List<FileItem>,
+    initialLevel: com.omaritoinforma.oiarchivos.data.CompressionLevel,
     dismiss: () -> Unit,
-    submit: (String, String) -> Unit
+    submit: (String, String, com.omaritoinforma.oiarchivos.data.CompressionLevel) -> Unit
 ) {
     var name by remember {
         mutableStateOf((items.firstOrNull()?.name?.substringBeforeLast('.') ?: "Archivos") + ".zip")
     }
     var password by remember { mutableStateOf("") }
+    var level by remember { mutableStateOf(initialLevel) }
     AlertDialog(
         onDismissRequest = dismiss,
         title = { Text("Crear ZIP") },
@@ -552,10 +556,20 @@ private fun CompressDialog(
                     label = { Text("Contraseña opcional (AES)") },
                     visualTransformation =
                         androidx.compose.ui.text.input.PasswordVisualTransformation())
+                Text("Nivel de compresión", style = MaterialTheme.typography.labelMedium)
+                @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    com.omaritoinforma.oiarchivos.data.CompressionLevel.entries.forEach { option ->
+                        FilterChip(
+                            level == option,
+                            onClick = { level = option },
+                            label = { Text(option.label) })
+                    }
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { submit(name, password) }, enabled = name.isNotBlank()) {
+            TextButton(onClick = { submit(name, password, level) }, enabled = name.isNotBlank()) {
                 Text("Comprimir")
             }
         },

@@ -100,7 +100,8 @@ object NativeArchives {
         sources: List<File>,
         target: File,
         password: String,
-        report: (OpProgress) -> Unit
+        report: (OpProgress) -> Unit,
+        level: CompressionLevel = CompressionLevel.NORMAL
     ) = coroutineScope {
         if (sources.isEmpty()) throw IOException("Selecciona archivos para comprimir")
         val parent =
@@ -118,7 +119,11 @@ object NativeArchives {
         val temp = File.createTempFile(".oi-7z-", ".7z", target.parentFile)
         temp.delete()
         try {
-            val args = mutableListOf("a", "-t7z", "-m0=LZMA2", "-mx=5", "-bd", "-y", "-sccUTF-8")
+            // «-m0=Copy» guarda sin comprimir; con LZMA2, «-mx» va de 1 (rápida) a 9 (máxima).
+            val method =
+                if (level == CompressionLevel.STORE) listOf("-m0=Copy")
+                else listOf("-m0=LZMA2", "-mx=${level.sevenZip}")
+            val args = mutableListOf("a", "-t7z", *method.toTypedArray(), "-bd", "-y", "-sccUTF-8")
             if (password.isNotEmpty()) args += listOf("-mhe=on", "-p$password")
             args += listOf("--", temp.absolutePath)
             args += sources.map { it.name }

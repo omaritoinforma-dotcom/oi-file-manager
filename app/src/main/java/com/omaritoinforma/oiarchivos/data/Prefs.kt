@@ -64,6 +64,11 @@ class Prefs(context: Context) {
         get() = sp.getString("pinned", "").orEmpty().split('\n').filter { it.isNotBlank() }
         set(v) = sp.edit().putString("pinned", v.joinToString("\n")).apply()
 
+    /** Último nivel de compresión elegido al comprimir. */
+    var compressionLevel: CompressionLevel
+        get() = enumOr(sp.getString("compression_level", null), CompressionLevel.NORMAL)
+        set(v) = sp.edit().putString("compression_level", v.name).apply()
+
     // ---- Pantalla ----
 
     var thumbnails: Boolean

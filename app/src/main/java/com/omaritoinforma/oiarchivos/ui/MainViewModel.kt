@@ -216,6 +216,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     val bookmarks = mutableStateListOf<String>().apply { addAll(prefs.bookmarks) }
 
+    val compressionLevel =
+        PrefState({ prefs.compressionLevel }, { prefs.compressionLevel = it })
+
     /** Rutas fijadas arriba en las listas de archivos. */
     val pinned = mutableStateListOf<String>().apply { addAll(prefs.pinned) }
 
@@ -376,6 +379,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             editorShowWhitespace,
             editorSymbolBar,
             editorSymbols,
+            compressionLevel,
             lockStart,
             lockNetwork,
             lockHidden)
@@ -1105,7 +1109,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun compress(items: List<FileItem>, name: String, password: String = "") {
+    fun compress(
+        items: List<FileItem>,
+        name: String,
+        password: String = "",
+        level: com.omaritoinforma.oiarchivos.data.CompressionLevel = compressionLevel.value
+    ) {
         val dir = currentFolder() ?: items.firstOrNull()?.file?.parentFile ?: return
         val clean =
             name.trim().let {
@@ -1123,8 +1132,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         val target = FileOps.uniqueName(dir, clean)
+        compressionLevel.value = level
         runOp("Comprimiendo") { report ->
-            ArchiveTools.compress(items.map { it.file }, target, password, report)
+            ArchiveTools.compress(items.map { it.file }, target, password, level, report)
             OpResult("Creado «${target.name}»", listOf(target))
         }
     }

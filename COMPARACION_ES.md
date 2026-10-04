@@ -36,12 +36,12 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Propiedades (tamaño, contenido, fechas, permisos, propietario) | ✅ | Emulador Android 15, con SHA-256 comprobado |
 | Copiar ruta completa | 🟡 | |
 | Abrir con | 🟡 | |
-| «Abrir como» (elegir tipo) y gestión de apps predeterminadas | ❌ | |
-| Fijar elementos arriba | ❌ | |
+| «Abrir como» (elegir tipo) y gestión de apps predeterminadas | 🟡 | Abrir como texto (editor propio), imagen, audio, vídeo, PDF o cualquier tipo. Los predeterminados se cambian en la pantalla de Android (una app no puede borrar los de otras); comprobación en el emulador preparada |
+| Fijar elementos arriba | 🟡 | Archivos y carpetas, con alfiler; se conserva al reabrir, sigue al renombrar y va en la copia de ajustes; comprobación en el emulador preparada |
 | Papelera de reciclaje (activar, restaurar, vaciar) | ✅ | Emulador Android 15 |
 | Ocultar archivos y lista de ocultos protegida con contraseña | 🟠 | Mostrar los ocultos puede pedir contraseña (comprobado en el emulador); falta la lista de ocultos propia de ES |
 | Accesos directos en el escritorio | 🟡 | |
-| Comprimir ZIP/7z con nivel de compresión | 🟠 | Crear y cifrar sí; falta elegir el nivel |
+| Comprimir ZIP/7z con nivel de compresión | 🟡 | Sin compresión, rápida, normal o máxima en ZIP, 7z y tar.gz; se recuerda el último. Pruebas locales de tamaños y contenido; comprobación en el emulador preparada |
 | Extraer ZIP | ✅ | Emulador |
 | Extraer 7z/RAR (motor 7-Zip, igual que ES) | ✅ | Emulador Android 15: crear y extraer 7z cifrado, extraer RAR5 cifrado |
 | Cifrar y descifrar | ✅ | Emulador Android 15 |
@@ -154,9 +154,9 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | Estado | Funciones |
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 32 |
-| 🟡 Implementadas, sin comprobar | 20 |
-| 🟠 Parciales | 12 |
-| ❌ Faltan | 15 |
+| 🟡 Implementadas, sin comprobar | 23 |
+| 🟠 Parciales | 11 |
+| ❌ Faltan | 13 |
 | **Total de filas** | **79** |
 
 **OI Archivos no cubre todavía el mínimo.** Las funciones que faltan más grandes, por valor para el usuario:
@@ -165,6 +165,6 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 2. Enviar entre teléfonos por punto de acceso o código QR.
 3. Idioma y temas dentro de la app; barra lateral personalizable.
 
-Hechos y pendientes de su comprobación en el emulador (CI en curso): listas de reproducción, aviso de archivos nuevos, aviso de poco espacio, instalar y desinstalar apps por lotes, copia automática y herramientas del editor.
+Hechos y pendientes de su comprobación en el emulador (CI en curso): listas de reproducción, aviso de archivos nuevos, aviso de poco espacio, instalar y desinstalar apps por lotes, copia automática, herramientas del editor, fijar arriba, abrir como y nivel de compresión.
 
 Los recuentos son por fila de esta matriz; una fila puede agrupar varias funciones pequeñas. Solo 32 de 79 cumplen ya el criterio de terminación (conectadas y comprobadas en su entorno real).

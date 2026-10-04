@@ -9,6 +9,7 @@ import kotlinx.coroutines.ensureActive
 import net.lingala.zip4j.ZipFile
 import net.lingala.zip4j.io.outputstream.ZipOutputStream
 import net.lingala.zip4j.model.ZipParameters
+import net.lingala.zip4j.model.enums.CompressionMethod
 import net.lingala.zip4j.model.enums.EncryptionMethod
 import org.apache.commons.compress.archivers.sevenz.SevenZFile
 import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile
@@ -19,6 +20,23 @@ import org.apache.commons.compress.compressors.CompressorStreamFactory
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream
 
 data class ArchiveEntry(val name: String, val size: Long, val directory: Boolean)
+
+/** Nivel de compresión al crear ZIP, 7z o tar.gz («Nivel de compresión» de ES). */
+enum class CompressionLevel(val label: String, val sevenZip: Int, val gzip: Int) {
+    STORE("Sin compresión", 0, 0),
+    FAST("Rápida", 1, 1),
+    NORMAL("Normal", 5, 6),
+    MAXIMUM("Máxima", 9, 9);
+
+    val zip: net.lingala.zip4j.model.enums.CompressionLevel
+        get() =
+            when (this) {
+                STORE -> net.lingala.zip4j.model.enums.CompressionLevel.NO_COMPRESSION
+                FAST -> net.lingala.zip4j.model.enums.CompressionLevel.FASTEST
+                NORMAL -> net.lingala.zip4j.model.enums.CompressionLevel.NORMAL
+                MAXIMUM -> net.lingala.zip4j.model.enums.CompressionLevel.ULTRA
+            }
+}
 
 object ArchiveTools {
     const val MAX_BYTES = 64L * 1024 * 1024 * 1024
@@ -64,10 +82,11 @@ object ArchiveTools {
         sources: List<File>,
         target: File,
         password: String,
+        level: CompressionLevel = CompressionLevel.NORMAL,
         report: (OpProgress) -> Unit
     ) {
         if (target.extension.lowercase() == "7z" && NativeArchives.available) {
-            NativeArchives.compress(sources, target, password, report)
+            NativeArchives.compress(sources, target, password, report, level)
             return
         }
         if (target.extension.lowercase() == "7z" ||
@@ -75,7 +94,7 @@ object ArchiveTools {
             target.name.lowercase().endsWith(".tar.gz")) {
             if (password.isNotEmpty())
                 throw IOException("La contraseña de creación está disponible para ZIP")
-            compressOther(sources, target, report)
+            compressOther(sources, target, report, level)
             return
         }
         val t = Tracker("Comprimiendo", report)
@@ -99,6 +118,13 @@ object ArchiveTools {
                                 fileNameInZip = relative + if (f.isDirectory) "/" else ""
                                 isEncryptFiles = password.isNotEmpty() && !f.isDirectory
                                 encryptionMethod = EncryptionMethod.AES
+                                compressionMethod =
+                                    if (level == CompressionLevel.STORE) CompressionMethod.STORE
+                                    else CompressionMethod.DEFLATE
+                                compressionLevel = level.zip
+                                // Al guardar sin comprimir, ZIP necesita saber el tamaño antes de escribir.
+                                if (level == CompressionLevel.STORE)
+                                    entrySize = if (f.isFile) f.length() else 0L
                             })
                         if (f.isFile) {
                             t.current = f.name
@@ -119,7 +145,8 @@ object ArchiveTools {
     private suspend fun compressOther(
         sources: List<File>,
         target: File,
-        report: (OpProgress) -> Unit
+        report: (OpProgress) -> Unit,
+        level: CompressionLevel
     ) {
         val temp = File.createTempFile(".oi-archive-", ".tmp", target.parentFile)
         val tracker = Tracker("Comprimiendo", report)
@@ -129,6 +156,9 @@ object ArchiveTools {
         try {
             if (target.extension.lowercase() == "7z")
                 SevenZOutputFile(temp).use { out ->
+                    out.setContentCompression(
+                        if (level == CompressionLevel.STORE) org.apache.commons.compress.archivers.sevenz.SevenZMethod.COPY
+                        else org.apache.commons.compress.archivers.sevenz.SevenZMethod.LZMA2)
                     for (root in sources) for (file in SafeFiles.walk(root)) {
                         currentCoroutineContext().ensureActive()
                         val name =
@@ -157,7 +187,12 @@ object ArchiveTools {
             else {
                 val raw = temp.outputStream().buffered()
                 val stream =
-                    if (target.name.lowercase().endsWith(".gz")) GzipCompressorOutputStream(raw)
+                    if (target.name.lowercase().endsWith(".gz"))
+                        GzipCompressorOutputStream(
+                            raw,
+                            org.apache.commons.compress.compressors.gzip.GzipParameters().apply {
+                                compressionLevel = level.gzip
+                            })
                     else raw
                 TarArchiveOutputStream(stream, "UTF-8").use { out ->
                     out.setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX)
