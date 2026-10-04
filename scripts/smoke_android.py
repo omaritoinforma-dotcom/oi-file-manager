@@ -44,6 +44,16 @@ def nodes(label, tree):
     ]
 
 
+def dismiss_system_anr(tree):
+    """A slow emulator can show "<other app> isn't responding" over the app; keep waiting."""
+    if any("isn't responding" in (n.get("text") or "") for n in tree.iter("node")):
+        for n in nodes("Wait", tree):
+            if n.get("package") == "android":
+                tap_node(n)
+                return True
+    return False
+
+
 def wait(label, timeout=30):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -51,6 +61,8 @@ def wait(label, timeout=30):
         found = nodes(label, tree)
         if found:
             return found[0], tree
+        if dismiss_system_anr(tree):
+            continue
         time.sleep(0.5)
     raise AssertionError(f"Visible control not found: {label}")
 
