@@ -166,6 +166,7 @@ private fun MainContent(vm: MainViewModel) {
             Screen.Cast -> CastScreen(vm)
             Screen.Cleaner -> CleanerScreen(vm)
             Screen.Playlists -> PlaylistsScreen(vm)
+            Screen.AppAnalysis -> AppAnalysisScreen(vm)
             is Screen.Playlist -> PlaylistScreen(vm, screen.name)
             is Screen.PlayPlaylist -> PlaylistPlayerScreen(vm, screen.name, screen.start)
         }

@@ -146,6 +146,13 @@ fun AppsScreen(vm: MainViewModel) {
                                 },
                             )
                             DropdownMenuItem(
+                                text = { Text("Analizar permisos") },
+                                onClick = {
+                                    menu = false
+                                    vm.goTo(com.omaritoinforma.oiarchivos.ui.Screen.AppAnalysis)
+                                },
+                            )
+                            DropdownMenuItem(
                                 text = { Text("Respaldar todas las mostradas") },
                                 onClick = {
                                     menu = false

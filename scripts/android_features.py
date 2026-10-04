@@ -1498,7 +1498,7 @@ def version_key(name):
     return [int(part) for part in re.findall(r"\d+", name)]
 
 
-def build_test_apk(folder, package, label):
+def build_test_apk(folder, package, label, permissions=()):
     """APK mínimo y firmado (sin código), creado con las herramientas del SDK del equipo de CI."""
     sdk = android_sdk()
     tools = max((d for d in (sdk / "build-tools").iterdir()
@@ -1511,7 +1511,8 @@ def build_test_apk(folder, package, label):
         '<manifest xmlns:android="http://schemas.android.com/apk/res/android" '
         f'package="{package}" android:versionCode="1" android:versionName="1.0">'
         '<uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34"/>'
-        f'<application android:label="{label}" android:hasCode="false"/></manifest>',
+        + "".join(f'<uses-permission android:name="{p}"/>' for p in permissions)
+        + f'<application android:label="{label}" android:hasCode="false"/></manifest>',
         encoding="utf-8")
     unsigned, aligned, out = (folder / f"{package}-{kind}.apk" for kind in ("sin-firmar", "alineado", "firmado"))
     subprocess.check_call([str(tools / "aapt2"), "link", "-o", str(unsigned), "-I", str(jar),
@@ -2047,6 +2048,40 @@ if os.environ.get("OI_REMOTE_TEST_ROOT"):
         copy = server / "editar-oi (editado).txt"
         until(lambda: copy.exists() and copy.read_text() == "original-editado-v2", "No se subió la copia", 90)
         assert remote.read_text() == "cambiado en el servidor por otra persona", "La copia no debe tocar el original"
+
+
+@check("analizar-apps-permisos-delicados")
+def app_analysis():
+    package = "com.omaritoinforma.prueba.permisos"
+    sh("pm", "uninstall", package, check=False)
+    with tempfile.TemporaryDirectory() as tmp:
+        apk = build_test_apk(pathlib.Path(tmp), package, "Prueba permisos",
+                             ("android.permission.CAMERA", "android.permission.ACCESS_FINE_LOCATION",
+                              "android.permission.READ_SMS", "android.permission.INTERNET"))
+        adb("install", "-r", str(apk))
+    try:
+        launch_home()
+        ui.drawer("Aplicaciones")
+        tap("Más")
+        tap("Analizar permisos")
+        wait("Analizar apps")
+        # Sin filtro: la app de prueba aparece con lo que pide (INTERNET no es delicado y no se nombra).
+        wait("Prueba permisos")
+        tree = hierarchy()
+        row = next(n for n in tree.iter("node") if (n.get("text") or "").startswith("Solicitado:") and "Cámara" in n.get("text"))
+        text = row.get("text")
+        assert "Ubicación" in text and "SMS" in text, f"Faltan permisos en el análisis: {text}"
+        assert "Internet" not in text, f"INTERNET no es delicado: {text}"
+        # Filtrar por «Cámara»: sigue estando; por «Calendario»: ya no (nadie lo pide).
+        tap(find_text("Cámara ("))
+        wait("Prueba permisos")
+        evidence("analizar-apps-camara")
+        assert not nodes("OI Archivos", hierarchy()), "OI Archivos no pide la cámara y no debe salir en ese filtro"
+        tap(find_text("Cámara ("))  # quitar el filtro
+        tap(find_text("SMS ("))
+        wait("Prueba permisos")
+    finally:
+        sh("pm", "uninstall", package, check=False)
 
 
 def main():

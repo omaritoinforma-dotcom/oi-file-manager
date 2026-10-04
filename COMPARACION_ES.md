@@ -73,7 +73,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Analizador de espacio por tipo y carpeta | ✅ | Emulador Android 15 |
 | Archivos grandes, recientes, vacíos y duplicados | ✅ | Emulador Android 15 (grandes y duplicados) |
 | Limpieza de basura: caché, restos de apps desinstaladas, APK obsoletos, miniaturas | ✅ | Emulador Android 15: restos de apps desinstaladas, miniaturas y APK ya instalados van a la papelera; también temporales, vacíos y la caché |
-| Analizador de apps (permisos sensibles, tamaño, memoria) | 🟠 | Se muestran los permisos de cada APK; falta el análisis global |
+| Analizador de apps (permisos sensibles, tamaño, memoria) | 🟡 | Aplicaciones → «Analizar permisos»: qué apps piden ubicación, cámara, micrófono, contactos, SMS, llamadas, calendario, salud, archivos, dispositivos cercanos o ver todas las apps (concedido o solo solicitado), con filtro por permiso, tamaño del APK y versión de Android a la que apuntan. Android no deja a una app ver la memoria de las demás, así que ese dato no se puede dar; comprobación en el emulador preparada |
 | Informe diario de archivos nuevos y aviso de archivos nuevos | 🟡 | Aviso de archivos nuevos (Registrador) por tipo, lanzado por Android al cambiar MediaStore, y un informe cada día con el recuento por tipo (sin nombrar archivos); comprobaciones en el emulador preparadas |
 | Aviso de poco espacio | 🟡 | Revisión cada hora con umbral elegible; el aviso abre «Limpiar basura» |
 
@@ -154,8 +154,8 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | Estado | Funciones |
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 32 |
-| 🟡 Implementadas, sin comprobar | 27 |
-| 🟠 Parciales | 10 |
+| 🟡 Implementadas, sin comprobar | 28 |
+| 🟠 Parciales | 9 |
 | ❌ Faltan | 10 |
 | **Total de filas** | **79** |
 

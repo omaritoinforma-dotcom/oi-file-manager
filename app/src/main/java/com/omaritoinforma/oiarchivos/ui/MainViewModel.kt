@@ -116,6 +116,9 @@ sealed interface Screen {
     /** Listas de reproducción guardadas. */
     data object Playlists : Screen
 
+    /** Qué apps piden permisos delicados. */
+    data object AppAnalysis : Screen
+
     data class Playlist(val name: String) : Screen
 
     /** Reproduce una lista guardada empezando por la pista [start]. */
