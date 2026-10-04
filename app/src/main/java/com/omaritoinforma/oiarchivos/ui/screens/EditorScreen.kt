@@ -4,6 +4,7 @@ package com.omaritoinforma.oiarchivos.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
@@ -39,11 +40,11 @@ fun EditorScreen(vm: MainViewModel, path: String) {
     var saving by remember { mutableStateOf(false) }
     var encoding by remember(path) { mutableStateOf("UTF-8") }
     var modifiedTime by remember(path) { mutableLongStateOf(0) }
-    var font by remember { mutableIntStateOf(14) }
+    var font by vm.editorFont
     var find by remember { mutableStateOf("") }
     var replace by remember { mutableStateOf("") }
     var search by remember { mutableStateOf(false) }
-    var numbers by remember { mutableStateOf(true) }
+    var numbers by vm.editorLineNumbers
     var charsetMenu by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val modified = value?.text?.let { it != original } ?: false
@@ -98,13 +99,21 @@ fun EditorScreen(vm: MainViewModel, path: String) {
         if (pos < 0) vm.toast("No se encontró el texto")
         else value = current.copy(selection = TextRange(pos, pos + find.length))
     }
-    BackHandler(modified) { confirm = true }
+    // Guardado automático (opción del editor de ES): al salir se guarda sin preguntar.
+    val leave = {
+        when {
+            !modified -> vm.back()
+            vm.editorAutoSave.value -> save { vm.back() }
+            else -> confirm = true
+        }
+    }
+    BackHandler(modified) { leave() }
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(file.name + if (modified) " •" else "") },
                 navigationIcon = {
-                    IconButton(onClick = { if (modified) confirm = true else vm.back() }) {
+                    IconButton(onClick = { leave() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás")
                     }
                 },
@@ -197,6 +206,10 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                     else -> {
                         val current = value!!
                         val lineCount = current.text.count { it == '\n' } + 1
+                        val wrap = vm.editorWrap.value
+                        val highlight =
+                            vm.editorHighlight.value &&
+                                current.text.length <= com.omaritoinforma.oiarchivos.data.EditorText.HIGHLIGHT_LIMIT
                         val style =
                             TextStyle(
                                 fontFamily = FontFamily.Monospace,
@@ -207,6 +220,9 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                             Modifier.weight(1f)
                                 .fillMaxWidth()
                                 .verticalScroll(rememberScrollState())
+                                .then(
+                                    if (wrap) Modifier
+                                    else Modifier.horizontalScroll(rememberScrollState()))
                                 .padding(8.dp)) {
                                 if (numbers)
                                     Text(
@@ -217,13 +233,26 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                                         modifier = Modifier.padding(end = 12.dp))
                                 BasicTextField(
                                     value = current,
-                                    onValueChange = { value = it },
+                                    onValueChange = { new ->
+                                        val old = value?.text.orEmpty()
+                                        val indented =
+                                            if (vm.editorAutoIndent.value)
+                                                com.omaritoinforma.oiarchivos.data.EditorText.autoIndent(
+                                                    old, new.text, new.selection.end)
+                                            else null
+                                        value =
+                                            if (indented == null) new
+                                            else TextFieldValue(indented.first, TextRange(indented.second))
+                                    },
                                     enabled = !saving,
                                     textStyle = style,
                                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                                     visualTransformation =
-                                        remember(current.text.length) { CodeColor() },
-                                    modifier = Modifier.weight(1f).heightIn(min = 300.dp))
+                                        if (highlight) remember(current.text.length) { CodeColor() }
+                                        else VisualTransformation.None,
+                                    modifier =
+                                        if (wrap) Modifier.weight(1f).heightIn(min = 300.dp)
+                                        else Modifier.widthIn(min = 300.dp).heightIn(min = 300.dp))
                             }
                         Text(
                             "$lineCount líneas · ${current.text.length} caracteres",

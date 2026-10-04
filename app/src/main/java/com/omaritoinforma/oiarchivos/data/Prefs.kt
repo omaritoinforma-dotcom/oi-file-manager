@@ -118,6 +118,32 @@ class Prefs(context: Context) {
         get() = sp.getString("app_backup_folder", null) ?: defaultAppBackupFolder
         set(v) = sp.edit().putString("app_backup_folder", v).apply()
 
+    // ---- Editor (opciones del editor de ES) ----
+
+    var editorFont: Int
+        get() = sp.getInt("editor_font", 14)
+        set(v) = sp.edit().putInt("editor_font", v.coerceIn(10, 28)).apply()
+
+    var editorLineNumbers: Boolean
+        get() = sp.getBoolean("editor_line_numbers", true)
+        set(v) = sp.edit().putBoolean("editor_line_numbers", v).apply()
+
+    var editorWrap: Boolean
+        get() = sp.getBoolean("editor_wrap", true)
+        set(v) = sp.edit().putBoolean("editor_wrap", v).apply()
+
+    var editorAutoIndent: Boolean
+        get() = sp.getBoolean("editor_auto_indent", true)
+        set(v) = sp.edit().putBoolean("editor_auto_indent", v).apply()
+
+    var editorHighlight: Boolean
+        get() = sp.getBoolean("editor_highlight", true)
+        set(v) = sp.edit().putBoolean("editor_highlight", v).apply()
+
+    var editorAutoSave: Boolean
+        get() = sp.getBoolean("editor_auto_save", false)
+        set(v) = sp.edit().putBoolean("editor_auto_save", v).apply()
+
     // ---- Contraseña ----
 
     /** Hash PBKDF2 de la contraseña (ver [AppLock]); vacío si no hay contraseña. */

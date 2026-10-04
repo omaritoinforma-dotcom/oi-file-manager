@@ -221,6 +221,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val backupBeforeUninstall =
         PrefState({ prefs.backupBeforeUninstall }, { prefs.backupBeforeUninstall = it })
     val appBackupFolder = PrefState({ prefs.appBackupFolder }, { prefs.appBackupFolder = it })
+    val editorFont = PrefState({ prefs.editorFont }, { prefs.editorFont = it })
+    val editorLineNumbers = PrefState({ prefs.editorLineNumbers }, { prefs.editorLineNumbers = it })
+    val editorWrap = PrefState({ prefs.editorWrap }, { prefs.editorWrap = it })
+    val editorAutoIndent = PrefState({ prefs.editorAutoIndent }, { prefs.editorAutoIndent = it })
+    val editorHighlight = PrefState({ prefs.editorHighlight }, { prefs.editorHighlight = it })
+    val editorAutoSave = PrefState({ prefs.editorAutoSave }, { prefs.editorAutoSave = it })
     val lockStart = PrefState({ prefs.lockStart }, { prefs.lockStart = it })
     val lockNetwork = PrefState({ prefs.lockNetwork }, { prefs.lockNetwork = it })
     val lockHidden = PrefState({ prefs.lockHidden }, { prefs.lockHidden = it })
@@ -239,6 +245,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             closeNotificationWhenDone,
             backupBeforeUninstall,
             appBackupFolder,
+            editorFont,
+            editorLineNumbers,
+            editorWrap,
+            editorAutoIndent,
+            editorHighlight,
+            editorAutoSave,
             lockStart,
             lockNetwork,
             lockHidden)

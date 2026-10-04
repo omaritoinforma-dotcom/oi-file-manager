@@ -52,6 +52,12 @@ object SettingsBackup {
             "close_notification" to Kind.Flag,
             "backup_before_uninstall" to Kind.Flag,
             "app_backup_folder" to Kind.Folder,
+            "editor_font" to Kind.Number(10..28),
+            "editor_line_numbers" to Kind.Flag,
+            "editor_wrap" to Kind.Flag,
+            "editor_auto_indent" to Kind.Flag,
+            "editor_highlight" to Kind.Flag,
+            "editor_auto_save" to Kind.Flag,
         )
 
     fun export(values: Map<String, Any?>): String {

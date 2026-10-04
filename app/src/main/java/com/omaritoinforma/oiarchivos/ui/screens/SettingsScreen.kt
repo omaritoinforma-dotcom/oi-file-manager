@@ -80,6 +80,7 @@ private enum class Section(val group: String, val title: String, val summary: St
     PASSWORD("Seguridad", "Contraseña", "Proteger la app, las conexiones y los archivos ocultos"),
     BACKUP("Seguridad", "Copia de ajustes", "Guardar y restaurar los ajustes"),
     APPS("Herramientas", "Aplicaciones", "Copia del APK y carpeta de copias"),
+    EDITOR("Herramientas", "Editor de texto", "Letra, líneas, sangría, resaltado y guardado"),
     TRASH("Herramientas", "Papelera", "Usar la papelera al eliminar"),
     GESTURES("Herramientas", "Gestos", "Deslizar en el explorador"),
     ABOUT("Sistema", "Acerca de", "Versión de OI Archivos")
@@ -117,6 +118,7 @@ fun SettingsScreen(vm: MainViewModel) {
                 Section.PASSWORD -> item { PasswordSettings(vm) }
                 Section.BACKUP -> item { BackupSettings(vm) }
                 Section.APPS -> item { AppSettings(vm) }
+                Section.EDITOR -> item { EditorSettings(vm) }
                 Section.TRASH -> item {
                     SwitchRow(
                         "Usar la papelera",
@@ -513,6 +515,37 @@ private fun AppSettings(vm: MainViewModel) {
                 vm.appBackupFolder.value = it
                 picking = false
             })
+}
+
+@Composable
+private fun EditorSettings(vm: MainViewModel) {
+    Column {
+        Column(Modifier.padding(16.dp)) {
+            Text("Tamaño de la letra: ${vm.editorFont.value}")
+            Slider(
+                value = vm.editorFont.value.toFloat(),
+                onValueChange = { vm.editorFont.value = it.toInt() },
+                valueRange = 10f..28f,
+                steps = 17)
+        }
+        SwitchRow("Números de línea", "Mostrar el número de cada línea", vm.editorLineNumbers)
+        SwitchRow(
+            "Saltos de línea automáticos",
+            "Partir las líneas largas en vez de desplazar a los lados",
+            vm.editorWrap)
+        SwitchRow(
+            "Sangría automática",
+            "Al pulsar Intro, la línea nueva empieza con la sangría de la anterior",
+            vm.editorAutoIndent)
+        SwitchRow(
+            "Resaltado de sintaxis",
+            "Colorear el código (solo en archivos de hasta 500 KB)",
+            vm.editorHighlight)
+        SwitchRow(
+            "Guardado automático",
+            "Guardar al salir del editor sin preguntar",
+            vm.editorAutoSave)
+    }
 }
 
 /** Vuelve a la carpeta predeterminada; solo se muestra si se cambió. */

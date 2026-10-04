@@ -13,6 +13,12 @@ class PrefState<T>(private val read: () -> T, private val write: (T) -> Unit) {
             state.value = v
         }
 
+    operator fun getValue(thisRef: Any?, property: kotlin.reflect.KProperty<*>): T = value
+
+    operator fun setValue(thisRef: Any?, property: kotlin.reflect.KProperty<*>, v: T) {
+        value = v
+    }
+
     /** Vuelve a leer el valor guardado, por ejemplo tras restaurar una copia de ajustes. */
     fun reload() {
         state.value = read()

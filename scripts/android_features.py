@@ -1325,6 +1325,31 @@ def junk_cleaner():
           "No se limpió todo lo elegido", 60)
 
 
+
+@check("editor-sangria-y-guardado-automatico")
+def editor_options():
+    push_bytes(b"  hola", f"{DIR}/codigo.txt")
+    try:
+        settings("Editor de texto")
+        set_switch("Sangría automática", True)
+        set_switch("Guardado automático", True)
+        open_test_folder()
+        tap(find("codigo.txt").get("text"))
+        field, _ = wait("  hola")
+        tap_node(field)
+        adb("shell", "input", "keyevent", "KEYCODE_MOVE_END")
+        adb("shell", "input", "keyevent", "KEYCODE_ENTER")
+        adb("shell", "input", "text", "x")
+        time.sleep(1)
+        adb("shell", "input", "keyevent", "4")
+        until(lambda: read(f"{DIR}/codigo.txt") == "  hola\n  x",
+              f"No se guardó con sangría al salir: {read(f'{DIR}/codigo.txt')!r}", 20)
+        assert not nodes("Cambios sin guardar", hierarchy()), "Con guardado automático no debe preguntar"
+    finally:
+        settings("Editor de texto")
+        set_switch("Guardado automático", False)
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()
