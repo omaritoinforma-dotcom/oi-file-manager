@@ -554,7 +554,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private var incoming: android.content.Intent? = null
 
+    /** Destino leído de un código QR, a la espera de que se confirme el envío. */
+    var qrPeer by mutableStateOf<com.omaritoinforma.oiarchivos.data.Nearby.Peer?>(null)
+
     fun receive(intent: android.content.Intent) {
+        // El enlace de un código QR de otro teléfono: abre «Enviar a otro teléfono» con ese destino.
+        if (intent.action == android.content.Intent.ACTION_VIEW &&
+            intent.data?.scheme == com.omaritoinforma.oiarchivos.data.NearbyLink.SCHEME) {
+            val peer = com.omaritoinforma.oiarchivos.data.NearbyLink.parse(intent.data.toString())
+            if (peer == null) toast("El código QR no es de un teléfono de tu red local")
+            else {
+                qrPeer = peer
+                goTo(Screen.Nearby)
+            }
+            intent.data = null
+            return
+        }
         intent.getStringExtra("folder")?.let { if (File(it).isDirectory) openFolder(it) }
         when (intent.getStringExtra("screen")) {
             "transfers" -> goTo(Screen.Transfers)

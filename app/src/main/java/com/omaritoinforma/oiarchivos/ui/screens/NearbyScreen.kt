@@ -10,9 +10,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.omaritoinforma.oiarchivos.data.LanScanner
 import com.omaritoinforma.oiarchivos.data.Nearby
+import com.omaritoinforma.oiarchivos.data.NearbyLink
 import com.omaritoinforma.oiarchivos.data.NearbyReceiver
 import com.omaritoinforma.oiarchivos.data.OperationResult
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
@@ -79,6 +82,15 @@ fun NearbyScreen(vm: MainViewModel) {
     }
 
     val toSend = vm.nearbyFiles
+    fun sendTo(peer: Nearby.Peer) {
+        val files = toSend.map(::File)
+        vm.runTask("Enviando a ${peer.name}") { report ->
+            if (Nearby.send(peer, myName, files, report)) {
+                withContext(Dispatchers.Main) { vm.nearbyFiles = emptyList() }
+                OperationResult("Enviado a ${peer.name}")
+            } else OperationResult("${peer.name} rechazó el envío")
+        }
+    }
     val peers = remember { mutableStateListOf<Nearby.Peer>() }
     var searching by remember { mutableStateOf(false) }
     var searched by remember { mutableStateOf(false) }
@@ -111,6 +123,17 @@ fun NearbyScreen(vm: MainViewModel) {
                 Button(onClick = { receiving = !receiving }) {
                     Text(if (receiving) "Dejar de recibir" else "Empezar a recibir")
                 }
+                if (receiving && address.isNotEmpty()) {
+                    // Código QR: el otro teléfono lo lee con su cámara y el enlace abre OI Archivos para enviar.
+                    val link = NearbyLink.build(address.substringBefore(","), Nearby.PORT, myName)
+                    Text(
+                        "O que el otro teléfono lea este código QR con su cámara:",
+                        Modifier.padding(top = 12.dp))
+                    QrImage(link, Modifier.padding(vertical = 8.dp).size(220.dp))
+                    androidx.compose.foundation.text.selection.SelectionContainer {
+                        Text(link, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
                 if (received.isNotEmpty())
                     Text(
                         "Recibidos en ${destination.absolutePath}: ${received.joinToString()}",
@@ -142,17 +165,33 @@ fun NearbyScreen(vm: MainViewModel) {
                     headlineContent = { Text(peer.name) },
                     supportingContent = { Text(peer.address) },
                     modifier =
-                        Modifier.clickable {
-                            val files = toSend.map(::File)
-                            vm.runTask("Enviando a ${peer.name}") { report ->
-                                if (Nearby.send(peer, myName, files, report)) {
-                                    withContext(Dispatchers.Main) { vm.nearbyFiles = emptyList() }
-                                    OperationResult("Enviado a ${peer.name}")
-                                } else OperationResult("${peer.name} rechazó el envío")
-                            }
-                        })
+                        Modifier.clickable { sendTo(peer) })
             }
         }
+    }
+
+    vm.qrPeer?.let { peer ->
+        AlertDialog(
+            onDismissRequest = { vm.qrPeer = null },
+            title = { Text("Enviar a «${peer.name}»") },
+            text = {
+                Text(
+                    if (toSend.isEmpty())
+                        "Primero selecciona archivos en el explorador y usa Más → Enviar a otro teléfono; luego vuelve a leer el código."
+                    else
+                        "${toSend.size} archivo(s), ${formatSize(toSend.sumOf { File(it).length() })}, a ${peer.address}. El otro teléfono tendrá que aceptarlos.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        vm.qrPeer = null
+                        sendTo(peer)
+                    },
+                    enabled = toSend.isNotEmpty()) {
+                        Text("Enviar")
+                    }
+            },
+            dismissButton = { TextButton(onClick = { vm.qrPeer = null }) { Text("Cancelar") } })
     }
 
     incoming?.let { pending ->
@@ -184,5 +223,24 @@ fun NearbyScreen(vm: MainViewModel) {
                         Text("Rechazar")
                     }
             })
+    }
+}
+
+/** Dibuja un código QR (módulos negros sobre fondo blanco, con su margen). */
+@Composable
+private fun QrImage(text: String, modifier: Modifier) {
+    val grid = remember(text) { NearbyLink.qr(text) }
+    androidx.compose.foundation.Canvas(modifier.semantics { contentDescription = "Código QR" }) {
+        drawRect(androidx.compose.ui.graphics.Color.White)
+        val cell = size.minDimension / grid.size
+        grid.forEachIndexed { y, row ->
+            row.forEachIndexed { x, dark ->
+                if (dark)
+                    drawRect(
+                        androidx.compose.ui.graphics.Color.Black,
+                        androidx.compose.ui.geometry.Offset(x * cell, y * cell),
+                        androidx.compose.ui.geometry.Size(cell + 0.5f, cell + 0.5f))
+            }
+        }
     }
 }

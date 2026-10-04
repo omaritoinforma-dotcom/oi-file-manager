@@ -2130,6 +2130,56 @@ def hide_and_hidden_list():
             sh("rm", "-f", q(f"{DIR}/{name}"), check=False)
 
 
+@check("enviar-por-codigo-qr")
+def nearby_qr():
+    # 1) El teléfono que recibe muestra su código QR y el enlace que contiene.
+    launch_home()
+    ui.drawer("Red, nube y USB")
+    tap("Enviar a otro teléfono")
+    tap("Empezar a recibir")
+    wait("Código QR")
+    link = find_text("oiarchivos://enviar?")
+    evidence("codigo-qr-del-receptor")
+    match = re.match(r"oiarchivos://enviar\?host=([\d.]+)&port=(\d+)&nombre=", link)
+    assert match, f"El enlace del QR no tiene el formato esperado: {link}"
+    assert match.group(1).startswith("10.0.2."), f"El QR no lleva la dirección del emulador: {link}"
+    assert match.group(2) == "42137", link
+    # El QR dibujado es un cuadrado con módulos negros: se comprueba que hay contraste (no está en blanco).
+    qr = next(n for n in hierarchy().iter("node") if n.get("content-desc") == "Código QR")
+    x1, y1, x2, y2 = map(int, re.findall(r"\d+", qr.get("bounds")))
+    dark = sum(1 for dx in range(8) for dy in range(8)
+               if sum(pixel(x1 + (x2 - x1) * (2 * dx + 1) // 16, y1 + (y2 - y1) * (2 * dy + 1) // 16)) < 150)
+    assert 8 <= dark <= 56, f"El código QR no parece un QR ({dark} de 64 puntos oscuros)"
+    # 2) El otro teléfono, tras leerlo con su cámara, abre este enlace: envía a quien lo mostró.
+    received = {}
+    server = nearby_peer_server(received)
+    try:
+        payload = "enviado tras leer un QR ñ"
+        with tempfile.TemporaryDirectory() as tmp:
+            local = pathlib.Path(tmp) / "qr_envio.txt"
+            local.write_text(payload, encoding="utf-8")
+            adb("push", str(local), f"{DIR}/qr_envio.txt")
+        open_test_folder()
+        long_press(find("qr_envio.txt").get("text"))
+        more("Enviar a otro teléfono")
+        wait("Empezar a recibir")
+        adb("shell", "am", "start", "-W", "-a", "android.intent.action.VIEW", "-d",
+            "oiarchivos://enviar?host=10.0.2.2\\&port=42137\\&nombre=PC%20por%20QR", ui.PACKAGE)
+        wait_text("Enviar a «PC por QR»")
+        evidence("codigo-qr-confirmar-envio")
+        tap_last("Enviar")
+        until(lambda: 0 in received, "El archivo no llegó tras leer el QR", 60)
+        assert received[0] == payload.encode("utf-8"), received[0]
+        assert received["offer"]["files"][0]["name"] == "qr_envio.txt"
+        # 3) Un QR con una dirección de Internet no abre nada.
+        adb("shell", "am", "start", "-W", "-a", "android.intent.action.VIEW", "-d",
+            "oiarchivos://enviar?host=8.8.8.8\\&port=42137\\&nombre=Malo", ui.PACKAGE)
+        time.sleep(3)
+        assert not any("Malo" in (n.get("text") or "") for n in hierarchy().iter("node")), "Se aceptó un QR de fuera de la red local"
+    finally:
+        server.shutdown()
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()
