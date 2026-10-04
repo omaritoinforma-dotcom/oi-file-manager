@@ -89,6 +89,7 @@ import com.omaritoinforma.oiarchivos.data.OpProgress
 import com.omaritoinforma.oiarchivos.data.DrawerEntry
 import com.omaritoinforma.oiarchivos.data.DrawerLayout
 import com.omaritoinforma.oiarchivos.ui.components.LocalPinned
+import com.omaritoinforma.oiarchivos.ui.components.LocalFolderStyle
 import com.omaritoinforma.oiarchivos.ui.components.LocalThumbnails
 import com.omaritoinforma.oiarchivos.ui.screens.*
 import com.omaritoinforma.oiarchivos.ui.screens.AppsScreen
@@ -110,6 +111,7 @@ fun AppRoot(vm: MainViewModel) {
             else ->
                 CompositionLocalProvider(
                     LocalThumbnails provides vm.thumbnails.value,
+                    LocalFolderStyle provides vm.folderStyle.value,
                     LocalPinned provides vm.pinned.toSet()) {
                     MainContent(vm)
                 }

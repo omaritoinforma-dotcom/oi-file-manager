@@ -266,6 +266,10 @@ class Prefs(context: Context) {
         get() = sp.getInt("editor_font", 14)
         set(v) = sp.edit().putInt("editor_font", v.coerceIn(10, 28)).apply()
 
+    var folderStyle: FolderStyle
+        get() = enumOr(sp.getString("folder_style", null), FolderStyle.CLASSIC)
+        set(v) = sp.edit().putString("folder_style", v.name).apply()
+
     /** «Mostrar el nombre en la barra de herramientas»: el título de la carpeta o categoría. */
     var toolbarShowName: Boolean
         get() = sp.getBoolean("toolbar_show_name", true)

@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.omaritoinforma.oiarchivos.data.FileItem
+import com.omaritoinforma.oiarchivos.data.FolderStyle
 import com.omaritoinforma.oiarchivos.util.ApkIcons
 import com.omaritoinforma.oiarchivos.util.FileKind
 import com.omaritoinforma.oiarchivos.util.Kinds
@@ -67,6 +68,9 @@ import kotlinx.coroutines.withContext
 
 /** «Miniaturas» de Ajustes → Pantalla: si es falso se muestran iconos en vez de vistas previas. */
 val LocalThumbnails = compositionLocalOf { true }
+
+/** «Estilo de carpetas» de Ajustes → Pantalla. */
+val LocalFolderStyle = compositionLocalOf { FolderStyle.CLASSIC }
 
 /** Rutas fijadas arriba; las filas y celdas las marcan con un alfiler. */
 val LocalPinned = compositionLocalOf<Set<String>> { emptySet() }
@@ -207,7 +211,14 @@ fun FileThumb(item: FileItem, size: Dp, selected: Boolean) {
                 Icon(
                     Kinds.icon(kind),
                     contentDescription = null,
-                    tint = Kinds.color(kind),
+                    tint =
+                        if (kind != FileKind.FOLDER) Kinds.color(kind)
+                        else
+                            when (LocalFolderStyle.current) {
+                                FolderStyle.CLASSIC -> Kinds.color(kind)
+                                FolderStyle.ACCENT -> MaterialTheme.colorScheme.primary
+                                FolderStyle.GREY -> Color(0xFF8A8F94)
+                            },
                     modifier = Modifier.fillMaxSize(0.9f),
                 )
         }

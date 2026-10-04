@@ -272,6 +272,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             scheduleStorageWatch()
             if (it) checkSpaceNow()
         })
+    val folderStyle = PrefState({ prefs.folderStyle }, { prefs.folderStyle = it })
     val toolbarShowName = PrefState({ prefs.toolbarShowName }, { prefs.toolbarShowName = it })
     val showSelectButton = PrefState({ prefs.showSelectButton }, { prefs.showSelectButton = it })
     val screenOrientation = PrefState({ prefs.screenOrientation }, { prefs.screenOrientation = it })
@@ -471,6 +472,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             lowSpaceMb,
             ftpPort,
             ftpEncoding,
+            folderStyle,
             toolbarShowName,
             showSelectButton,
             screenOrientation,

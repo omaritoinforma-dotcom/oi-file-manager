@@ -2511,6 +2511,48 @@ def row_height(label):
     return int(bottom) - int(top)
 
 
+def region_pixels(x1, y1, x2, y2, step=3):
+    """Colores (r, g, b) de un rectángulo de la pantalla, tomando un píxel de cada [step]."""
+    raw = subprocess.check_output(["adb", "exec-out", "screencap"], timeout=30)
+    width, height = struct.unpack("<II", raw[:8])
+    pixels = raw[len(raw) - width * height * 4:]
+    out = []
+    for y in range(max(0, y1), min(height, y2), step):
+        for x in range(max(0, x1), min(width, x2), step):
+            i = (y * width + x) * 4
+            out.append((pixels[i], pixels[i + 1], pixels[i + 2]))
+    return out
+
+
+@check("estilo-de-carpetas-clasica-y-gris")
+def folder_style():
+    folder = f"{DIR}/estilo-carpeta"
+    sh("mkdir", "-p", q(folder))
+
+    def counts():
+        open_test_folder()
+        _, y = center(find("estilo-carpeta"))
+        pixels = region_pixels(50, y - 30, 150, y + 30)
+        amber = sum(1 for r, g, b in pixels if r > 200 and 120 < g < 210 and b < 90)
+        grey = sum(1 for r, g, b in pixels
+                   if abs(r - g) < 14 and abs(g - b) < 14 and 110 < r < 170)
+        return amber, grey
+
+    try:
+        amber, grey = counts()
+        assert amber > 30, f"La carpeta clásica debía ser amarilla (píxeles ámbar: {amber})"
+        settings("Pantalla")
+        tap(find("Gris").get("text"))
+        time.sleep(1)
+        amber, grey = counts()
+        evidence("carpetas-grises")
+        assert grey > 30 and amber < 5, f"La carpeta debía ser gris (grises {grey}, ámbar {amber})"
+    finally:
+        settings("Pantalla")
+        tap(find("Clásica (amarilla)").get("text"))
+        time.sleep(2)
+
+
 @check("informe-diario-de-archivos-nuevos")
 def daily_report():
     folder = "/sdcard/DCIM/OIInforme"

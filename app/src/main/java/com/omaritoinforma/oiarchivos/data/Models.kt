@@ -44,6 +44,13 @@ enum class FtpEncoding(val label: String, private val charsetName: String) {
         get() = runCatching { java.nio.charset.Charset.forName(charsetName) }.getOrDefault(Charsets.UTF_8)
 }
 
+/** Cómo se dibujan los iconos de carpeta («Estilo de carpetas» de los temas de ES). */
+enum class FolderStyle(val label: String) {
+    CLASSIC("Clásica (amarilla)"),
+    ACCENT("Color de la app"),
+    GREY("Gris")
+}
+
 /** Orientación de la pantalla («Orientación de la pantalla» de ES). */
 enum class ScreenOrientation(val label: String) {
     AUTO("Automática"),

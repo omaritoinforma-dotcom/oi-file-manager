@@ -72,6 +72,7 @@ import com.omaritoinforma.oiarchivos.data.AutoBackup
 import com.omaritoinforma.oiarchivos.data.BackupKind
 import com.omaritoinforma.oiarchivos.data.DrawerLayout
 import com.omaritoinforma.oiarchivos.data.FileCategory
+import com.omaritoinforma.oiarchivos.data.FolderStyle
 import com.omaritoinforma.oiarchivos.data.HomeLayout
 import com.omaritoinforma.oiarchivos.data.QuickTile
 import com.omaritoinforma.oiarchivos.data.ScreenOrientation
@@ -252,6 +253,18 @@ private fun DisplaySettings(vm: MainViewModel) {
             "Fondo negro puro",
             "Con el tema oscuro, fondo totalmente negro (ahorra batería en pantallas OLED)",
             vm.pureBlack)
+        Text(
+            "Estilo de las carpetas:",
+            Modifier.padding(horizontal = 16.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ChipRow {
+            FolderStyle.entries.forEach { f ->
+                FilterChip(
+                    vm.folderStyle.value == f,
+                    onClick = { vm.folderStyle.value = f },
+                    label = { Text(f.label) })
+            }
+        }
         Text(
             "Color de la app:",
             Modifier.padding(horizontal = 16.dp),
