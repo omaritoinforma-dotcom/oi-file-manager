@@ -116,7 +116,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Google Drive, Dropbox, OneDrive, Box, Yandex, S3, Baidu, SugarSync | 🟡 | Faltan registros OAuth y cuentas reales |
 | MediaFire, Flickr, Instagram, Facebook, Nutstore (坚果云), China Mobile Cloud (中国移动云盘) | ❌ | |
 | Varias cuentas por servicio | 🟡 | |
-| Copia automática a la nube (fotos, música, vídeo; solo con Wi-Fi; carpetas) | ❌ | |
+| Copia automática a la nube (fotos, música, vídeo; solo con Wi-Fi; carpetas) | 🟡 | A cualquier conexión guardada (SFTP, FTP, WebDAV, SMB o nube): fotos, vídeos, música y carpetas elegidas, solo con Wi-Fi si se quiere; se lanza al aparecer archivos nuevos y cada 6 h, y sigue donde iba si se corta. Comprobación en el emulador contra el SFTP real de CI preparada |
 | Subir automáticamente un archivo remoto editado en otra app | ❌ | |
 | Servidor FTP para gestionar el teléfono desde el PC | 🟡 | Solo modo pasivo; faltan modo activo, elegir codificación y acceso directo |
 | Servidor HTTP desde el navegador | ✅ | Emulador |
@@ -154,18 +154,17 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | Estado | Funciones |
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 32 |
-| 🟡 Implementadas, sin comprobar | 18 |
+| 🟡 Implementadas, sin comprobar | 19 |
 | 🟠 Parciales | 13 |
-| ❌ Faltan | 16 |
+| ❌ Faltan | 15 |
 | **Total de filas** | **79** |
 
 **OI Archivos no cubre todavía el mínimo.** Las funciones que faltan más grandes, por valor para el usuario:
 
-1. Copia automática a la nube.
-2. Enviar a la TV por Chromecast (DLNA ya está).
-3. Enviar entre teléfonos por punto de acceso o código QR.
-4. Idioma y temas dentro de la app; barra lateral personalizable.
+1. Enviar a la TV por Chromecast (DLNA ya está).
+2. Enviar entre teléfonos por punto de acceso o código QR.
+3. Idioma y temas dentro de la app; barra lateral personalizable.
 
-Hechos y pendientes de su comprobación en el emulador (CI en curso): listas de reproducción, aviso de archivos nuevos, aviso de poco espacio e instalar y desinstalar apps por lotes.
+Hechos y pendientes de su comprobación en el emulador (CI en curso): listas de reproducción, aviso de archivos nuevos, aviso de poco espacio, instalar y desinstalar apps por lotes y copia automática.
 
 Los recuentos son por fila de esta matriz; una fila puede agrupar varias funciones pequeñas. Solo 32 de 79 cumplen ya el criterio de terminación (conectadas y comprobadas en su entorno real).

@@ -1603,6 +1603,50 @@ def batch_apps():
             sh("pm", "uninstall", package, check=False)
 
 
+if os.environ.get("OI_REMOTE_TEST_ROOT"):
+
+    @check("copia-automatica-a-sftp")
+    def auto_backup():
+        """Copia a la conexión «SFTP prueba» (servidor SFTP real del equipo de CI): se comprueba el
+        disco del servidor, primero con «Copiar ahora» y luego con una foto nueva que se sube sola."""
+        import shutil
+
+        server = pathlib.Path(os.environ["OI_REMOTE_TEST_ROOT"]) / "Copias OI"
+        local = "/sdcard/DCIM/OICopia"
+        sh("rm", "-rf", q(local), check=False)
+        shutil.rmtree(server, ignore_errors=True)
+        first, second = png((255, 0, 0)), png((0, 160, 0))
+        push_bytes(first, f"{local}/foto1.png")
+        try:
+            settings("Copia automática")
+            tap("Destino")
+            tap("SFTP prueba")
+            tap("Carpeta en el destino")
+            replace_field("Copias OI")
+            tap_last("Aceptar")
+            wait("Copias OI")
+            set_switch("Copiar automáticamente", True)
+            tap("Copiar ahora")
+            time.sleep(3)
+            evidence("copia-automatica-tras-copiar-ahora")
+            target = server / "DCIM/OICopia/foto1.png"
+            until(lambda: target.exists() and target.read_bytes() == first,
+                  "«Copiar ahora» no dejó la foto en el servidor", 120)
+            # Una foto nueva se sube sola: Android lanza la copia cuando cambia MediaStore.
+            push_bytes(second, f"{local}/foto2.png")
+            sh("content", "call", "--uri", "content://media", "--method", "scan_volume",
+               "--arg", "external_primary", check=False)
+            target = server / "DCIM/OICopia/foto2.png"
+            until(lambda: target.exists() and target.read_bytes() == second,
+                  "La foto nueva no se subió sola", 300)
+            (OUTPUT / "copia-automatica-jobs.txt").write_text(
+                sh("dumpsys", "jobscheduler", ui.PACKAGE, check=False), encoding="utf-8")
+        finally:
+            settings("Copia automática")
+            set_switch("Copiar automáticamente", False)
+            sh("rm", "-rf", q(local), check=False)
+
+
 @check("editor-sangria-y-guardado-automatico")
 def editor_options():
     push_bytes(b"  hola", f"{DIR}/codigo.txt")

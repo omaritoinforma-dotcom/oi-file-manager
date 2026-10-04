@@ -24,7 +24,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
@@ -57,6 +59,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.omaritoinforma.oiarchivos.BuildConfig
+import com.omaritoinforma.oiarchivos.data.AutoBackup
+import com.omaritoinforma.oiarchivos.data.BackupKind
 import com.omaritoinforma.oiarchivos.data.GestureAction
 import com.omaritoinforma.oiarchivos.data.NewFileKind
 import com.omaritoinforma.oiarchivos.data.Prefs
@@ -82,6 +86,7 @@ private enum class Section(val group: String, val title: String, val summary: St
     FOLDERS("General", "Carpetas", "Carpeta de inicio y carpeta de descargas"),
     START("General", "Ventana inicial", "Qué se abre al iniciar la app"),
     NOTIFICATIONS("General", "Notificaciones", "Aviso al terminar, espacio bajo y archivos nuevos"),
+    AUTO_BACKUP("Red y nube", "Copia automática", "Subir fotos, vídeos, música y carpetas a una conexión"),
     PASSWORD("Seguridad", "Contraseña", "Proteger la app, las conexiones y los archivos ocultos"),
     BACKUP("Seguridad", "Copia de ajustes", "Guardar y restaurar los ajustes"),
     APPS("Herramientas", "Aplicaciones", "Copia del APK y carpeta de copias"),
@@ -120,6 +125,7 @@ fun SettingsScreen(vm: MainViewModel) {
                 Section.FOLDERS -> item { FolderSettings(vm) }
                 Section.START -> item { StartSettings(vm) }
                 Section.NOTIFICATIONS -> item { NotificationSettings(vm) }
+                Section.AUTO_BACKUP -> item { AutoBackupSettings(vm) }
                 Section.PASSWORD -> item { PasswordSettings(vm) }
                 Section.BACKUP -> item { BackupSettings(vm) }
                 Section.APPS -> item { AppSettings(vm) }
@@ -284,6 +290,154 @@ private fun StartSettings(vm: MainViewModel) {
                 modifier = Modifier.clickable { vm.startWindow.value = w })
         }
     }
+}
+
+@Composable
+private fun AutoBackupSettings(vm: MainViewModel) {
+    val destinations = remember { vm.backupDestinations() }
+    val current = destinations.firstOrNull { it.id == vm.autoBackupConnection.value }
+    var choosing by remember { mutableStateOf(false) }
+    var editingFolder by remember { mutableStateOf(false) }
+    var addingFolder by remember { mutableStateOf(false) }
+    // La copia en segundo plano pudo terminar con la pantalla cerrada.
+    LaunchedEffect(Unit) { vm.autoBackupLast.reload() }
+    Column {
+        SwitchRow(
+            "Copiar automáticamente",
+            "Sube lo nuevo a una conexión guardada en cuanto aparece y, además, cada 6 horas",
+            vm.autoBackup)
+        ListItem(
+            headlineContent = { Text("Destino") },
+            supportingContent = {
+                Text(
+                    current?.let { "${it.label} (${it.protocol.label})" }
+                        ?: if (destinations.isEmpty())
+                            "No hay conexiones: crea una en «Red, nube y USB»"
+                        else "Sin elegir")
+            },
+            modifier = Modifier.clickable(enabled = destinations.isNotEmpty()) { choosing = true })
+        ListItem(
+            headlineContent = { Text("Carpeta en el destino") },
+            supportingContent = { Text(vm.autoBackupFolder.value) },
+            modifier = Modifier.clickable { editingFolder = true })
+        Text(
+            "Qué copiar:",
+            Modifier.padding(horizontal = 16.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ChipRow {
+            BackupKind.entries.forEach { kind ->
+                val on = kind in vm.autoBackupKinds.value
+                FilterChip(
+                    on,
+                    onClick = {
+                        vm.autoBackupKinds.value =
+                            if (on) vm.autoBackupKinds.value - kind else vm.autoBackupKinds.value + kind
+                    },
+                    label = { Text(kind.label) })
+            }
+        }
+        Text(
+            "Otras carpetas del teléfono (se copian enteras):",
+            Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        vm.autoBackupFolders.value.forEach { folder ->
+            ListItem(
+                headlineContent = { Text(File(folder).name) },
+                supportingContent = { Text(folder) },
+                trailingContent = {
+                    IconButton(
+                        onClick = { vm.autoBackupFolders.value = vm.autoBackupFolders.value - folder }) {
+                            Icon(Icons.Filled.Close, "Quitar ${File(folder).name}")
+                        }
+                })
+        }
+        TextButton(onClick = { addingFolder = true }, Modifier.padding(horizontal = 8.dp)) {
+            Text("Añadir carpeta")
+        }
+        SwitchRow("Solo con Wi-Fi", "No gastar datos móviles", vm.autoBackupWifiOnly)
+        Button(
+            onClick = { vm.backupNow() },
+            enabled = current != null,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Text("Copiar ahora")
+            }
+        if (vm.autoBackupLast.value.isNotEmpty())
+            Text(
+                "Última copia: ${vm.autoBackupLast.value}",
+                Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    if (choosing)
+        AlertDialog(
+            onDismissRequest = { choosing = false },
+            title = { Text("Destino de la copia") },
+            text = {
+                Column {
+                    destinations.forEach { c ->
+                        ListItem(
+                            headlineContent = { Text(c.label) },
+                            supportingContent = { Text(c.protocol.label) },
+                            leadingContent = {
+                                RadioButton(
+                                    selected = c.id == vm.autoBackupConnection.value,
+                                    onClick = {
+                                        vm.autoBackupConnection.value = c.id
+                                        choosing = false
+                                    })
+                            },
+                            modifier =
+                                Modifier.clickable {
+                                    vm.autoBackupConnection.value = c.id
+                                    choosing = false
+                                })
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { choosing = false }) { Text("Cancelar") } })
+    if (editingFolder) {
+        var text by remember { mutableStateOf(vm.autoBackupFolder.value) }
+        val problem = runCatching { AutoBackup.checkFolder(text) }.exceptionOrNull()?.message
+        AlertDialog(
+            onDismissRequest = { editingFolder = false },
+            title = { Text("Carpeta en el destino") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        text,
+                        { text = it },
+                        label = { Text("Carpeta") },
+                        singleLine = true,
+                        isError = problem != null)
+                    Text(
+                        problem ?: "Dentro de la carpeta inicial de la conexión; puede tener subcarpetas (a/b)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color =
+                            if (problem != null) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        vm.autoBackupFolder.value = AutoBackup.checkFolder(text).joinToString("/")
+                        editingFolder = false
+                    },
+                    enabled = problem == null) {
+                        Text("Aceptar")
+                    }
+            },
+            dismissButton = { TextButton(onClick = { editingFolder = false }) { Text("Cancelar") } })
+    }
+    if (addingFolder)
+        FolderPickerDialog(
+            title = "Carpeta para copiar",
+            start = PathUtil.internalRoot,
+            onDismiss = { addingFolder = false },
+            onPick = {
+                if (it !in vm.autoBackupFolders.value)
+                    vm.autoBackupFolders.value = vm.autoBackupFolders.value + it
+                addingFolder = false
+            })
 }
 
 @Composable

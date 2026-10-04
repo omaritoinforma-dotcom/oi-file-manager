@@ -29,6 +29,9 @@ object SettingsBackup {
 
         /** Varios valores de una lista, separados por comas. */
         data class Choices(val names: Set<String>) : Kind
+
+        /** Carpeta dentro de una conexión, relativa a su carpeta inicial. */
+        data object RemoteFolder : Kind
     }
 
     private fun <T : Enum<T>> choice(values: Array<T>) = Kind.Choice(values.map { it.name }.toSet())
@@ -57,6 +60,11 @@ object SettingsBackup {
             "low_space_mb" to Kind.Number(100..102400),
             "new_files_notify" to Kind.Flag,
             "new_files_kinds" to Kind.Choices(NewFileKind.entries.map { it.name }.toSet()),
+            "auto_backup" to Kind.Flag,
+            "auto_backup_folder" to Kind.RemoteFolder,
+            "auto_backup_kinds" to Kind.Choices(BackupKind.entries.map { it.name }.toSet()),
+            "auto_backup_folders" to Kind.Folders,
+            "auto_backup_wifi" to Kind.Flag,
             "backup_before_uninstall" to Kind.Flag,
             "app_backup_folder" to Kind.Folder,
             "editor_font" to Kind.Number(10..28),
@@ -112,6 +120,11 @@ object SettingsBackup {
             is Kind.Choice -> value is String && value in kind.names
             Kind.Folder -> value is String && validPath(value)
             Kind.Folders -> value is String && value.split('\n').filter { it.isNotEmpty() }.all(::validPath)
+            Kind.RemoteFolder ->
+                value is String &&
+                    value.length <= 255 &&
+                    runCatching { AutoBackup.checkFolder(value) }.isSuccess &&
+                    value.none { it == '\u0000' || it == '\n' }
             is Kind.Choices ->
                 value is String && value.split(',').filter { it.isNotEmpty() }.all { it in kind.names }
         }

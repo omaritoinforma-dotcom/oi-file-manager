@@ -248,6 +248,59 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         runCatching { com.omaritoinforma.oiarchivos.data.StorageWatch.schedule(ctx) }
     }
 
+    // Copia automática: los cambios que afectan a cuándo se copia vuelven a programar el trabajo.
+    val autoBackup =
+        PrefState({ prefs.autoBackup }, {
+            prefs.autoBackup = it
+            scheduleAutoBackup(replace = true)
+        })
+    val autoBackupConnection =
+        PrefState({ prefs.autoBackupConnection }, {
+            prefs.autoBackupConnection = it
+            scheduleAutoBackup(replace = true)
+        })
+    val autoBackupFolder = PrefState({ prefs.autoBackupFolder }, { prefs.autoBackupFolder = it })
+    val autoBackupKinds = PrefState({ prefs.autoBackupKinds }, { prefs.autoBackupKinds = it })
+    val autoBackupFolders = PrefState({ prefs.autoBackupFolders }, { prefs.autoBackupFolders = it })
+    val autoBackupWifiOnly =
+        PrefState({ prefs.autoBackupWifiOnly }, {
+            prefs.autoBackupWifiOnly = it
+            scheduleAutoBackup(replace = true)
+        })
+    val autoBackupLast = PrefState({ prefs.autoBackupLast }, { prefs.autoBackupLast = it })
+
+    private fun scheduleAutoBackup(replace: Boolean = false) {
+        runCatching { com.omaritoinforma.oiarchivos.data.AutoBackup.schedule(ctx, replace) }
+    }
+
+    /** Conexiones a las que se puede copiar (no el explorador root ni Bluetooth). */
+    fun backupDestinations(): List<com.omaritoinforma.oiarchivos.data.Connection> =
+        runCatching { com.omaritoinforma.oiarchivos.data.ConnectionStore(ctx).load() }
+            .getOrDefault(emptyList())
+            .filter {
+                it.protocol != com.omaritoinforma.oiarchivos.data.Protocol.ROOT &&
+                    it.protocol != com.omaritoinforma.oiarchivos.data.Protocol.BLUETOOTH
+            }
+
+    /** «Copiar ahora»: la misma copia, con progreso y aviso al terminar. */
+    fun backupNow() {
+        val connectivity =
+            ctx.getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
+                as android.net.ConnectivityManager
+        if (autoBackupWifiOnly.value && connectivity.isActiveNetworkMetered) {
+            toast("Conéctate a una Wi-Fi o desactiva «Solo con Wi-Fi»")
+            return
+        }
+        runTask("Copia automática") { report ->
+            val outcome = com.omaritoinforma.oiarchivos.data.AutoBackup.run(ctx, report)
+            withContext(Dispatchers.Main) { autoBackupLast.reload() }
+            outcome.error?.let { throw java.io.IOException(it) }
+            OperationResult(
+                if (outcome.uploaded == 0) "La copia ya estaba al día"
+                else "${outcome.uploaded} archivo(s) copiado(s)")
+        }
+    }
+
     val backupBeforeUninstall =
         PrefState({ prefs.backupBeforeUninstall }, { prefs.backupBeforeUninstall = it })
     val appBackupFolder = PrefState({ prefs.appBackupFolder }, { prefs.appBackupFolder = it })
@@ -277,6 +330,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             lowSpaceMb,
             newFilesNotify,
             newFilesKinds,
+            autoBackup,
+            autoBackupFolder,
+            autoBackupKinds,
+            autoBackupFolders,
+            autoBackupWifiOnly,
             backupBeforeUninstall,
             appBackupFolder,
             editorFont,
@@ -336,6 +394,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             openStartWindow()
         }
         scheduleStorageWatch()
+        scheduleAutoBackup()
         viewModelScope.launch {
             AppInstaller.finished.collect { summary ->
                 toast(summary)
@@ -1353,6 +1412,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun reloadSettings() {
         esSettings.forEach { it.reload() }
         scheduleStorageWatch()
+        scheduleAutoBackup(replace = true)
         viewMode = prefs.viewMode
         sortBy = prefs.sortBy
         ascending = prefs.ascending

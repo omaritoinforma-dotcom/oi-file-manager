@@ -151,6 +151,44 @@ class Prefs(context: Context) {
         get() = sp.getString("app_backup_folder", null) ?: defaultAppBackupFolder
         set(v) = sp.edit().putString("app_backup_folder", v).apply()
 
+    // ---- Copia automática ----
+
+    var autoBackup: Boolean
+        get() = sp.getBoolean("auto_backup", false)
+        set(v) = sp.edit().putBoolean("auto_backup", v).apply()
+
+    /** Id de la conexión de destino (las conexiones no van en la copia de ajustes). */
+    var autoBackupConnection: String
+        get() = sp.getString("auto_backup_connection", "").orEmpty()
+        set(v) = sp.edit().putString("auto_backup_connection", v).apply()
+
+    /** Carpeta dentro de la conexión, relativa a su carpeta inicial. */
+    var autoBackupFolder: String
+        get() = sp.getString("auto_backup_folder", null) ?: "OI Archivos copia"
+        set(v) = sp.edit().putString("auto_backup_folder", v).apply()
+
+    var autoBackupKinds: Set<BackupKind>
+        get() =
+            sp.getString("auto_backup_kinds", null)
+                ?.split(',')
+                ?.mapNotNull { n -> BackupKind.entries.firstOrNull { it.name == n } }
+                ?.toSet() ?: setOf(BackupKind.PHOTOS, BackupKind.VIDEOS)
+        set(v) = sp.edit().putString("auto_backup_kinds", v.joinToString(",") { it.name }).apply()
+
+    /** Otras carpetas del teléfono que se copian enteras. */
+    var autoBackupFolders: List<String>
+        get() = sp.getString("auto_backup_folders", "").orEmpty().split('\n').filter { it.isNotBlank() }
+        set(v) = sp.edit().putString("auto_backup_folders", v.joinToString("\n")).apply()
+
+    var autoBackupWifiOnly: Boolean
+        get() = sp.getBoolean("auto_backup_wifi", true)
+        set(v) = sp.edit().putBoolean("auto_backup_wifi", v).apply()
+
+    /** Resultado de la última copia, para mostrarlo en Ajustes. */
+    var autoBackupLast: String
+        get() = sp.getString("auto_backup_last", "").orEmpty()
+        set(v) = sp.edit().putString("auto_backup_last", v).apply()
+
     // ---- Editor (opciones del editor de ES) ----
 
     var editorFont: Int
