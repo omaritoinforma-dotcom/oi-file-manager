@@ -1,6 +1,6 @@
 # Comparación con ES File Explorer
 
-Fecha: 4 de octubre de 2026. Esta matriz define el **mínimo** del proyecto: cada función de ES que un usuario puede usar, frente a su estado en OI Archivos.
+Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android: `scripts/android_features.py`, 21/21 aprobadas). Esta matriz define el **mínimo** del proyecto: cada función de ES que un usuario puede usar, frente a su estado en OI Archivos.
 
 ## Fuente y método
 
@@ -29,36 +29,36 @@ Fecha: 4 de octubre de 2026. Esta matriz define el **mínimo** del proyecto: cad
 
 | Función de ES | OI | Nota |
 | --- | --- | --- |
-| Copiar, cortar, pegar, mover, renombrar, eliminar, crear | 🟡 | Copia local durable con pruebas unitarias; falta un recorrido en el emulador |
+| Copiar, cortar, pegar, mover, renombrar, eliminar, crear | ✅ | Emulador Android 15: crear carpeta, copiar, cortar, renombrar y eliminar, verificados en el disco |
 | Selección múltiple, todo, ninguno, por intervalo | 🟡 | |
 | Portapapeles visible, «Pegar todo» y botón flotante cuando hay contenido | ❌ | |
-| Renombrado por lotes (número inicial, cambiar extensión) | 🟡 | |
-| Propiedades (tamaño, contenido, fechas, permisos, propietario) | 🟡 | |
+| Renombrado por lotes (número inicial, cambiar extensión) | ✅ | Emulador Android 15 (prefijo); numerar y cambiar extensión sin recorrido propio |
+| Propiedades (tamaño, contenido, fechas, permisos, propietario) | ✅ | Emulador Android 15, con SHA-256 comprobado |
 | Copiar ruta completa | 🟡 | |
 | Abrir con | 🟡 | |
 | «Abrir como» (elegir tipo) y gestión de apps predeterminadas | ❌ | |
 | Fijar elementos arriba | ❌ | |
-| Papelera de reciclaje (activar, restaurar, vaciar) | 🟡 | |
+| Papelera de reciclaje (activar, restaurar, vaciar) | ✅ | Emulador Android 15 |
 | Ocultar archivos y lista de ocultos protegida con contraseña | 🟠 | Ocultar o mostrar por nombre existe; falta la lista protegida con contraseña |
 | Accesos directos en el escritorio | 🟡 | |
 | Comprimir ZIP/7z con nivel de compresión | 🟠 | Crear y cifrar sí; falta elegir el nivel |
 | Extraer ZIP | ✅ | Emulador |
-| Extraer 7z/RAR (motor 7-Zip, igual que ES) | 🟡 | Probado en el host; falta en Android |
-| Cifrar y descifrar | 🟡 | |
+| Extraer 7z/RAR (motor 7-Zip, igual que ES) | ✅ | Emulador Android 15: crear y extraer 7z cifrado, extraer RAR5 cifrado |
+| Cifrar y descifrar | ✅ | Emulador Android 15 |
 
 ### Navegación y vistas
 
 | Función de ES | OI | Nota |
 | --- | --- | --- |
-| Ventanas o pestañas, abrir en ventana nueva | 🟡 | |
-| Vistas lista, detalle y cuadrícula, ordenar, miniaturas | 🟡 | |
+| Ventanas o pestañas, abrir en ventana nueva | ✅ | Emulador Android 15 |
+| Vistas lista, detalle y cuadrícula, ordenar, miniaturas | 🟡 | Ordenar por tamaño comprobado en el emulador; faltan vistas y miniaturas |
 | Doble panel | 🟠 | La pantalla abre (emulador); falta comprobar arrastrar |
-| Marcadores, historial y opciones del historial | 🟡 | |
-| Categorías (imágenes, música, vídeo, documentos, APK, comprimidos) | 🟡 | |
+| Marcadores, historial y opciones del historial | ✅ | Emulador Android 15: el marcador sobrevive al reinicio; el historial abre |
+| Categorías (imágenes, música, vídeo, documentos, APK, comprimidos) | ✅ | Emulador Android 15 (Documentos; el resto usa la misma consulta) |
 | Subcategorías de ES: libros electrónicos, capturas, grabaciones, Office separado (DOC/XLS/PPT), «último abierto o creado» | 🟠 | |
-| Gestos configurables | 🟡 | |
+| Gestos configurables | ✅ | Emulador Android 15 |
 | Barra lateral personalizable y diseño de la barra de herramientas | ❌ | |
-| Temas: claro y oscuro | 🟡 | |
+| Temas: claro y oscuro | ✅ | Emulador Android 15 (brillo de pantalla medido) |
 | Temas: colores, fondo, estilo de carpetas | ❌ | |
 | Idioma dentro de la app | ❌ | Hoy sigue el idioma del sistema |
 | Contraseña para abrir la app | ❌ | |
@@ -69,9 +69,9 @@ Fecha: 4 de octubre de 2026. Esta matriz define el **mínimo** del proyecto: cad
 
 | Función de ES | OI | Nota |
 | --- | --- | --- |
-| Búsqueda avanzada (tamaño, fecha, tipo, subcarpetas, ocultos) | 🟠 | La pantalla abre (emulador); faltan el filtro de archivos del sistema y la búsqueda dentro de una categoría |
-| Analizador de espacio por tipo y carpeta | 🟡 | |
-| Archivos grandes, recientes, vacíos y duplicados | 🟡 | |
+| Búsqueda avanzada (tamaño, fecha, tipo, subcarpetas, ocultos) | 🟠 | Búsqueda por contenido comprobada en el emulador, tras corregir un error que borraba los resultados; faltan el filtro de archivos del sistema y la búsqueda dentro de una categoría |
+| Analizador de espacio por tipo y carpeta | ✅ | Emulador Android 15 |
+| Archivos grandes, recientes, vacíos y duplicados | ✅ | Emulador Android 15 (grandes y duplicados) |
 | Limpieza de basura: caché, restos de apps desinstaladas, APK obsoletos, miniaturas | 🟠 | Solo temporales y vacíos |
 | Analizador de apps (permisos sensibles, tamaño, memoria) | 🟠 | Se muestran los permisos de cada APK; falta el análisis global |
 | Informe diario de archivos nuevos y aviso de archivos nuevos | ❌ | |
@@ -83,9 +83,9 @@ Fecha: 4 de octubre de 2026. Esta matriz define el **mínimo** del proyecto: cad
 | --- | --- | --- |
 | Visor de imágenes, zoom, deslizar | ✅ | Emulador |
 | Recortar imagen y fijarla como fondo | 🟠 | Fondo sí; falta recortar |
-| Reproductor de audio y vídeo, aleatorio y repetir | 🟡 | |
+| Reproductor de audio y vídeo, aleatorio y repetir | 🟡 | El audio suena en el emulador; faltan vídeo, aleatorio y repetir |
 | Listas de reproducción guardadas | ❌ | Solo cola temporal |
-| Audio en segundo plano con notificación | 🟡 | |
+| Audio en segundo plano con notificación | ✅ | Emulador Android 15: sigue sonando al salir, con notificación |
 | Poner como tono, alarma o notificación | ❌ | |
 | Reproducir desde red sin descargar (streaming) | ❌ | Hoy se descarga a caché antes de abrir |
 | Visor de PDF | ✅ | Emulador |
@@ -98,12 +98,12 @@ Fecha: 4 de octubre de 2026. Esta matriz define el **mínimo** del proyecto: cad
 
 | Función de ES | OI | Nota |
 | --- | --- | --- |
-| Lista de apps, abrir, desinstalar, compartir, información | 🟡 | |
-| Copia de seguridad de APK (también divididos) | 🟡 | |
+| Lista de apps, abrir, desinstalar, compartir, información | 🟡 | Lista y búsqueda usadas en el emulador; faltan abrir, desinstalar y compartir |
+| Copia de seguridad de APK (también divididos) | ✅ | Emulador Android 15 (APK simple) |
 | Instalar o desinstalar varias apps a la vez | ❌ | |
 | Copia antes de desinstalar, limpiar carpetas asociadas | ❌ | |
 | Desinstalar apps del sistema (root) | ❌ | |
-| Ver el contenido de un APK | 🟡 | |
+| Ver el contenido de un APK | ✅ | Emulador Android 15 |
 
 ### Red, nube y dispositivos
 
@@ -153,8 +153,8 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 
 | Estado | Funciones |
 | --- | ---: |
-| ✅ Comprobadas en su entorno real | 7 |
-| 🟡 Implementadas, sin comprobar | 31 |
+| ✅ Comprobadas en su entorno real | 23 |
+| 🟡 Implementadas, sin comprobar | 15 |
 | 🟠 Parciales | 10 |
 | ❌ Faltan | 31 |
 | **Total de filas** | **79** |
@@ -174,4 +174,4 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 11. Instalación y desinstalación por lotes.
 12. Aviso de archivos nuevos.
 
-Los recuentos son por fila de esta matriz; una fila puede agrupar varias funciones pequeñas. Solo 7 de 79 cumplen ya el criterio de terminación (conectadas y comprobadas en su entorno real).
+Los recuentos son por fila de esta matriz; una fila puede agrupar varias funciones pequeñas. Solo 23 de 79 cumplen ya el criterio de terminación (conectadas y comprobadas en su entorno real).
