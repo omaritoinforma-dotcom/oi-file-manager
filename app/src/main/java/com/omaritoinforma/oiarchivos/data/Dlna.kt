@@ -20,7 +20,11 @@ import org.w3c.dom.Element
  * órdenes de AVTransport (SOAP). La TV descarga el archivo del [StreamServer].
  */
 object Dlna {
-    data class Renderer(val name: String, val location: String, val controlUrl: String, val host: String)
+    data class Renderer(override val name: String, val location: String, val controlUrl: String, override val host: String) :
+        Tv {
+        override val key: String
+            get() = location
+    }
 
     const val SSDP_ADDRESS = "239.255.255.250"
     const val SSDP_PORT = 1900

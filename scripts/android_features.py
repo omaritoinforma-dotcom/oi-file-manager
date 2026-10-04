@@ -1917,6 +1917,216 @@ def cast_to_tv():
 
 
 
+def cast_encode(source, destination, namespace, payload):
+    """CastMessage de protobuf (como CastV2.encode de la app): versión 0 y carga de texto."""
+    def varint(value):
+        out = bytearray()
+        while value > 0x7F:
+            out.append((value & 0x7F) | 0x80)
+            value >>= 7
+        out.append(value)
+        return bytes(out)
+
+    def text(field, value):
+        data = value.encode("utf-8")
+        return varint(field << 3 | 2) + varint(len(data)) + data
+
+    body = (varint(1 << 3) + varint(0) + text(2, source) + text(3, destination) + text(4, namespace)
+            + varint(5 << 3) + varint(0) + text(6, payload))
+    return struct.pack(">I", len(body)) + body
+
+
+def cast_decode(body):
+    fields, i = {}, 0
+
+    def varint():
+        nonlocal i
+        shift = result = 0
+        while True:
+            b = body[i]
+            i += 1
+            result |= (b & 0x7F) << shift
+            if not b & 0x80:
+                return result
+            shift += 7
+
+    while i < len(body):
+        key = varint()
+        if key & 7 == 0:
+            varint()
+        elif key & 7 == 2:
+            n = varint()
+            fields[key >> 3] = body[i:i + n].decode("utf-8")
+            i += n
+        else:
+            raise ValueError(f"Campo inesperado {key}")
+    return fields.get(2, ""), fields.get(3, ""), fields.get(4, ""), fields.get(6, "")
+
+
+class FakeCast:
+    """Chromecast falso en el equipo de CI: CASTV2 sobre TLS en el 8009 y su nombre en el 8008
+    (/setup/eureka_info). El emulador lo ve en 10.0.2.2."""
+
+    def __init__(self, name="Chromecast de prueba"):
+        import datetime
+        import http.server
+        import socket
+        import ssl
+        import threading
+        from cryptography import x509
+        from cryptography.hazmat.primitives import hashes, serialization
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from cryptography.x509.oid import NameOID
+
+        self.messages = []
+        self.tmp = tempfile.TemporaryDirectory()
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Chromecast de prueba")])
+        now = datetime.datetime.now(datetime.timezone.utc)
+        cert = (x509.CertificateBuilder().subject_name(subject).issuer_name(subject).public_key(key.public_key())
+                .serial_number(x509.random_serial_number()).not_valid_before(now - datetime.timedelta(days=1))
+                .not_valid_after(now + datetime.timedelta(days=2)).sign(key, hashes.SHA256()))
+        cert_path, key_path = pathlib.Path(self.tmp.name, "c.pem"), pathlib.Path(self.tmp.name, "k.pem")
+        cert_path.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
+        key_path.write_bytes(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                               serialization.NoEncryption()))
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(str(cert_path), str(key_path))
+        self.server = socket.socket()
+        self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.server.bind(("0.0.0.0", 8009))
+        self.server.listen(4)
+        cast = self
+
+        def handle(raw):
+            try:
+                conn = context.wrap_socket(raw, server_side=True)
+            except (OSError, ssl.SSLError):
+                return
+            with conn:
+                def reply(to, namespace, payload):
+                    conn.sendall(cast_encode(to[1], to[0], namespace, json.dumps(payload)))
+
+                def media(rid, state, time_s):
+                    return {"type": "MEDIA_STATUS", "requestId": rid, "status": [
+                        {"mediaSessionId": 3, "playerState": state, "currentTime": time_s, "media": {"duration": 600.0}}]}
+
+                def exactly(n):
+                    data = b""
+                    while len(data) < n:
+                        chunk = conn.recv(n - len(data))  # sobre TLS no se admite MSG_WAITALL
+                        if not chunk:
+                            raise EOFError
+                        data += chunk
+                    return data
+
+                while True:
+                    try:
+                        body = exactly(struct.unpack(">I", exactly(4))[0])
+                    except (OSError, EOFError):
+                        return
+                    source, destination, namespace, payload = cast_decode(body)
+                    data = json.loads(payload)
+                    cast.messages.append((namespace, destination, data))
+                    rid, kind = data.get("requestId"), data.get("type")
+                    if kind == "LAUNCH":
+                        reply((source, destination), "urn:x-cast:com.google.cast.tp.heartbeat", {"type": "PING"})
+                        reply((source, destination), "urn:x-cast:com.google.cast.receiver", {
+                            "type": "RECEIVER_STATUS", "requestId": rid, "status": {"applications": [
+                                {"appId": "CC1AD845", "transportId": "web-7", "sessionId": "s1"}]}})
+                    elif kind == "LOAD":
+                        reply((source, destination), "urn:x-cast:com.google.cast.media", media(rid, "PLAYING", 0.0))
+                    elif kind == "GET_STATUS":
+                        reply((source, destination), "urn:x-cast:com.google.cast.media", media(rid, "PLAYING", 65.4))
+                    elif kind == "PAUSE":
+                        reply((source, destination), "urn:x-cast:com.google.cast.media", media(rid, "PAUSED", 65.4))
+                    elif kind in ("PLAY", "SEEK"):
+                        reply((source, destination), "urn:x-cast:com.google.cast.media", media(rid, "PLAYING", 65.4))
+                    elif kind == "STOP":
+                        reply((source, destination), "urn:x-cast:com.google.cast.media", media(rid, "IDLE", 0.0))
+
+        def accept_loop():
+            while True:
+                try:
+                    raw, _ = self.server.accept()
+                except OSError:
+                    return
+                threading.Thread(target=handle, args=(raw,), daemon=True).start()
+
+        threading.Thread(target=accept_loop, daemon=True).start()
+
+        class Info(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def do_GET(self):
+                body = json.dumps({"name": name}).encode()
+                self.send_response(200 if self.path.startswith("/setup/eureka_info") else 404)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+        self.http = http.server.ThreadingHTTPServer(("0.0.0.0", 8008), Info)
+        threading.Thread(target=self.http.serve_forever, daemon=True).start()
+
+    def types(self):
+        return [data.get("type") for _, _, data in self.messages]
+
+    def first(self, kind):
+        return next((ns, to, data) for ns, to, data in self.messages if data.get("type") == kind)
+
+    def close(self):
+        self.server.close()
+        self.http.shutdown()
+        self.tmp.cleanup()
+
+
+@check("enviar-a-chromecast")
+def cast_to_chromecast():
+    import urllib.parse
+
+    tv = FakeCast()
+    try:
+        open_test_folder()
+        find("tono.wav")
+        long_press("tono.wav")
+        menu_option("Enviar a la TV")
+        wait("Añadir por dirección", timeout=30)
+        tap("Añadir por dirección")
+        fill("Dirección de la TV", "10.0.2.2")
+        tap("Buscar")
+        tap(wait("Chromecast de prueba", timeout=40)[0].get("text"))
+        until(lambda: "LOAD" in tv.types(), "El Chromecast no recibió el archivo", 40)
+        _, to, launch = tv.first("LAUNCH")
+        assert launch["appId"] == "CC1AD845" and to == "receiver-0", launch
+        assert "PONG" in tv.types(), "El teléfono no contestó al PING del Chromecast"
+        ns, to, load = tv.first("LOAD")
+        assert to == "web-7" and ns == "urn:x-cast:com.google.cast.media", (ns, to)
+        assert load["media"]["metadata"]["title"] == "tono.wav", load
+        url = load["media"]["contentId"]
+        # El Chromecast (equipo de CI, 10.0.2.2) puede leer el archivo y llega completo.
+        status, data = fetch_from_host(url)
+        assert status == 200, status
+        assert hashlib.sha256(data).hexdigest() == device_sha256(f"{DIR}/tono.wav"), "El Chromecast recibió otro archivo"
+        # Cualquier otra dirección (aquí, el propio teléfono) recibe 403 aunque conozca el enlace.
+        parsed = urllib.parse.urlparse(url)
+        raw = f"GET {parsed.path} HTTP/1.1\r\nHost: {parsed.hostname}\r\nConnection: close\r\n\r\n".encode()
+        other = subprocess.run(["adb", "shell", "toybox", "nc", "-w", "5", parsed.hostname, str(parsed.port)],
+                               input=raw, capture_output=True, timeout=30).stdout
+        assert b" 403 " in other.split(b"\r\n", 1)[0], other[:200]
+        wait_text("Reproduciendo en «Chromecast de prueba»")
+        wait_text("1:05 / 10:00")
+        evidence("chromecast-reproduciendo")
+        tap("Pausa")
+        until(lambda: "PAUSE" in tv.types(), "El Chromecast no recibió la pausa", 15)
+        assert tv.first("PAUSE")[2]["mediaSessionId"] == 3
+        tap("Detener")
+        until(lambda: "STOP" in tv.types(), "El Chromecast no recibió la orden de detener", 15)
+    finally:
+        tv.close()
+
+
 @check("descargar-desde-una-url")
 def download_from_url():
     """El equipo de CI sirve un archivo por HTTP (10.0.2.2 para el emulador)."""

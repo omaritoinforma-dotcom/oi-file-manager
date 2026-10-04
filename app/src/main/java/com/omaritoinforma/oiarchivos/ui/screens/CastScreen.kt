@@ -7,16 +7,21 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.omaritoinforma.oiarchivos.data.CastDiscovery
 import com.omaritoinforma.oiarchivos.data.CastSession
+import com.omaritoinforma.oiarchivos.data.CastV2
 import com.omaritoinforma.oiarchivos.data.Dlna
+import com.omaritoinforma.oiarchivos.data.Tv
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.omaritoinforma.oiarchivos.data.tr
 
-/** «Enviar a la TV»: elegir un televisor DLNA y controlar la reproducción. */
+/** «Enviar a la TV»: elegir un televisor DLNA o un Chromecast y controlar la reproducción. */
 @Composable
 fun CastScreen(vm: MainViewModel) {
     val session by CastSession.state.collectAsState()
@@ -68,21 +73,21 @@ private fun CastControls(state: CastSession.State) {
 @Composable
 private fun CastPicker(vm: MainViewModel) {
     val source = vm.castSource
-    val found = remember { mutableStateListOf<Dlna.Renderer>() }
+    val found = remember { mutableStateListOf<Tv>() }
+    val ctx = LocalContext.current
     var searching by remember { mutableStateOf(false) }
     var round by remember { mutableIntStateOf(0) }
     var adding by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(round) {
         searching = true
-        withContext(Dispatchers.IO) {
-            runCatching {
-                Dlna.search { renderer ->
-                    scope.launch {
-                        if (found.none { it.location == renderer.location }) found += renderer
-                    }
-                }
-            }
+        fun add(tv: Tv) {
+            scope.launch { if (found.none { it.key == tv.key }) found += tv }
+        }
+        // Televisores DLNA (SSDP) y Chromecast (mDNS) a la vez.
+        coroutineScope {
+            launch(Dispatchers.IO) { runCatching { Dlna.search { add(it) } } }
+            launch { runCatching { CastDiscovery.search(ctx) { add(it) } } }
         }
         searching = false
     }
@@ -99,10 +104,12 @@ private fun CastPicker(vm: MainViewModel) {
                     tr("No se encontró ninguna TV. Debe estar encendida y en la misma Wi-Fi; también puedes añadirla por su dirección."),
                     Modifier.padding(16.dp))
         }
-        items(found, key = { it.location }) { renderer ->
+        items(found, key = { it.key }) { renderer ->
             ListItem(
                 headlineContent = { Text(renderer.name) },
-                supportingContent = { Text(renderer.host) },
+                supportingContent = {
+                    Text(if (renderer is CastV2.Device) tr("Chromecast · {0}", renderer.host) else tr("DLNA · {0}", renderer.host))
+                },
                 modifier =
                     Modifier.clickable(enabled = source != null) {
                         source?.let { CastSession.start(renderer, it) }
@@ -120,12 +127,12 @@ private fun CastPicker(vm: MainViewModel) {
             onDismiss = { adding = false },
             onFound = { renderer ->
                 adding = false
-                if (found.none { it.location == renderer.location }) found += renderer
+                if (found.none { it.key == renderer.key }) found += renderer
             })
 }
 
 @Composable
-private fun AddRendererDialog(onDismiss: () -> Unit, onFound: (Dlna.Renderer) -> Unit) {
+private fun AddRendererDialog(onDismiss: () -> Unit, onFound: (Tv) -> Unit) {
     var address by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -135,7 +142,7 @@ private fun AddRendererDialog(onDismiss: () -> Unit, onFound: (Dlna.Renderer) ->
         title = { Text(tr("Añadir TV")) },
         text = {
             Column {
-                Text(tr("IP de la TV (por ejemplo 192.168.1.50) o la URL de su descripción."))
+                Text(tr("IP de la TV o del Chromecast (por ejemplo 192.168.1.50) o la URL de la descripción DLNA."))
                 OutlinedTextField(
                     address,
                     {
@@ -156,7 +163,9 @@ private fun AddRendererDialog(onDismiss: () -> Unit, onFound: (Dlna.Renderer) ->
                     busy = true
                     scope.launch {
                         val renderer =
-                            withContext(Dispatchers.IO) { runCatching { Dlna.find(address) } }
+                            withContext(Dispatchers.IO) {
+                                runCatching { Dlna.find(address) ?: CastV2.find(address) }
+                            }
                         busy = false
                         renderer
                             .onSuccess { if (it != null) onFound(it) else error = tr("No respondió ninguna TV") }

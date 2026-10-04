@@ -128,7 +128,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la última pasada completa de `scri
 | Servidor HTTP desde el navegador | ✅ | Emulador |
 | Enviar archivos entre teléfonos (ES Sender: misma Wi-Fi, punto de acceso, código QR) | 🟠 | Misma Wi-Fi: enviar y recibir comprobados en el emulador, con aceptación y SHA-256 por archivo. Código QR: el que recibe muestra un QR y el otro lo lee con su cámara, lo que abre OI Archivos listo para enviar (solo redes locales y con confirmación); comprobación en el emulador preparada. Falta el punto de acceso Wi-Fi, que el emulador no puede probar |
 | Crear un punto de acceso Wi-Fi para transferir | ❌ | |
-| Enviar a la TV: DLNA/UPnP y Chromecast | 🟠 | DLNA comprobado en el emulador con una TV de prueba (reproducir, pausa, detener; solo esa TV puede leer el archivo). Falta Chromecast |
+| Enviar a la TV: DLNA/UPnP y Chromecast | 🟡 | DLNA comprobado en el emulador con una TV de prueba (reproducir, pausa, detener; solo esa TV puede leer el archivo). Chromecast con el protocolo abierto CASTV2, sin el SDK de Google: se busca por mDNS o por su IP, se abre el reproductor por omisión y se le pasa el enlace, que solo puede leer ese Chromecast; reproducir, pausa, posición y detener. Probado en la JVM contra un receptor de prueba y, con TLS, contra el receptor en Python que usa el emulador; comprobación en el emulador preparada. Falta probarlo con un Chromecast físico |
 | Instalar y gestionar una Android TV por ADB | ❌ | |
 | Bluetooth: compartir y explorar (cliente OBEX) | 🟡 | Falta un dispositivo real |
 | Bluetooth: servidor OBEX FTP (que otros exploren el teléfono) | ❌ | |
@@ -160,14 +160,14 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | Estado | Filas |
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 40 |
-| 🟡 Implementadas; su comprobación en el emulador está escrita y espera su pasada | 35 |
-| 🟠 Parciales | 2 |
+| 🟡 Implementadas; su comprobación en el emulador está escrita y espera su pasada | 36 |
+| 🟠 Parciales | 1 |
 | ❌ Faltan | 8 |
 | **Total de filas** | **85** |
 
 **OI Archivos no cubre todavía el mínimo.** Lo que falta, por valor para el usuario:
 
-1. Enviar a la TV por Chromecast (DLNA ya está) y enviar entre teléfonos por punto de acceso Wi-Fi (misma Wi-Fi y código QR ya están).
+1. Enviar entre teléfonos por punto de acceso Wi-Fi (misma Wi-Fi y código QR ya están).
 2. Lo que exige hardware, root o cuentas que el CI no tiene: Android TV por ADB, servidor OBEX, expulsar USB, punto de acceso propio, funciones root y nubes minoritarias.
 
 Las filas en 🟡 pasan a ✅ cuando las aprueba una pasada del emulador en el CI.

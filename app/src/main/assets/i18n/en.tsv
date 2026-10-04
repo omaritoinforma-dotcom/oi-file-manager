@@ -776,7 +776,6 @@ No se encontró ninguna TV. Debe estar encendida y en la misma Wi-Fi; también p
 Buscar otra vez	Search again
 Añadir por dirección	Add by address
 Añadir TV	Add TV
-IP de la TV (por ejemplo 192.168.1.50) o la URL de su descripción.	The TV's IP (for example 192.168.1.50) or the URL of its description.
 Dirección de la TV	TV address
 No respondió ninguna TV	No TV responded
 No se pudo conectar	Couldn't connect
@@ -1285,3 +1284,14 @@ Sonido de notificación	Notification sound
 Sonido de alarma	Alarm sound
 Android no reconoce «{0}» como audio	Android doesn't recognize “{0}” as audio
 Falta el permiso para cambiar los ajustes del sistema	The permission to change system settings is missing
+Mensaje de Chromecast no válido	Invalid Chromecast message
+Solo se envía a un Chromecast de la red local	Only a Chromecast on the local network can be used
+El Chromecast cerró la conexión	The Chromecast closed the connection
+El Chromecast rechazó la orden ({0})	The Chromecast rejected the command ({0})
+El Chromecast no respondió a tiempo	The Chromecast didn't respond in time
+El Chromecast no abrió el reproductor	The Chromecast didn't open the player
+No hay nada reproduciéndose	Nothing is playing
+Chromecast ({0})	Chromecast ({0})
+Chromecast · {0}	Chromecast · {0}
+DLNA · {0}	DLNA · {0}
+IP de la TV o del Chromecast (por ejemplo 192.168.1.50) o la URL de la descripción DLNA.	The IP of the TV or the Chromecast (for example 192.168.1.50) or the URL of the DLNA description.
