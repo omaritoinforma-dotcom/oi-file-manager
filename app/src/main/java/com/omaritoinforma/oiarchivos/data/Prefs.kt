@@ -48,6 +48,11 @@ class Prefs(context: Context) {
     var bookmarks: List<String>
         get() = sp.getString("bookmarks", "").orEmpty().split('\n').filter { it.isNotBlank() }
         set(v) = sp.edit().putString("bookmarks", v.joinToString("\n")).apply()
+
+    /** List priority is independent of navigation bookmarks and supports every valid filename. */
+    var pinnedPaths: Set<String>
+        get() = sp.getStringSet("pinned_paths", emptySet())?.toSet() ?: emptySet()
+        set(v) = sp.edit().putStringSet("pinned_paths", v.toSet()).apply()
 }
 
 private inline fun <reified T : Enum<T>> enumOr(name: String?, default: T): T =

@@ -25,7 +25,7 @@ jobs:
           OI_ARCHIVE_TEST_EXECUTABLE: ${{ github.workspace }}/build/native-archives/--host/7zz
         run: |
           chmod +x gradlew
-          ./gradlew testDebugUnitTest assembleRelease lintDebug --stacktrace
+          ./gradlew testDebugUnitTest assembleRelease assembleDebug assembleDebugAndroidTest lintDebug --stacktrace
       - name: Guardar informes de pruebas
         if: always()
         uses: actions/upload-artifact@v4
@@ -41,10 +41,16 @@ jobs:
         with:
           name: OI-Archivos-apk
           path: OI-Archivos-*.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OI-Archivos-tests-Android
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
   smoke:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -55,6 +61,10 @@ jobs:
         with:
           name: OI-Archivos-apk
           path: apk
+      - uses: actions/download-artifact@v4
+        with:
+          name: OI-Archivos-tests-Android
+          path: android-tests
       - name: Permitir aceleración del emulador
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -69,7 +79,9 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: python3 scripts/smoke_android.py
+          script: |
+            python3 scripts/smoke_android.py
+            python3 scripts/run_android_tests.py
       - name: Guardar evidencia del emulador
         if: always()
         uses: actions/upload-artifact@v4

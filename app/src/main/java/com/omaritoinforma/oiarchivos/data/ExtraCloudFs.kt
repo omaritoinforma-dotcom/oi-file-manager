@@ -11,34 +11,38 @@ import javax.xml.parsers.DocumentBuilderFactory
 import org.json.JSONObject
 import org.w3c.dom.Element
 
-internal class YandexFs(c: Connection) : RemoteFs {
+internal class YandexFs(c: Connection, private val jsonRequest: CloudJsonRequest? = null) : RemoteFs {
     private val api = "https://cloud-api.yandex.net/v1/disk/resources"
     private val http = Http("OAuth ${c.secret}")
 
-    private fun json(url: String, method: String = "GET") = JSONObject(http.request(url, method))
+    private fun json(url: String, method: String = "GET") =
+        jsonRequest?.invoke(url, method, null) ?: JSONObject(http.request(url, method))
 
     override fun list(path: String): List<RemoteEntry> {
-        val out = ArrayList<RemoteEntry>()
+        val out = CloudListing<RemoteEntry> { it.path }
         var offset = 0
         while (true) {
-            val items =
+            out.beginPage(offset.toString())
+            val embedded =
                 json("$api?path=${encode(path)}&limit=1000&offset=$offset")
                     .getJSONObject("_embedded")
-                    .getJSONArray("items")
+            val items = embedded.getJSONArray("items")
             for (i in 0 until items.length()) {
                 val f = items.getJSONObject(i)
-                out +=
+                out.add(
                     RemoteEntry(
                         f.getString("path"),
                         f.getString("name"),
                         f.getString("type") == "dir",
-                        f.optLong("size", -1))
+                        f.optLong("size", -1)))
             }
-            if (items.length() < 1000) break
+            val total = embedded.getLong("total")
+            if (total < out.size) throw IOException("Yandex devolvió un listado inconsistente")
+            if (out.size.toLong() == total) break
+            if (items.length() == 0) throw IOException("Yandex no completó la paginación")
             offset += items.length()
-            if (offset > 50000) throw IOException("La carpeta supera el límite de 50.000 elementos")
         }
-        return out
+        return out.result()
     }
 
     private fun signed(url: String): String {
@@ -79,37 +83,45 @@ internal class YandexFs(c: Connection) : RemoteFs {
     }
 }
 
-internal class BoxFs(c: Connection) : RemoteFs {
+internal class BoxFs(c: Connection, private val jsonRequest: CloudJsonRequest? = null) : RemoteFs {
+    override val supportsDurableUploads = true
     private val api = "https://api.box.com/2.0"
     private val http = Http("Bearer ${c.secret}")
+    internal var deleteRequest: CloudDeleteRequest = { url, headers ->
+        http.request(url, "DELETE", headers = headers)
+        Unit
+    }
 
     private fun json(url: String, method: String = "GET", body: JSONObject? = null) =
-        JSONObject(
+        jsonRequest?.invoke(url, method, body) ?: JSONObject(
             http.request(
                 url, method, body?.toString(), mapOf("Content-Type" to "application/json")))
 
     override fun list(path: String): List<RemoteEntry> {
-        val out = ArrayList<RemoteEntry>()
-        var offset = 0
+        val out = CloudListing<RemoteEntry> { it.path }
+        var marker = ""
         do {
+            out.beginPage(marker)
+            val markerQuery = if (marker.isEmpty()) "" else "&marker=${encode(marker)}"
             val result =
                 json(
-                    "$api/folders/${encode(id(path.ifBlank{"0"}))}/items?limit=1000&offset=$offset&fields=id,type,name,size")
+                    "$api/folders/${encode(id(path.ifBlank{"0"}))}/items?usemarker=true&limit=1000$markerQuery&fields=id,type,name,size,etag")
             val entries = result.getJSONArray("entries")
             for (i in 0 until entries.length()) {
                 val f = entries.getJSONObject(i)
-                out +=
+                out.add(
                     RemoteEntry(
                         f.getString("type") + ":" + f.getString("id"),
                         f.getString("name"),
                         f.getString("type") == "folder",
-                        f.optLong("size", -1))
+                        f.optLong("size", -1),
+                        f.optString("etag")))
             }
-            offset += entries.length()
-            if (offset >= result.getInt("total_count")) break
-            if (offset > 50000) throw IOException("La carpeta supera el límite de 50.000 elementos")
-        } while (true)
-        return out
+            if (!result.has("next_marker"))
+                throw IOException("Box no confirmó un listado completo o un marcador siguiente")
+            marker = result.pageToken("next_marker")
+        } while (marker.isNotEmpty())
+        return out.result()
     }
 
     private fun id(path: String) = path.substringAfter(':', path)
@@ -182,15 +194,44 @@ internal class BoxFs(c: Connection) : RemoteFs {
             mapOf("Content-Type" to "application/json"))
     }
 
+    override fun publishUpload(stage: RemoteEntry, parent: String, name: String): String {
+        SafeFiles.requireName(name)
+        // Box rejects a conflicting name with HTTP 409; it does not replace another item.
+        val result =
+            json("$api/${if (stage.directory) "folders" else "files"}/${encode(id(stage.path))}",
+                "PUT", JSONObject().put("name", name))
+        if (result.getString("id") != id(stage.path))
+            throw IOException("Box no confirmó el archivo publicado")
+        return (if (stage.directory) "folder:" else "file:") + result.getString("id")
+    }
+
     override fun delete(entry: RemoteEntry) {
         http.request(
             "$api/${if(entry.directory)"folders"else"files"}/${encode(id(entry.path))}?recursive=true",
             "DELETE")
     }
+
+    override fun deleteIfUnchanged(entry: RemoteEntry): Boolean {
+        if (entry.directory || entry.revision.isBlank()) return false
+        deleteRequest("$api/files/${encode(id(entry.path))}", mapOf("If-Match" to entry.revision))
+        return true
+    }
+
+    override fun deleteEmptyDirectory(entry: RemoteEntry): Boolean {
+        if (!entry.directory) return false
+        val headers = if (entry.revision.isBlank()) emptyMap()
+            else mapOf("If-Match" to entry.revision)
+        // An entry arriving after the client's empty check causes a conflict on the server.
+        deleteRequest("$api/folders/${encode(id(entry.path))}?recursive=false", headers)
+        return true
+    }
 }
 
 /** S3-compatible HTTPS endpoints, path-style buckets, AWS Signature V4 and streamed payloads. */
-internal class S3Fs(private val account: Connection) : RemoteFs {
+internal class S3Fs(
+    private val account: Connection,
+    private val listingResponse: ((String, Map<String, String>) -> InputStream)? = null
+) : RemoteFs {
     private val base = account.host.trimEnd('/')
     private val region = account.fingerprint.ifBlank { "us-east-1" }
 
@@ -276,8 +317,7 @@ internal class S3Fs(private val account: Connection) : RemoteFs {
     }
 
     private fun xml(input: InputStream): org.w3c.dom.Document {
-        val bytes = input.use { it.readBytes() }
-        if (bytes.size > 8 * 1024 * 1024) throw IOException("Respuesta XML demasiado grande")
+        val bytes = input.use { CloudXml.bounded(it, 8 * 1024 * 1024) }
         val text = String(bytes, Charsets.UTF_8)
         if (Regex("<!\\s*(DOCTYPE|ENTITY)", RegexOption.IGNORE_CASE).containsMatchIn(text))
             throw IOException("Declaración XML no permitida")
@@ -297,17 +337,33 @@ internal class S3Fs(private val account: Connection) : RemoteFs {
         return factory.newDocumentBuilder().parse(bytes.inputStream())
     }
 
+    private fun listing(bucket: String, query: Map<String, String>) =
+        xml(listingResponse?.invoke("/$bucket", query) ?: request("/$bucket", "GET", query))
+
+    private fun continuation(doc: org.w3c.dom.Document): String {
+        val truncated = doc.getElementsByTagNameNS("*", "IsTruncated").item(0)?.textContent?.trim()
+        val next =
+            doc.getElementsByTagNameNS("*", "NextContinuationToken")
+                .item(0)?.textContent.orEmpty()
+        if (truncated !in listOf("true", "false") ||
+            (truncated == "true" && next.isBlank()) ||
+            (truncated == "false" && next.isNotEmpty()))
+            throw IOException("S3 no confirmó un listado completo o una página siguiente válida")
+        return next
+    }
+
     override fun list(path: String): List<RemoteEntry> {
         val clean = path.trim('/')
         val bucket = clean.substringBefore('/')
         if (bucket.isBlank()) throw IOException("Escribe /nombre-del-bucket en la carpeta inicial")
         val prefix = if (clean.contains('/')) clean.substringAfter('/').trimEnd('/') + "/" else ""
-        val out = ArrayList<RemoteEntry>()
+        val out = CloudListing<RemoteEntry> { it.path }
         var next = ""
         do {
+            out.beginPage(next)
             val query = mutableMapOf("list-type" to "2", "delimiter" to "/", "prefix" to prefix)
             if (next.isNotEmpty()) query["continuation-token"] = next
-            val doc = xml(request("/$bucket", "GET", query))
+            val doc = listing(bucket, query)
             val common = doc.getElementsByTagNameNS("*", "CommonPrefixes")
             for (i in 0 until common.length) {
                 val key =
@@ -316,29 +372,27 @@ internal class S3Fs(private val account: Connection) : RemoteFs {
                         .item(0)
                         .textContent
                         .trimEnd('/')
-                out += RemoteEntry("/$bucket/$key", key.substringAfterLast('/'), true, 0)
+                if (!key.startsWith(prefix) || key.isEmpty())
+                    throw IOException("S3 devolvió una carpeta fuera de la carpeta solicitada")
+                out.add(RemoteEntry("/$bucket/$key", key.substringAfterLast('/'), true, 0))
             }
             val objects = doc.getElementsByTagNameNS("*", "Contents")
             for (i in 0 until objects.length) {
                 val item = objects.item(i) as Element
                 val key = item.getElementsByTagNameNS("*", "Key").item(0).textContent
+                if (!key.startsWith(prefix))
+                    throw IOException("S3 devolvió un archivo fuera de la carpeta solicitada")
                 if (key == prefix || key.endsWith('/')) continue
-                out +=
+                out.add(
                     RemoteEntry(
                         "/$bucket/$key",
                         key.substringAfterLast('/'),
                         false,
-                        item.getElementsByTagNameNS("*", "Size").item(0).textContent.toLong())
+                        item.getElementsByTagNameNS("*", "Size").item(0).textContent.toLong()))
             }
-            next =
-                doc.getElementsByTagNameNS("*", "NextContinuationToken")
-                    .item(0)
-                    ?.textContent
-                    .orEmpty()
-            if (out.size > 50000)
-                throw IOException("La carpeta supera el límite de 50.000 elementos")
+            next = continuation(doc)
         } while (next.isNotEmpty())
-        return out
+        return out.result()
     }
 
     override fun read(path: String) = request(path, "GET")
@@ -362,12 +416,13 @@ internal class S3Fs(private val account: Connection) : RemoteFs {
             // succeeded.
             val bucket = entry.path.trimStart('/').substringBefore('/')
             val prefix = entry.path.trimStart('/').substringAfter('/').trimEnd('/') + "/"
-            val objects = ArrayList<String>()
+            val objects = CloudListing<String>(100_000) { it }
             var next = ""
             do {
+                objects.beginPage(next)
                 val query = mutableMapOf("list-type" to "2", "prefix" to prefix)
                 if (next.isNotEmpty()) query["continuation-token"] = next
-                val doc = xml(request("/$bucket", "GET", query))
+                val doc = listing(bucket, query)
                 val contents = doc.getElementsByTagNameNS("*", "Contents")
                 for (i in 0 until contents.length) {
                     val key =
@@ -377,20 +432,14 @@ internal class S3Fs(private val account: Connection) : RemoteFs {
                             .textContent
                     if (!key.startsWith(prefix))
                         throw IOException("S3 devolvió un archivo fuera de la carpeta")
-                    objects += "/$bucket/$key"
-                    if (objects.size > 100000)
-                        throw IOException("La carpeta supera el límite de 100.000 archivos")
+                    objects.add("/$bucket/$key")
                 }
-                next =
-                    doc.getElementsByTagNameNS("*", "NextContinuationToken")
-                        .item(0)
-                        ?.textContent
-                        .orEmpty()
+                next = continuation(doc)
             } while (next.isNotEmpty())
-            for (source in objects) copyObject(
+            for (source in objects.result()) copyObject(
                 source, target.trimEnd('/') + "/" + source.substringAfter("/$bucket/$prefix"))
-            if (objects.isEmpty()) request(target.trimEnd('/') + "/", "PUT", size = 0).close()
-            for (source in objects) request(source, "DELETE").close()
+            if (objects.size == 0) request(target.trimEnd('/') + "/", "PUT", size = 0).close()
+            for (source in objects.result()) request(source, "DELETE").close()
             return
         }
         copyObject(entry.path, target)

@@ -1,0 +1,165 @@
+{
+  "date_utc": "2026-10-04",
+  "branch": "codex/remote-transfer-safety",
+  "base": "6f53398",
+  "command": "OI_BUILD_NUMBER=11 ./gradlew :app:testDebugUnitTest :app:assembleDebugAndroidTest :app:lintDebug --no-daemon --max-workers=2",
+  "exit_code": 1,
+  "unit_tests": {
+    "tests": 141,
+    "failures": 6,
+    "errors": 0,
+    "skipped": 0,
+    "passed": 135
+  },
+  "suites": [
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.CloudConditionalDeleteTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.CloudPaginationTest",
+      "tests": 13,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.CloudUploadPublicationTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.CloudXmlTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest",
+      "tests": 20,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.DocumentTransfersTest",
+      "tests": 10,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.DurableCopyTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.DurableDownloadTest",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.DurableRemoteTransferTest",
+      "tests": 10,
+      "failures": 4,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.DurableUploadTest",
+      "tests": 19,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.FileSafetyTest",
+      "tests": 21,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.GifWriterTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.NativeArchiveTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.ProtocolTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "com.omaritoinforma.oiarchivos.data.SubtitleTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ],
+  "failures": [
+    {
+      "class": "com.omaritoinforma.oiarchivos.data.DurableRemoteTransferTest",
+      "test": "publishedUploadRecoversDeathBeforeChildCompletionWithoutDuplicateWrites",
+      "type": "java.lang.AssertionError",
+      "message": "java.lang.AssertionError: expected:<[/file.bin]> but was:<[]>"
+    },
+    {
+      "class": "com.omaritoinforma.oiarchivos.data.DurableRemoteTransferTest",
+      "test": "deletionIntentRecoversDeathAfterSourceDeleteWithoutSecondDelete",
+      "type": "java.lang.AssertionError",
+      "message": "java.lang.AssertionError: Expected interruption"
+    },
+    {
+      "class": "com.omaritoinforma.oiarchivos.data.DurableRemoteTransferTest",
+      "test": "localMoveDeletesOnlyAfterDestinationHasCommitted",
+      "type": "java.lang.AssertionError",
+      "message": "java.lang.AssertionError: expected:<[/file.bin]> but was:<[]>"
+    },
+    {
+      "class": "com.omaritoinforma.oiarchivos.data.DurableRemoteTransferTest",
+      "test": "completedChildrenSurviveParentFailureAndAreVerifiedInsteadOfResent",
+      "type": "java.lang.AssertionError",
+      "message": "java.lang.AssertionError"
+    },
+    {
+      "class": "com.omaritoinforma.oiarchivos.data.DurableUploadTest",
+      "test": "nestedFoldersAndOverlappingSourcesAreUploadedOnce",
+      "type": "java.lang.AssertionError",
+      "message": "java.lang.AssertionError: expected:<[child]> but was:<[.oi-upload-owner-50437368-26d1-47a6-adf4-4478b84e94d4-0, child]>"
+    },
+    {
+      "class": "com.omaritoinforma.oiarchivos.data.DurableUploadTest",
+      "test": "aFolderPublishedBeforeJournalSaveIsRecognizedByItsMarker",
+      "type": "java.lang.AssertionError",
+      "message": "java.lang.AssertionError: expected:<[a.txt]> but was:<[.oi-upload-owner-5e8c7172-3c72-4f63-a85b-79e45cf99fb4-0, a.txt]>"
+    }
+  ],
+  "production_kotlin_compilation": "passed",
+  "instrumented_kotlin_compilation": "passed_with_warnings",
+  "instrumented_apk_assembly": "not_completed",
+  "android_runtime_tests": "not_run",
+  "lint": "not_run_in_final_command",
+  "release_publication": "not_requested_or_performed"
+}

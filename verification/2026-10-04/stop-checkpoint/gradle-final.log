@@ -1,0 +1,98 @@
+Picked up JAVA_TOOL_OPTIONS:  -Dhttp.proxyHost=proxy -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy -Dhttps.proxyPort=8080
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.11.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest
+> Task :app:processDebugManifest
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:preDebugAndroidTestBuild SKIPPED
+> Task :app:processDebugAndroidTestManifest
+> Task :app:generateDebugAndroidTestBuildConfig
+> Task :app:processDebugManifestForPackage
+> Task :app:checkDebugAndroidTestAarMetadata
+> Task :app:generateDebugAndroidTestResValues
+> Task :app:mapDebugAndroidTestSourceSetPaths
+> Task :app:generateDebugAndroidTestResources
+> Task :app:javaPreCompileDebugAndroidTest
+> Task :app:mergeDebugAndroidTestShaders
+> Task :app:compileDebugAndroidTestShaders NO-SOURCE
+> Task :app:generateDebugAndroidTestAssets UP-TO-DATE
+> Task :app:mergeDebugAndroidTestAssets
+> Task :app:compressDebugAndroidTestAssets
+> Task :app:desugarDebugAndroidTestFileDependencies
+> Task :app:processDebugResources
+> Task :app:checkDebugAndroidTestDuplicateClasses
+> Task :app:mergeDebugAndroidTestResources
+> Task :app:processDebugAndroidTestResources
+
+> Task :app:compileDebugKotlin
+w: file:///workspace/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/ui/screens/BrowserScreen.kt:266:58 'val Icons.Filled.ViewList: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.ViewList.
+w: file:///workspace/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/ui/screens/BrowserScreen.kt:282:55 'val Icons.Filled.Sort: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.Sort.
+w: file:///workspace/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/ui/screens/BrowserScreen.kt:299:76 'val Icons.Filled.OpenInNew: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.OpenInNew.
+w: file:///workspace/oi-file-manager/app/src/main/java/com/omaritoinforma/oiarchivos/ui/screens/BrowserScreen.kt:479:57 'val Icons.Filled.OpenInNew: ImageVector' is deprecated. Use the AutoMirrored version at Icons.AutoMirrored.Filled.OpenInNew.
+
+> Task :app:mergeExtDexDebugAndroidTest
+> Task :app:compileDebugJavaWithJavac
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:processDebugJavaRes
+> Task :app:compileDebugUnitTestKotlin
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes UP-TO-DATE
+
+> Task :app:testDebugUnitTest
+Picked up JAVA_TOOL_OPTIONS:  -Dhttp.proxyHost=proxy -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy -Dhttps.proxyPort=8080
+
+> Task :app:compileDebugAndroidTestKotlin
+w: file:///workspace/oi-file-manager/app/src/androidTest/java/com/omaritoinforma/oiarchivos/data/AndroidDocumentIntegrationTest.kt:243:49 Only safe (?.) or non-null asserted (!!.) calls are allowed on a nullable receiver of type 'java.io.File?'.
+w: file:///workspace/oi-file-manager/app/src/androidTest/java/com/omaritoinforma/oiarchivos/data/VideoToolsAndroidTest.kt:7:8 'class Movie : Any' is deprecated. Deprecated in Java.
+
+> Task :app:testDebugUnitTest
+
+DurableRemoteTransferTest > publishedUploadRecoversDeathBeforeChildCompletionWithoutDuplicateWrites FAILED
+    java.lang.AssertionError at DurableRemoteTransferTest.kt:147
+
+DurableRemoteTransferTest > deletionIntentRecoversDeathAfterSourceDeleteWithoutSecondDelete FAILED
+    java.lang.AssertionError at DurableRemoteTransferTest.kt:106
+
+DurableRemoteTransferTest > localMoveDeletesOnlyAfterDestinationHasCommitted FAILED
+    java.lang.AssertionError at DurableRemoteTransferTest.kt:121
+
+DurableRemoteTransferTest > completedChildrenSurviveParentFailureAndAreVerifiedInsteadOfResent FAILED
+    java.lang.AssertionError at DurableRemoteTransferTest.kt:163
+
+DurableUploadTest > nestedFoldersAndOverlappingSourcesAreUploadedOnce FAILED
+    java.lang.AssertionError at DurableUploadTest.kt:261
+
+DurableUploadTest > aFolderPublishedBeforeJournalSaveIsRecognizedByItsMarker FAILED
+    java.lang.AssertionError at DurableUploadTest.kt:279
+
+141 tests completed, 6 failed
+
+> Task :app:testDebugUnitTest FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:testDebugUnitTest'.
+> There were failing tests. See the report at: file:///workspace/oi-file-manager/app/build/reports/tests/testDebugUnitTest/index.html
+
+* Try:
+> Run with --scan to get full insights.
+
+BUILD FAILED in 2m 8s
+40 actionable tasks: 29 executed, 11 up-to-date

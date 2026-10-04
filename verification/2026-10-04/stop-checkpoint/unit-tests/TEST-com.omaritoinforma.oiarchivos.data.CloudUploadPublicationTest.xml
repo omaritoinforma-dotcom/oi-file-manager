@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.omaritoinforma.oiarchivos.data.CloudUploadPublicationTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-10-04T03:54:16" hostname="9ef1c3ad8b8c" time="0.004">
+  <properties/>
+  <testcase name="everyEnabledCloudProviderCanPublishAStagedDirectoryBeforeUploadingChildren" classname="com.omaritoinforma.oiarchivos.data.CloudUploadPublicationTest" time="0.001"/>
+  <testcase name="providersWithoutVerifiedPublicationGuaranteesDoNotClaimDurableUploadSupport" classname="com.omaritoinforma.oiarchivos.data.CloudUploadPublicationTest" time="0.001"/>
+  <testcase name="boxRenamesTheStagedFileIdWithoutRequestingOverwrite" classname="com.omaritoinforma.oiarchivos.data.CloudUploadPublicationTest" time="0.0"/>
+  <testcase name="dropboxPublishesByMoveWithAutorenameDisabledAndReturnsTheFinalPath" classname="com.omaritoinforma.oiarchivos.data.CloudUploadPublicationTest" time="0.001"/>
+  <testcase name="oneDrivePublishesTheSameIdWithExplicitConflictFailure" classname="com.omaritoinforma.oiarchivos.data.CloudUploadPublicationTest" time="0.0"/>
+  <testcase name="drivePublishesItsStableIdAndNeverWritesAnotherFilesContent" classname="com.omaritoinforma.oiarchivos.data.CloudUploadPublicationTest" time="0.001"/>
+  <testcase name="existingDriveFileBlocksPublicationWithoutChangingEitherId" classname="com.omaritoinforma.oiarchivos.data.CloudUploadPublicationTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

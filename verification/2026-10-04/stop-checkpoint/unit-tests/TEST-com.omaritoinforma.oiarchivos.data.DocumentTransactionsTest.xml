@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" tests="20" skipped="0" failures="0" errors="0" timestamp="2026-10-04T03:54:16" hostname="9ef1c3ad8b8c" time="0.099">
+  <properties/>
+  <testcase name="tamperedPublishedContentIsRejectedAndKeepsOriginalBackup" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.017"/>
+  <testcase name="realJobCancellationAfterBackupStillCompletesVerifiedPublication" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.007"/>
+  <testcase name="providerWithoutOriginalRenameIsRejectedBeforeAnyWrite" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.001"/>
+  <testcase name="publicationRenameFailureRestoresOriginalUsingUpdatedId" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.034"/>
+  <testcase name="fullHashDetectsChangeWithSameSizeAndTimestampBeforeCreatingAnything" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.002"/>
+  <testcase name="failedStagingWriteDoesNotRenameOrWriteOriginal" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.001"/>
+  <testcase name="knownOversizedDocumentIsRejectedBeforeOpeningInput" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.002"/>
+  <testcase name="restorationThatChangesIdThenThrowsReportsValidRestoredId" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.002"/>
+  <testcase name="successfulSaveUsesReturnedIdsAndRetainsVerifiedOriginal" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.001"/>
+  <testcase name="unknownDocumentSizeCannotBypassStreamingReadLimit" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.0"/>
+  <testcase name="renameMayChangeModificationTimeWithoutChangingOriginalContent" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.001"/>
+  <testcase name="cancellationDuringStagingLeavesOriginalUntouched" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.004"/>
+  <testcase name="providerWithoutStagingRenameIsRejectedBeforeOpeningWriter" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.001"/>
+  <testcase name="providerWithoutParentCreationIsRejectedBeforeAnyWrite" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.001"/>
+  <testcase name="fingerprintUsesReadBytesWhenProviderSizeIsUnknown" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.001"/>
+  <testcase name="checksOriginalAgainAfterWritingStaging" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.011"/>
+  <testcase name="savesTextUsingRequestedCharsetAndRejectsUnrepresentableCharacters" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.004"/>
+  <testcase name="failedRestorationReportsRecoverableBackupId" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.004"/>
+  <testcase name="providerReturningWrongPublicationNameKeepsBackup" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.001"/>
+  <testcase name="renameThatSucceedsThenThrowsStillRestoresOriginal" classname="com.omaritoinforma.oiarchivos.data.DocumentTransactionsTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

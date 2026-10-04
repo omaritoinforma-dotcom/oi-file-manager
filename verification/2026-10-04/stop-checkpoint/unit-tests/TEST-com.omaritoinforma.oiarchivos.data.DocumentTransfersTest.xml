@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.omaritoinforma.oiarchivos.data.DocumentTransfersTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-10-04T03:54:16" hostname="9ef1c3ad8b8c" time="0.018">
+  <properties/>
+  <testcase name="destinationInsideSourceIsRejectedBeforeCreatingDocuments" classname="com.omaritoinforma.oiarchivos.data.DocumentTransfersTest" time="0.003"/>
+  <testcase name="unknownProviderSizeStillEnforcesImportLimitBeforeCopying" classname="com.omaritoinforma.oiarchivos.data.DocumentTransfersTest" time="0.0"/>
+  <testcase name="oversizedImportIsRejectedBeforeCreatingDestination" classname="com.omaritoinforma.oiarchivos.data.DocumentTransfersTest" time="0.0"/>
+  <testcase name="missingSourceDeleteCapabilityRejectsMoveBeforeCopyingAnything" classname="com.omaritoinforma.oiarchivos.data.DocumentTransfersTest" time="0.001"/>
+  <testcase name="newDirectoryMemberBeforeDeletionPreservesEverySource" classname="com.omaritoinforma.oiarchivos.data.DocumentTransfersTest" time="0.003"/>
+  <testcase name="corruptDestinationReadBackNeverDeletesSource" classname="com.omaritoinforma.oiarchivos.data.DocumentTransfersTest" time="0.001"/>
+  <testcase name="providerWithoutDurableWriteKeepsOriginalAfterVerifiedCopy" classname="com.omaritoinforma.oiarchivos.data.DocumentTransfersTest" time="0.002"/>
+  <testcase name="secondCopyFailureKeepsAllOriginalsIncludingAlreadyCopiedFile" classname="com.omaritoinforma.oiarchivos.data.DocumentTransfersTest" time="0.001"/>
+  <testcase name="successfulMoveDeletesOnlyAfterCompleteHashesForEverySourceAndTarget" classname="com.omaritoinforma.oiarchivos.data.DocumentTransfersTest" time="0.003"/>
+  <testcase name="changedSourceWithSameSizeAndTimeIsPreserved" classname="com.omaritoinforma.oiarchivos.data.DocumentTransfersTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

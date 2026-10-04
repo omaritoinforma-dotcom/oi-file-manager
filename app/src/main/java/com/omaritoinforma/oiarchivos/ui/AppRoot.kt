@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.SdCard
 import androidx.compose.material.icons.filled.Settings
@@ -108,8 +109,9 @@ fun AppRoot(vm: MainViewModel) {
         when (screen) {
             Screen.Home -> HomeScreen(vm, openDrawer)
             Screen.Browser -> BrowserScreen(vm, openDrawer)
-            is Screen.Editor -> EditorScreen(vm, screen.path)
+            is Screen.Editor -> EditorScreen(vm, screen.path, screen.documentOrigin)
             Screen.Apps -> AppsScreen(vm)
+            Screen.Memory -> MemoryScreen(vm)
             Screen.Trash -> TrashScreen(vm)
             Screen.Settings -> SettingsScreen(vm)
             is Screen.Viewer -> ViewerScreen(vm, screen.path)
@@ -247,6 +249,10 @@ private fun AppDrawer(vm: MainViewModel, close: () -> Unit) {
             }
             DrawerItem("Aplicaciones", Icons.Filled.Apps, vm.screen == Screen.Apps) {
                 vm.goTo(Screen.Apps)
+                close()
+            }
+            DrawerItem("Memoria y procesos", Icons.Filled.Memory, vm.screen == Screen.Memory) {
+                vm.goTo(Screen.Memory)
                 close()
             }
             DrawerItem("Red, nube y USB", Icons.Filled.Dns, vm.screen == Screen.Connections) {

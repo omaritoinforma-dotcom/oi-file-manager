@@ -87,6 +87,23 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                 if (c != null && path != null && (clip != null || remoteClip != null))
                     Button(
                         onClick = {
+                            if (remoteClip == null && clip != null && !clip.move) {
+                                vm.uploadRemote(c, path, clip.paths.map(::File)) {
+                                    if (vm.clipboard === clip) vm.clipboard = null
+                                }
+                                return@Button
+                            }
+                            if (remoteClip != null && c.protocol in setOf(Protocol.WEBDAV,
+                                    Protocol.SMB, Protocol.DRIVE, Protocol.DROPBOX, Protocol.ONEDRIVE,
+                                    Protocol.BOX)) {
+                                vm.transferRemote(remoteClip.connection, remoteClip.parent,
+                                    remoteClip.entries, File(ctx.filesDir, "remote-transfer-cache"),
+                                    remoteClip.move, c, path) {
+                                    if (NetworkClipboard.value === remoteClip)
+                                        NetworkClipboard.value = null
+                                }
+                                return@Button
+                            }
                             vm.runTask("Pegando archivos remotos") { report ->
                                 RemoteFiles.connect(c).use { target ->
                                     if (remoteClip != null) {
@@ -150,6 +167,7 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                                 NetworkClipboard.value =
                                     NetworkClip(c, selected.values.toList(), false, path ?: c.root)
                                 vm.clipboard = null
+                                DocumentClipboard.value = null
                                 selected.clear()
                                 vm.toast("Ve a la carpeta de destino y pega los archivos")
                             }) {
@@ -160,6 +178,7 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                                 NetworkClipboard.value =
                                     NetworkClip(c, selected.values.toList(), true, path ?: c.root)
                                 vm.clipboard = null
+                                DocumentClipboard.value = null
                                 selected.clear()
                             }) {
                                 Text("Cortar")

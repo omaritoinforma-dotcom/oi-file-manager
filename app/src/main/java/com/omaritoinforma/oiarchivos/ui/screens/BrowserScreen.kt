@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.filled.Share
@@ -175,7 +176,7 @@ fun BrowserScreen(vm: MainViewModel, openDrawer: () -> Unit) {
         bottomBar = {
             if (inSelection) {
                 SelectionBottomBar(vm, tab, ctx) { dialog = it }
-            } else if (vm.clipboard != null && loc is Location.Folder) {
+            } else if ((vm.clipboard != null || com.omaritoinforma.oiarchivos.data.DocumentClipboard.value != null) && loc is Location.Folder) {
                 PasteBar(vm)
             }
         },
@@ -431,6 +432,11 @@ private fun SelectionBottomBar(
         Box(Modifier.weight(1f)) {
             BarAction(Icons.Filled.MoreVert, "Más", Modifier.fillMaxWidth()) { menu = true }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                val allPinned = selectedItems.all { it.path in vm.pinnedPaths }
+                MenuItem(if (allPinned) "Desfijar del principio" else "Fijar al principio", Icons.Filled.PushPin) {
+                    menu = false
+                    vm.setPinned(selectedItems.map { it.path }, !allPinned)
+                }
                 if (files.isNotEmpty()) {
                     MenuItem("Compartir", Icons.Filled.Share) {
                         menu = false
@@ -546,14 +552,19 @@ private fun SelectionBottomBar(
 
 @Composable
 private fun PasteBar(vm: MainViewModel) {
-    val clip = vm.clipboard ?: return
+    val clip = vm.clipboard
+    val documents = com.omaritoinforma.oiarchivos.data.DocumentClipboard.value
+    if (clip == null && documents == null) return
     BottomAppBar {
         Text(
-            "${clip.paths.size} elemento(s) para ${if (clip.move) "mover" else "copiar"}",
+            "${documents?.ids?.size ?: clip!!.paths.size} elemento(s) para ${if (documents?.move ?: clip!!.move) "mover" else "copiar"}",
             modifier = Modifier.weight(1f).padding(start = 8.dp),
             style = MaterialTheme.typography.bodyMedium,
         )
-        TextButton(onClick = { vm.clipboard = null }) { Text("Cancelar") }
+        TextButton(onClick = {
+            vm.clipboard = null
+            com.omaritoinforma.oiarchivos.data.DocumentClipboard.value = null
+        }) { Text("Cancelar") }
         Button(onClick = { vm.paste() }, modifier = Modifier.padding(end = 8.dp)) {
             Text("Pegar aquí")
         }

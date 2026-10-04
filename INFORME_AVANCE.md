@@ -1,5 +1,7 @@
 # OI Archivos — informe de avance
 
+> **Actualización del 4 de octubre de 2026:** el usuario pidió parar el desarrollo. El estado nuevo, todos los cambios y lo que falta están en [REPORTE_PENDIENTES_2026-10-04.md](REPORTE_PENDIENTES_2026-10-04.md), rama `codex/remote-transfer-safety`. La comprobación final de esa rama ejecutó 141 pruebas: 135 aprobadas y 6 fallidas; no es una entrega terminada. El contenido de abajo conserva la evidencia histórica de v0.2.10 y no describe la validación del snapshot nuevo.
+
 Fecha: 3 de octubre de 2026, hora de Cuba. APK de esta entrega: **0.2.10**, código **10**. Compilación local de validación: **0.2.8**, código **8**. Estado: **desarrollo; equivalencia completa con ES File Explorer pendiente**.
 
 ## Objetivo

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.omaritoinforma.oiarchivos.data.CloudPaginationTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-10-04T03:54:14" hostname="9ef1c3ad8b8c" time="2.413">
+  <properties/>
+  <testcase name="missingDropboxCursorIsAnErrorWhenTheProviderClaimsMoreEntries" classname="com.omaritoinforma.oiarchivos.data.CloudPaginationTest" time="0.009"/>
+  <testcase name="oneDriveNeverFollowsAContinuationLinkToAnotherHost" classname="com.omaritoinforma.oiarchivos.data.CloudPaginationTest" time="0.041"/>
+  <testcase name="googleIncompleteSearchCannotBeReturnedAsAnEmptyOrPartialFolder" classname="com.omaritoinforma.oiarchivos.data.CloudPaginationTest" time="0.01"/>
+  <testcase name="sugarSyncDoesNotSilentlySkipAnInvalidFileOrAnIncompleteContinuation" classname="com.omaritoinforma.oiarchivos.data.CloudPaginationTest" time="0.051"/>
+  <testcase name="boxCannotTreatAnOffsetResponseWithoutTheRequestedMarkerAsComplete" classname="com.omaritoinforma.oiarchivos.data.CloudPaginationTest" time="0.002"/>
+  <testcase name="everyProviderRejectsAnEntryBeyond50000InsteadOfReturningTheFirst50000" classname="com.omaritoinforma.oiarchivos.data.CloudPaginationTest" time="1.601"/>
+  <testcase name="recursiveDownloadCannotTreatAPartialCloudListingAsSuccess" classname="com.omaritoinforma.oiarchivos.data.CloudPaginationTest" time="0.055"/>
+  <testcase name="tokenCyclesIncludingEmptyPagesAreRejectedBeforeRequestingTheSamePageAgain" classname="com.omaritoinforma.oiarchivos.data.CloudPaginationTest" time="0.002"/>
+  <testcase name="duplicateIdsAcrossDistinctPagesAreRejectedRatherThanHidingAChangedListing" classname="com.omaritoinforma.oiarchivos.data.CloudPaginationTest" time="0.001"/>
+  <testcase name="s3DirectoryRenameAbortsBeforeCopiesOrDeletesIfTheFullPrefixSnapshotIsTruncated" classname="com.omaritoinforma.oiarchivos.data.CloudPaginationTest" time="0.004"/>
+  <testcase name="everyProviderStillAcceptsExactly50000Entries" classname="com.omaritoinforma.oiarchivos.data.CloudPaginationTest" time="0.63"/>
+  <testcase name="s3RequiresBothTheTruncationFlagAndAValidContinuationToken" classname="com.omaritoinforma.oiarchivos.data.CloudPaginationTest" time="0.003"/>
+  <testcase name="yandexUsesTheTotalInsteadOfAssumingAShortPageIsTheLastPage" classname="com.omaritoinforma.oiarchivos.data.CloudPaginationTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

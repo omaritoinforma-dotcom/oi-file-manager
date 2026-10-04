@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PhoneAndroid
@@ -172,6 +173,7 @@ private fun quickTiles(vm: MainViewModel): List<Tile> =
         },
         Tile("Papelera", Icons.Filled.Delete, Color(0xFF757575)) { vm.goTo(Screen.Trash) },
         Tile("Apps", Icons.Filled.Apps, Color(0xFF7CB342)) { vm.goTo(Screen.Apps) },
+        Tile("Memoria", Icons.Filled.Memory, Color(0xFF00897B)) { vm.goTo(Screen.Memory) },
         Tile("Red / nube", Icons.Filled.Dns, Color(0xFF1E88E5)) { vm.goTo(Screen.Connections) },
         Tile("Analizar", Icons.Filled.SdCard, Color(0xFF8E24AA)) {
             vm.goTo(Screen.Analysis(PathUtil.internalRoot))

@@ -18,6 +18,7 @@ import com.omaritoinforma.oiarchivos.ui.MainViewModel
 import com.omaritoinforma.oiarchivos.util.*
 import java.io.File
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @Composable
@@ -70,6 +71,7 @@ fun HistoryScreen(vm: MainViewModel) {
 @Composable
 fun TransfersScreen(vm: MainViewModel) {
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
     val completion by TransferService.completion.collectAsState()
     val progress by TransferService.progress.collectAsState()
     val records = remember(completion, progress == null) { TransferService.history(ctx) }
@@ -77,7 +79,9 @@ fun TransfersScreen(vm: MainViewModel) {
     val queued =
         remember(completion, progress == null, refresh) {
             DurableCopy.pending(TransferService.jobsDirectory(ctx)) +
-                DurableDownload.pending(TransferService.jobsDirectory(ctx))
+                DurableDownload.pending(TransferService.jobsDirectory(ctx)) +
+                DurableUpload.pending(TransferService.jobsDirectory(ctx)) +
+                DurableRemoteTransfer.pending(TransferService.jobsDirectory(ctx))
         }
     val paused by TransferService.paused.collectAsState()
     val pausable by TransferService.supportsPause.collectAsState()
@@ -109,8 +113,14 @@ fun TransfersScreen(vm: MainViewModel) {
                                     }
                                 TextButton(
                                     onClick = {
-                                        job.discard()
-                                        refresh++
+                                        scope.launch {
+                                            withContext(Dispatchers.IO) {
+                                                runCatching { job.discard() }
+                                            }.onFailure {
+                                                vm.toast(it.message ?: "No se pudo descartar")
+                                            }
+                                            refresh++
+                                        }
                                     }) {
                                         Text("Descartar")
                                     }

@@ -19,6 +19,18 @@ import java.io.IOException
 
 @androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
 object VideoOverlays {
+    fun caption(text: String): TextOverlay =
+        object : TextOverlay() {
+            private var fontSize = 32
+
+            override fun configure(videoSize: Size) {
+                fontSize = (videoSize.height * 0.075f).toInt().coerceIn(18, 64)
+            }
+
+            override fun getText(presentationTimeUs: Long): SpannableString =
+                styledText(text, fontSize)
+        }
+
     fun subtitles(cues: List<SubtitleCue>): TextOverlay =
         object : TextOverlay() {
             private var fontSize = 32
@@ -28,25 +40,25 @@ object VideoOverlays {
             }
 
             override fun getText(presentationTimeUs: Long): SpannableString =
-                SpannableString(Subtitles.textAt(cues, presentationTimeUs / 1000)).apply {
-                    setSpan(AbsoluteSizeSpan(fontSize), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    setSpan(
-                        ForegroundColorSpan(Color.WHITE),
-                        0,
-                        length,
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                    setSpan(
-                        BackgroundColorSpan(0xb0000000.toInt()),
-                        0,
-                        length,
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                }
+                styledText(Subtitles.textAt(cues, presentationTimeUs / 1000), fontSize)
 
             override fun getOverlaySettings(presentationTimeUs: Long): OverlaySettings =
                 OverlaySettings.Builder()
                     .setBackgroundFrameAnchor(0f, -0.8f)
                     .setOverlayFrameAnchor(0f, -1f)
                     .build()
+        }
+
+    private fun styledText(text: String, size: Int): SpannableString =
+        SpannableString(text).apply {
+            setSpan(AbsoluteSizeSpan(size), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(ForegroundColorSpan(Color.WHITE), 0, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            setSpan(
+                BackgroundColorSpan(0xb0000000.toInt()),
+                0,
+                length,
+                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+            )
         }
 
     fun image(path: String): BitmapOverlay =
@@ -58,7 +70,8 @@ object VideoOverlays {
                 scale =
                     minOf(
                         videoSize.width * 0.3f / bitmap.width,
-                        videoSize.height * 0.3f / bitmap.height)
+                        videoSize.height * 0.3f / bitmap.height,
+                    )
             }
 
             override fun getBitmap(presentationTimeUs: Long): Bitmap = bitmap
@@ -99,7 +112,7 @@ class VideoCanvasEffect(
     private val width: Int,
     private val height: Int,
     private val color: Int,
-    private val image: String
+    private val image: String,
 ) : GlEffect {
     override fun toGlShaderProgram(context: Context, useHdr: Boolean): GlShaderProgram =
         CanvasShader(width, height, color, image, useHdr)
@@ -111,13 +124,14 @@ private class CanvasShader(
     private val height: Int,
     color: Int,
     image: String,
-    hdr: Boolean
+    hdr: Boolean,
 ) : BaseGlShaderProgram(hdr, 1) {
     private val program =
         GlProgram(
             """attribute vec4 aPosition; varying vec2 vUv; void main(){ gl_Position=aPosition; vUv=aPosition.xy*0.5+0.5; }""",
             """precision mediump float; varying vec2 vUv; uniform sampler2D uVideo; uniform sampler2D uBackground; uniform vec2 uFit; uniform vec3 uColor; uniform float uImage;
-        void main(){ vec2 p=(vUv-0.5)/uFit+0.5; vec3 bg=mix(uColor,pow(texture2D(uBackground,vec2(vUv.x,1.0-vUv.y)).rgb,vec3(2.2)),uImage); if(p.x>=0.0 && p.x<=1.0 && p.y>=0.0 && p.y<=1.0) gl_FragColor=texture2D(uVideo,p); else gl_FragColor=vec4(bg,1.0); }""")
+        void main(){ vec2 p=(vUv-0.5)/uFit+0.5; vec3 bg=mix(uColor,pow(texture2D(uBackground,vec2(vUv.x,1.0-vUv.y)).rgb,vec3(2.2)),uImage); if(p.x>=0.0 && p.x<=1.0 && p.y>=0.0 && p.y<=1.0) gl_FragColor=texture2D(uVideo,p); else gl_FragColor=vec4(bg,1.0); }""",
+        )
     private val background: Int
 
     init {
@@ -125,9 +139,13 @@ private class CanvasShader(
         program.setFloatsUniform(
             "uColor",
             floatArrayOf(
-                    Color.red(color) / 255f, Color.green(color) / 255f, Color.blue(color) / 255f)
+                    Color.red(color) / 255f,
+                    Color.green(color) / 255f,
+                    Color.blue(color) / 255f,
+                )
                 .map { Math.pow(it.toDouble(), 2.2).toFloat() }
-                .toFloatArray())
+                .toFloatArray(),
+        )
         program.setFloatUniform("uImage", if (image.isBlank()) 0f else 1f)
         val bitmap =
             if (image.isBlank())
@@ -144,7 +162,9 @@ private class CanvasShader(
     override fun configure(inputWidth: Int, inputHeight: Int): Size {
         val scale = minOf(width.toFloat() / inputWidth, height.toFloat() / inputHeight)
         program.setFloatsUniform(
-            "uFit", floatArrayOf(inputWidth * scale / width, inputHeight * scale / height))
+            "uFit",
+            floatArrayOf(inputWidth * scale / width, inputHeight * scale / height),
+        )
         return Size(width, height)
     }
 

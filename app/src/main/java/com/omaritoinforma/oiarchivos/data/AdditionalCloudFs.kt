@@ -68,7 +68,10 @@ internal object CloudXml {
     }
 }
 
-internal class BaiduFs(private val c: Connection) : RemoteFs {
+internal class BaiduFs(
+    private val c: Connection,
+    private val jsonRequest: ((String, Map<String, String>, Map<String, String>?) -> JSONObject)? = null
+) : RemoteFs {
     private val http = Http("")
     private val api = "https://pan.baidu.com/rest/2.0/xpan"
     private val ids = HashMap<String, Long>()
@@ -84,6 +87,7 @@ internal class BaiduFs(private val c: Connection) : RemoteFs {
         params: Map<String, String>,
         body: Map<String, String>? = null
     ): JSONObject {
+        if (jsonRequest != null) return checked(jsonRequest.invoke(endpoint, params, body))
         val data = body?.let { query(it).toByteArray() }
         val connection =
             http.open(
@@ -116,8 +120,10 @@ internal class BaiduFs(private val c: Connection) : RemoteFs {
     }
 
     override fun list(path: String): List<RemoteEntry> {
-        val out = ArrayList<RemoteEntry>()
+        val out = CloudListing<RemoteEntry> { it.path }
+        val listedIds = HashMap<String, Long>()
         while (true) {
+            out.beginPage(out.size.toString())
             val list =
                 json(
                         "$api/file",
@@ -131,16 +137,18 @@ internal class BaiduFs(private val c: Connection) : RemoteFs {
             for (i in 0 until list.length()) {
                 val f = list.getJSONObject(i)
                 val p = f.getString("path")
-                ids[p] = f.getLong("fs_id")
-                out +=
+                listedIds[p] = f.getLong("fs_id")
+                out.add(
                     RemoteEntry(
                         p,
                         f.getString("server_filename"),
                         f.getInt("isdir") == 1,
-                        f.optLong("size", -1))
+                        f.optLong("size", -1)))
             }
-            if (list.length() < 1000) return out
-            if (out.size >= 50000) throw IOException("La carpeta supera 50.000 elementos")
+            if (list.length() < 1000) {
+                ids.putAll(listedIds)
+                return out.result()
+            }
         }
     }
 
@@ -288,7 +296,10 @@ internal class BaiduFs(private val c: Connection) : RemoteFs {
     }
 }
 
-internal class SugarSyncFs(private val c: Connection) : RemoteFs {
+internal class SugarSyncFs(
+    private val c: Connection,
+    private val xmlRequest: ((String) -> Document)? = null
+) : RemoteFs {
     private val http = Http(c.secret)
     private val headers =
         mapOf("User-Agent" to "OIArchivos", "Content-Type" to "application/xml; charset=UTF-8")
@@ -296,6 +307,7 @@ internal class SugarSyncFs(private val c: Connection) : RemoteFs {
     private fun endpoint(path: String) = sugarEndpoint(path)
 
     private fun doc(url: String): Document {
+        if (xmlRequest != null) return xmlRequest.invoke(endpoint(url))
         val connection = http.open(endpoint(url), "GET", headers)
         return http.response(connection).use(CloudXml::parse)
     }
@@ -320,27 +332,33 @@ internal class SugarSyncFs(private val c: Connection) : RemoteFs {
             return out.distinctBy { it.path }
         }
         val contents = endpoint(path).let { if (it.endsWith("/contents")) it else "$it/contents" }
-        val out = ArrayList<RemoteEntry>()
+        val out = CloudListing<RemoteEntry> { it.path }
         var start = 0
         while (true) {
+            out.beginPage(start.toString())
             val root = doc("$contents?start=$start&max=500").documentElement
             val children =
                 (0 until root.childNodes.length).mapNotNull { root.childNodes.item(it) as? Element }
             for (f in children.filter { it.tagName == "collection" || it.tagName == "file" }) {
                 val url = CloudXml.text(f, "ref").ifBlank { CloudXml.text(f, "contents") }
                 val name = CloudXml.text(f, "displayName")
-                if (url.isNotBlank() && name.isNotBlank())
-                    out +=
+                if (url.isBlank() || name.isBlank())
+                    throw IOException("SugarSync devolvió un archivo incompleto")
+                out.add(
                         RemoteEntry(
                             endpoint(url),
                             name,
                             f.tagName == "collection",
-                            CloudXml.text(f, "size").toLongOrNull() ?: 0)
+                            CloudXml.text(f, "size").toLongOrNull() ?: 0))
             }
-            if (root.getAttribute("hasMore") != "true") return out
-            val next = root.getAttribute("end").toIntOrNull() ?: (start + children.size)
-            if (next <= start || next >= 50000)
-                throw IOException("La carpeta supera 50.000 elementos o no admite paginación")
+            when (root.getAttribute("hasMore")) {
+                "false" -> return out.result()
+                "true" -> {}
+                else -> throw IOException("SugarSync no confirmó un listado completo")
+            }
+            val next = root.getAttribute("end").toIntOrNull()
+            if (next == null || next <= start)
+                throw IOException("SugarSync no completó la paginación")
             start = next
         }
     }

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.omaritoinforma.oiarchivos.data.FileSafetyTest" tests="21" skipped="0" failures="0" errors="0" timestamp="2026-10-04T03:54:17" hostname="9ef1c3ad8b8c" time="0.862">
+  <properties/>
+  <testcase name="advancedSearchCombinesNameSizeExtensionAndContent" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.007"/>
+  <testcase name="keepBothUsesNaturalSuffix" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.001"/>
+  <testcase name="encryptedZipRoundTripAndWrongPasswordCleanup" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.126"/>
+  <testcase name="failedAtomicWritePreservesExistingFile" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.001"/>
+  <testcase name="cryptoAuthenticatesBeforeCommitting" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.271"/>
+  <testcase name="gifResetsCodebookForLargeFrames" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.038"/>
+  <testcase name="changedSourceNeverReplacesDestinationOrDeletesOriginal" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.008"/>
+  <testcase name="symlinksAreNotFollowed" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.0"/>
+  <testcase name="archivePathsCannotEscape" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.0"/>
+  <testcase name="cryptoRejectsTruncatedEnvelope" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.097"/>
+  <testcase name="movingWithSkippedConflictPreservesSkippedOriginal" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.002"/>
+  <testcase name="zipSlipRemovesOnlyNewExtractionFolder" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.006"/>
+  <testcase name="cryptoRoundTripsMultipleChunks" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.12"/>
+  <testcase name="canceledOverwriteNeverTruncatesDestination" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.007"/>
+  <testcase name="sevenZipAndTarRoundTrip" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.072"/>
+  <testcase name="invalidNamesAreRejected" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.0"/>
+  <testcase name="cannotCopyFolderIntoItself" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.001"/>
+  <testcase name="duplicatesRequireSameContentsNotOnlySize" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.004"/>
+  <testcase name="newFileCommitNeverOverwritesConcurrentDestination" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.001"/>
+  <testcase name="gifHasDecodableFrames" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.001"/>
+  <testcase name="cryptoDetectsTampering" classname="com.omaritoinforma.oiarchivos.data.FileSafetyTest" time="0.097"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

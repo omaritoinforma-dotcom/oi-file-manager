@@ -95,7 +95,23 @@ class DurableDownload private constructor(
             throw IOException("El original remoto cambió o ya no existe: ${entry.source.name}")
     }
 
-    override suspend fun run(report: (OpProgress) -> Unit): OperationResult {
+    override suspend fun run(report: (OpProgress) -> Unit): OperationResult =
+        runInternal(report, keepJournal = false)
+
+    /** Parent transfers retain the committed manifest until their next phase is durable. */
+    suspend fun runKeepingJournal(report: (OpProgress) -> Unit): OperationResult =
+        runInternal(report, keepJournal = true)
+
+    data class DownloadedSource(val parent: String, val source: RemoteEntry, val local: File)
+
+    fun downloadedSources(): List<DownloadedSource> = entries.map {
+        DownloadedSource(it.parent, it.source, File(it.target))
+    }
+
+    private suspend fun runInternal(
+        report: (OpProgress) -> Unit,
+        keepJournal: Boolean
+    ): OperationResult {
         val tracker = Tracker(title, report)
         tracker.totalFiles = count
         val files = entries.filter { !it.source.directory }
@@ -201,7 +217,7 @@ class DurableDownload private constructor(
                 tracker.fileDone()
             }
         } finally { runCatching { remote?.close() } }
-        journal.delete()
+        if (!keepJournal) journal.delete()
         return OperationResult("Descargados: $count", entries.map { File(it.target) })
     }
 

@@ -1,5 +1,7 @@
 # Cobertura de funciones y trabajo pendiente
 
+> **Estado actual al parar, 4 de octubre de 2026:** cambios de la sesión conservados en `codex/remote-transfer-safety`; Kotlin compila, 135 de 141 pruebas pasan y 6 fallan. El mínimo de ES sigue pendiente. Consulte el [reporte actualizado](REPORTE_PENDIENTES_2026-10-04.md) para subidas/movimientos en curso, SAF/editor, multimedia, memoria, fijados y bloqueos de validación. La matriz de abajo describe la base v0.2.10; sus resultados Android anteriores no validan los cambios nuevos.
+
 El mínimo solicitado sigue siendo cubrir ES File Explorer. Esta lista **no convierte código nuevo en funciones probadas en un teléfono**. La entrega 0.2.10 tiene firma válida, pasa 56 pruebas sin fallos ni omisiones y aprueba lint con 21 advertencias y ningún error. También aprobó 20 comprobaciones en un emulador Android 15, incluida la recuperación de una descarga WebDAV de 32 MiB tras pausa y muerte del proceso, con SHA-256 verificado. Incluye recuperación de copias locales y descargas remotas. Faltan las comprobaciones específicas de hardware, otros servidores y cuentas reales; no se declara equivalencia completa con ES. Evidencia e informe en `verification/2026-10-04/ci-run-10/` e [INFORME_AVANCE.md](INFORME_AVANCE.md).
 
 Referencia de funciones: ficha del desarrollador de ES en [Xiaomi](https://app.mi.com/details?id=com.estrongs.android.pop&type=pad), versión 4.4.3.7, publicada el 4 de agosto de 2026. Las funciones históricas de navegación de ES se conservan en la lista original de Claude.

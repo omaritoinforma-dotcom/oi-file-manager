@@ -8,8 +8,17 @@ import org.json.JSONObject
 /**
  * Official provider APIs. Tokens are supplied by the account owner, encrypted by ConnectionStore.
  */
-internal class CloudFs(private val account: Connection) : RemoteFs {
+internal class CloudFs(
+    private val account: Connection,
+    private val jsonRequest: CloudJsonRequest? = null
+) : RemoteFs {
+    override val supportsDurableUploads =
+        account.protocol in setOf(Protocol.DRIVE, Protocol.DROPBOX, Protocol.ONEDRIVE)
     private val http = Http("Bearer ${account.secret}")
+    internal var deleteRequest: CloudDeleteRequest = { url, headers ->
+        http.request(url, "DELETE", headers = headers)
+        Unit
+    }
     private val drive = "https://www.googleapis.com/drive/v3"
     private val graph = "https://graph.microsoft.com/v1.0/me/drive"
     private val exports =
@@ -25,7 +34,7 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
             "application/vnd.google-apps.drawing" to ("application/pdf" to ".pdf"))
 
     private fun json(url: String, method: String = "GET", body: JSONObject? = null) =
-        JSONObject(
+        jsonRequest?.invoke(url, method, body) ?: JSONObject(
             http.request(
                 url,
                 method,
@@ -39,33 +48,38 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
         path.ifBlank { if (account.protocol == Protocol.DRIVE) "root" else "" }
 
     override fun list(path: String): List<RemoteEntry> {
-        val out = ArrayList<RemoteEntry>()
+        val out = CloudListing<RemoteEntry> { it.path }
         when (account.protocol) {
             Protocol.DRIVE -> {
                 var page = ""
                 do {
+                    out.beginPage(page)
                     val parent = root(path).replace("\\", "\\\\").replace("'", "\\'")
                     val result =
                         json(
-                            "$drive/files?q=${encode("'$parent' in parents and trashed=false")}&pageSize=1000&fields=nextPageToken,files(id,name,mimeType,size,version)&pageToken=${encode(page)}")
-                    val arr = result.optJSONArray("files") ?: JSONArray()
+                            "$drive/files?q=${encode("'$parent' in parents and trashed=false")}&pageSize=1000&fields=nextPageToken,incompleteSearch,files(id,name,mimeType,size,version)&pageToken=${encode(page)}")
+                    if (result.optBoolean("incompleteSearch"))
+                        throw IOException("Google Drive no completó el listado de la carpeta")
+                    val arr = result.getJSONArray("files")
                     for (i in 0 until arr.length()) {
                         val f = arr.getJSONObject(i)
                         val suffix = exports[f.getString("mimeType")]?.second.orEmpty()
                         val originalName = f.getString("name")
-                        out +=
+                        out.add(
                             RemoteEntry(
                                 f.getString("id"),
                                 if (originalName.endsWith(suffix, ignoreCase = true)) originalName
                                 else originalName + suffix,
                                 f.getString("mimeType") == "application/vnd.google-apps.folder",
                                 f.optString("size").toLongOrNull() ?: -1,
-                                f.optString("version"))
+                                f.optString("version")))
                     }
-                    page = result.optString("nextPageToken")
-                } while (page.isNotEmpty() && out.size < 50000)
+                    page = result.pageToken("nextPageToken")
+                } while (page.isNotEmpty())
             }
             Protocol.DROPBOX -> {
+                var cursor = ""
+                out.beginPage(cursor)
                 var result =
                     drop(
                         "files/list_folder",
@@ -74,19 +88,22 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                     val arr = result.getJSONArray("entries")
                     for (i in 0 until arr.length()) {
                         val f = arr.getJSONObject(i)
-                        out +=
+                        out.add(
                             RemoteEntry(
                                 f.getString("path_display"),
                                 f.getString("name"),
                                 f.getString(".tag") == "folder",
                                 f.optLong("size", -1),
-                                f.optString("rev"))
+                                f.optString("rev")))
                     }
-                    if (!result.optBoolean("has_more") || out.size >= 50000) break
+                    if (!result.getBoolean("has_more")) break
+                    cursor = result.pageToken("cursor")
+                    if (cursor.isBlank()) throw IOException("Dropbox no completó la paginación")
+                    out.beginPage(cursor)
                     result =
                         drop(
                             "files/list_folder/continue",
-                            JSONObject().put("cursor", result.getString("cursor")))
+                            JSONObject().put("cursor", cursor))
                 }
             }
             Protocol.ONEDRIVE -> {
@@ -94,27 +111,28 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                     if (path.isBlank() || path == "/") "$graph/root/children"
                     else "$graph/items/${encode(path)}/children"
                 while (url.isNotEmpty()) {
+                    out.beginPage(url)
                     if (!url.startsWith("https://graph.microsoft.com/"))
                         throw IOException("Respuesta inesperada de OneDrive")
                     val result = json(url)
                     val arr = result.getJSONArray("value")
                     for (i in 0 until arr.length()) {
                         val f = arr.getJSONObject(i)
-                        out +=
+                        out.add(
                             RemoteEntry(
                                 f.getString("id"),
                                 f.getString("name"),
                                 f.has("folder"),
                                 f.optLong("size", -1),
-                                f.optString("cTag", f.optString("eTag")))
+                                if (f.has("folder")) f.optString("cTag", f.optString("eTag"))
+                                else f.optString("eTag", f.optString("cTag"))))
                     }
-                    url = result.optString("@odata.nextLink")
-                    if (out.size >= 50000) break
+                    url = result.pageToken("@odata.nextLink")
                 }
             }
             else -> throw IOException("Proveedor no compatible")
         }
-        return out
+        return out.result()
     }
 
     override fun read(path: String): InputStream =
@@ -380,6 +398,44 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
         }
     }
 
+    override fun publishUpload(stage: RemoteEntry, parent: String, name: String): String {
+        SafeFiles.requireName(name)
+        if (list(parent).any { it.path != stage.path && it.name == name })
+            throw IOException("El destino ya existe")
+        return when (account.protocol) {
+            Protocol.DRIVE -> {
+                // Drive names are not unique. Renaming this ID cannot overwrite another file;
+                // a concurrent creation can still produce two files with the same name.
+                val result =
+                    json("$drive/files/${encode(stage.path)}?fields=id", "PATCH",
+                        JSONObject().put("name", name))
+                if (result.getString("id") != stage.path)
+                    throw IOException("Google Drive no confirmó el archivo publicado")
+                stage.path
+            }
+            Protocol.DROPBOX ->
+                drop(
+                    "files/move_v2",
+                    JSONObject()
+                        .put("from_path", stage.path)
+                        .put("to_path", RemoteFiles.join(parent, name))
+                        .put("autorename", false))
+                    .getJSONObject("metadata").getString("path_display")
+            Protocol.ONEDRIVE -> {
+                val result =
+                    json(
+                        "$graph/items/${encode(stage.path)}?@microsoft.graph.conflictBehavior=fail",
+                        "PATCH",
+                        JSONObject().put("name", name)
+                            .put("@microsoft.graph.conflictBehavior", "fail"))
+                if (result.getString("id") != stage.path)
+                    throw IOException("OneDrive no confirmó el archivo publicado")
+                stage.path
+            }
+            else -> throw IOException("Este proveedor no admite publicar subidas recuperables")
+        }
+    }
+
     private fun patch(url: String, body: JSONObject) {
         // Android HttpURLConnection does not support PATCH; official APIs accept method override.
         http.request(url, "PATCH", body.toString(), mapOf("Content-Type" to "application/json"))
@@ -393,6 +449,22 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
             Protocol.ONEDRIVE -> http.request("$graph/items/${encode(entry.path)}", "DELETE")
             else -> throw IOException("Proveedor no compatible")
         }
+    }
+
+    override fun deleteIfUnchanged(entry: RemoteEntry): Boolean {
+        if (entry.directory || entry.revision.isBlank()) return false
+        when (account.protocol) {
+            Protocol.DROPBOX ->
+                drop("files/delete_v2", JSONObject().put("path", entry.path)
+                    .put("parent_rev", entry.revision))
+            Protocol.ONEDRIVE ->
+                deleteRequest("$graph/items/${encode(entry.path)}",
+                    mapOf("If-Match" to entry.revision))
+            // A Drive version is not a documented HTTP entity tag. A preflight comparison
+            // followed by an unconditional trash request would still race with new content.
+            else -> return false
+        }
+        return true
     }
 
     private fun readChunk(input: InputStream, buffer: ByteArray): Int {

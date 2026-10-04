@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.omaritoinforma.oiarchivos.data.CloudConditionalDeleteTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-04T03:54:14" hostname="9ef1c3ad8b8c" time="0.114">
+  <properties/>
+  <testcase name="boxEmptyDirectoryDeletePreservesAChildArrivingAfterTheClientsEmptyCheck" classname="com.omaritoinforma.oiarchivos.data.CloudConditionalDeleteTest" time="0.031"/>
+  <testcase name="unsupportedRevisionsAndFolderDeletesReturnFalseWithoutAnyMutation" classname="com.omaritoinforma.oiarchivos.data.CloudConditionalDeleteTest" time="0.049"/>
+  <testcase name="dropboxRevisionMismatchPreservesTheNewFileWithoutAnUnconditionalRetry" classname="com.omaritoinforma.oiarchivos.data.CloudConditionalDeleteTest" time="0.008"/>
+  <testcase name="oneDriveAndBoxUseTheListedEntityTagAsAServerSidePrecondition" classname="com.omaritoinforma.oiarchivos.data.CloudConditionalDeleteTest" time="0.023"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -172,6 +172,10 @@ class ConnectionStore(private val ctx: Context) {
 }
 
 interface RemoteFs : Closeable {
+    /** Enabled only when publication cannot replace an unrelated destination. */
+    val supportsDurableUploads: Boolean
+        get() = false
+
     fun list(path: String): List<RemoteEntry>
 
     fun read(path: String): InputStream
@@ -182,7 +186,17 @@ interface RemoteFs : Closeable {
 
     fun rename(entry: RemoteEntry, name: String)
 
+    /** Publish a staged upload without replacing another entry; return its final ID/path. */
+    fun publishUpload(stage: RemoteEntry, parent: String, name: String): String =
+        throw IOException("Esta conexión todavía no permite publicar subidas recuperables sin sobrescribir")
+
     fun delete(entry: RemoteEntry)
+
+    /** Return false without mutation if the protocol cannot atomically match the file revision. */
+    fun deleteIfUnchanged(entry: RemoteEntry): Boolean = false
+
+    /** Delete only an empty directory. Never implement this using recursive deletion. */
+    fun deleteEmptyDirectory(entry: RemoteEntry): Boolean = false
 
     override fun close() {}
 }
@@ -497,6 +511,7 @@ private class SftpFs(c: Connection) : RemoteFs {
 }
 
 private class SmbFs(c: Connection) : RemoteFs {
+    override val supportsDurableUploads = true
     private val context: CIFSContext =
         BaseContext(
                 PropertyConfiguration(
@@ -507,7 +522,7 @@ private class SmbFs(c: Connection) : RemoteFs {
                         setProperty("jcifs.smb.client.signingEnforced", "true")
                     }))
             .withCredentials(NtlmPasswordAuthenticator("", c.user, c.secret))
-    private val host = c.host
+    private val host = c.host.let { if (':' in it && !it.startsWith('[')) "[$it]" else it } + ":${c.port}"
 
     private fun file(path: String, directory: Boolean = false) =
         SmbFile(
@@ -563,6 +578,14 @@ private class SmbFs(c: Connection) : RemoteFs {
                 src.renameTo(it)
             }
         }
+    }
+
+    override fun publishUpload(stage: RemoteEntry, parent: String, name: String): String {
+        val target = RemoteFiles.join(parent, name)
+        file(stage.path, stage.directory).use { source ->
+            file(target, stage.directory).use { destination -> source.renameTo(destination, false) }
+        }
+        return target
     }
 
     override fun delete(entry: RemoteEntry) {
@@ -657,6 +680,7 @@ internal class Http(private val auth: String) {
 }
 
 private class DavFs(c: Connection) : RemoteFs {
+    override val supportsDurableUploads = true
     private val base = c.host.trimEnd('/')
     private val http =
         Http(
@@ -745,6 +769,13 @@ private class DavFs(c: Connection) : RemoteFs {
                     "Destination" to
                         url(RemoteFiles.join(entry.path.substringBeforeLast('/'), name)),
                     "Overwrite" to "F"))
+    }
+
+    override fun publishUpload(stage: RemoteEntry, parent: String, name: String): String {
+        val target = RemoteFiles.join(parent, name)
+        http.request(url(stage.path), "MOVE", headers = mapOf(
+            "Destination" to url(target), "Overwrite" to "F"))
+        return target
     }
 
     override fun delete(entry: RemoteEntry) {

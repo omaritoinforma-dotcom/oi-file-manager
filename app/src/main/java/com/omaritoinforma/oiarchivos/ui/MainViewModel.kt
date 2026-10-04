@@ -19,6 +19,8 @@ import com.omaritoinforma.oiarchivos.data.Conflict
 import com.omaritoinforma.oiarchivos.data.CryptoTools
 import com.omaritoinforma.oiarchivos.data.DurableCopy
 import com.omaritoinforma.oiarchivos.data.DurableDownload
+import com.omaritoinforma.oiarchivos.data.DurableUpload
+import com.omaritoinforma.oiarchivos.data.DurableRemoteTransfer
 import com.omaritoinforma.oiarchivos.data.Connection
 import com.omaritoinforma.oiarchivos.data.RemoteEntry
 import com.omaritoinforma.oiarchivos.data.RemoteFiles
@@ -63,9 +65,11 @@ sealed interface Screen {
 
     data object Browser : Screen
 
-    data class Editor(val path: String) : Screen
+    data class Editor(val path: String, val documentOrigin: com.omaritoinforma.oiarchivos.data.DocumentOrigin? = null) : Screen
 
     data object Apps : Screen
+
+    data object Memory : Screen
 
     data object Trash : Screen
 
@@ -194,9 +198,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     val bookmarks = mutableStateListOf<String>().apply { addAll(prefs.bookmarks) }
+    val pinnedPaths = mutableStateListOf<String>().apply { addAll(prefs.pinnedPaths) }
+
+    fun setPinned(paths: List<String>, pinned: Boolean) {
+        val chosen = paths.distinct()
+        if (pinned) chosen.forEach { if (it !in pinnedPaths) pinnedPaths.add(it) }
+        else pinnedPaths.removeAll(chosen.toSet())
+        prefs.pinnedPaths = pinnedPaths.toSet()
+        tabs.forEach { tab ->
+            val reordered = sorted(tab.items.toList(), tab.location)
+            tab.items.clear()
+            tab.items.addAll(reordered)
+            tab.cache.keys.toList().forEach { location ->
+                tab.cache[location]?.let { tab.cache[location] = sorted(it, location) }
+            }
+        }
+        toast(if (pinned) "Fijados al principio" else "Prioridad de fijados retirada")
+    }
 
     val volumes = mutableStateListOf<StorageVolumeInfo>()
-    var clipboard by mutableStateOf<Clipboard?>(null)
+    private var localClipboard by mutableStateOf<Clipboard?>(null)
+    var clipboard: Clipboard?
+        get() = localClipboard
+        set(value) {
+            localClipboard = value
+            if (value != null) com.omaritoinforma.oiarchivos.data.DocumentClipboard.value = null
+        }
     var pendingPaste by mutableStateOf<PendingPaste?>(null)
         private set
 
@@ -360,7 +387,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun showResults(items: List<FileItem>, root: String, query: String) {
         val tab = TabState(Location.Search(root, query))
-        tab.items.addAll(Sorter.sort(items, sortBy, ascending))
+        tab.items.addAll(sorted(items, tab.location))
         tabs.add(tab)
         activeTab = tabs.lastIndex
         goTo(Screen.Browser)
@@ -388,20 +415,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
             return
         }
-        runTask("Pegando desde red / nube") { report ->
-            val out = ArrayList<File>()
-            com.omaritoinforma.oiarchivos.data.RemoteFiles.connect(clip.connection).use { fs ->
-                for (entry in clip.entries) {
-                    out +=
-                        com.omaritoinforma.oiarchivos.data.RemoteFiles.download(
-                            fs, entry, File(folder), report)
-                    if (clip.move) fs.delete(entry)
-                }
-            }
-            withContext(Dispatchers.Main) {
+        transferRemote(clip.connection, clip.parent, clip.entries, File(folder), move = true) {
+            if (com.omaritoinforma.oiarchivos.data.NetworkClipboard.value === clip)
                 com.omaritoinforma.oiarchivos.data.NetworkClipboard.value = null
-            }
-            OperationResult("Pegados ${out.size} elementos", out)
         }
     }
 
@@ -505,8 +521,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun sorted(list: List<FileItem>, loc: Location): List<FileItem> =
-        if (loc is Location.Category && loc.category == FileCategory.RECENT) list
-        else Sorter.sort(list, sortBy, ascending)
+        com.omaritoinforma.oiarchivos.data.PinnedOrder.first(
+            if (loc is Location.Category && loc.category == FileCategory.RECENT) list
+            else Sorter.sort(list, sortBy, ascending), pinnedPaths.toSet()) { it.path }
 
     // ---------------- Selección ----------------
 
@@ -691,6 +708,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun pasteInto(path: String) {
+        val documentClip = com.omaritoinforma.oiarchivos.data.DocumentClipboard.value
+        if (documentClip != null) {
+            val destination = File(path).absoluteFile
+            runTask(if (documentClip.move) "Moviendo documentos al teléfono" else "Copiando documentos al teléfono") { report ->
+                val result = com.omaritoinforma.oiarchivos.data.DocumentTransfers.transfer(
+                    com.omaritoinforma.oiarchivos.data.AndroidDocumentStore(ctx), documentClip.ids,
+                    com.omaritoinforma.oiarchivos.data.LocalDocumentStore(), destination.path,
+                    documentClip.move,
+                    sameDocument = { a, b -> com.omaritoinforma.oiarchivos.data.AndroidDocumentStore.sameLocation(a, b) },
+                    report = report)
+                withContext(Dispatchers.Main) {
+                    if (com.omaritoinforma.oiarchivos.data.DocumentClipboard.value === documentClip)
+                        com.omaritoinforma.oiarchivos.data.DocumentClipboard.value = null
+                }
+                OperationResult("${if (result.moved) "Movidos" else "Copiados"}: ${result.destinationIds.size}", result.destinationIds.map(::File))
+            }
+            return
+        }
         val clip = clipboard ?: return
         val dest = File(path)
         val sources = clip.paths.map(::File).filter { it.exists() }
@@ -706,6 +741,37 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
         if (conflicts > 0) pendingPaste = PendingPaste(sources, dest, clip.move, conflicts)
         else doPaste(sources, dest, clip.move, Conflict.RENAME)
+    }
+
+    fun copyDocuments(treeUri: String, ids: List<String>, move: Boolean) {
+        if (ids.isEmpty()) return
+        clipboard = null
+        com.omaritoinforma.oiarchivos.data.NetworkClipboard.value = null
+        com.omaritoinforma.oiarchivos.data.DocumentClipboard.value =
+            com.omaritoinforma.oiarchivos.data.DocumentClip(treeUri, ids, move)
+        toast("${ids.size} elemento(s) listos para ${if (move) "mover" else "copiar"}. Abre la carpeta de destino y toca «Pegar aquí».")
+    }
+
+    fun pasteDocuments(parentUri: String) {
+        val documents = com.omaritoinforma.oiarchivos.data.DocumentClipboard.value
+        val local = clipboard
+        if (documents == null && local == null) return
+        runTask(if (documents?.move == true || local?.move == true) "Moviendo documentos" else "Copiando documentos") { report ->
+            val destination = com.omaritoinforma.oiarchivos.data.AndroidDocumentStore(ctx)
+            val source = if (documents != null) com.omaritoinforma.oiarchivos.data.AndroidDocumentStore(ctx)
+                else com.omaritoinforma.oiarchivos.data.LocalDocumentStore()
+            val ids = documents?.ids ?: local!!.paths.map { File(it).absolutePath }
+            val result = com.omaritoinforma.oiarchivos.data.DocumentTransfers.transfer(
+                source, ids, destination, parentUri, documents?.move ?: local!!.move,
+                sameDocument = { a, b -> com.omaritoinforma.oiarchivos.data.AndroidDocumentStore.sameLocation(a, b) },
+                report = report)
+            withContext(Dispatchers.Main) {
+                if (documents != null && com.omaritoinforma.oiarchivos.data.DocumentClipboard.value === documents)
+                    com.omaritoinforma.oiarchivos.data.DocumentClipboard.value = null
+                if (local != null && clipboard === local) clipboard = null
+            }
+            OperationResult("${if (result.moved) "Movidos" else "Copiados"}: ${result.destinationIds.size}")
+        }
     }
 
     /** null = cancelar. */
@@ -816,13 +882,79 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun uploadRemote(
+        connection: Connection,
+        parent: String,
+        sources: List<File>,
+        onPrepared: () -> Unit = {}
+    ) {
+        toast("Preparando subida")
+        viewModelScope.launch {
+            runCatching {
+                val job = withContext(Dispatchers.IO) {
+                    RemoteFiles.connect(connection).use { fs ->
+                        if (fs.supportsDurableUploads)
+                            DurableUpload.create(TransferService.jobsDirectory(ctx), connection,
+                                fs, parent, sources)
+                        else null
+                    }
+                }
+                if (job == null) {
+                    toast("Esta conexión permite subir archivos, pero todavía no reanudar la subida")
+                    runTask("Subiendo archivos") { report ->
+                        RemoteFiles.connect(connection).use { fs ->
+                            RemoteFiles.upload(fs, sources, parent, report)
+                        }
+                        withContext(Dispatchers.Main) { onPrepared() }
+                        OperationResult("Archivos subidos; los originales se conservan")
+                    }
+                } else {
+                    onPrepared()
+                    if (!TransferService.submitDurable(ctx, job))
+                        toast("Subida guardada en la cola. Reanúdala desde Transferencias.")
+                    goTo(Screen.Transfers)
+                }
+            }.onFailure { toast(it.message ?: "No se pudo preparar la subida") }
+        }
+    }
+
+    fun transferRemote(
+        source: Connection,
+        parent: String,
+        entries: List<RemoteEntry>,
+        destination: File,
+        move: Boolean,
+        target: Connection? = null,
+        targetParent: String = "",
+        onPrepared: () -> Unit = {}
+    ) {
+        toast("Preparando transferencia recuperable")
+        viewModelScope.launch {
+            runCatching {
+                val job = withContext(Dispatchers.IO) {
+                    RemoteFiles.connect(source).use { fs ->
+                        DurableRemoteTransfer.create(TransferService.jobsDirectory(ctx), source,
+                            fs, parent, entries, destination, move, target, targetParent)
+                    }
+                }
+                onPrepared()
+                if (!TransferService.submitDurable(ctx, job))
+                    toast("Transferencia guardada en la cola. Reanúdala desde Transferencias.")
+                goTo(Screen.Transfers)
+            }.onFailure { toast(it.message ?: "No se pudo preparar la transferencia") }
+        }
+    }
+
     /** The service owns the operation so leaving the Activity does not cancel it. */
-    fun runTask(title: String, block: suspend ((OpProgress) -> Unit) -> OperationResult) {
-        try {
-            if (!TransferService.submit(ctx, title, block))
+    fun runTask(title: String, block: suspend ((OpProgress) -> Unit) -> OperationResult): Boolean {
+        return try {
+            val accepted = TransferService.submit(ctx, title, block)
+            if (!accepted)
                 toast("Espera a que termine la operación actual")
+            accepted
         } catch (e: Exception) {
             toast(e.message ?: "No se pudo iniciar la operación")
+            false
         }
     }
 

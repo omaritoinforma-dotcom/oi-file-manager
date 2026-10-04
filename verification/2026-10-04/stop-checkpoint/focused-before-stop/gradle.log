@@ -1,0 +1,41 @@
+Picked up JAVA_TOOL_OPTIONS:  -Dhttp.proxyHost=proxy -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy -Dhttps.proxyPort=8080
+> Task :app:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:checkDebugAarMetadata UP-TO-DATE
+> Task :app:generateDebugResValues UP-TO-DATE
+> Task :app:mapDebugSourceSetPaths UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:mergeDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:createDebugCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksDebug UP-TO-DATE
+> Task :app:processDebugMainManifest UP-TO-DATE
+> Task :app:processDebugManifest UP-TO-DATE
+> Task :app:processDebugManifestForPackage UP-TO-DATE
+> Task :app:processDebugResources UP-TO-DATE
+> Task :app:javaPreCompileDebug UP-TO-DATE
+> Task :app:preDebugUnitTestBuild UP-TO-DATE
+> Task :app:javaPreCompileDebugUnitTest UP-TO-DATE
+> Task :app:compileDebugKotlin
+> Task :app:compileDebugJavaWithJavac UP-TO-DATE
+> Task :app:bundleDebugClassesToCompileJar
+> Task :app:bundleDebugClassesToRuntimeJar
+> Task :app:processDebugJavaRes UP-TO-DATE
+
+> Task :app:compileDebugUnitTestKotlin
+w: file:///workspace/oi-file-manager/app/src/test/java/com/omaritoinforma/oiarchivos/data/FileSafetyTest.kt:276:50 Java type mismatch: inferred type is 'kotlin.Any?', but 'kotlin.Any' was expected.
+w: file:///workspace/oi-file-manager/app/src/test/java/com/omaritoinforma/oiarchivos/data/FileSafetyTest.kt:277:50 Java type mismatch: inferred type is 'kotlin.Any?', but 'kotlin.Any' was expected.
+w: file:///workspace/oi-file-manager/app/src/test/java/com/omaritoinforma/oiarchivos/data/FileSafetyTest.kt:291:50 Java type mismatch: inferred type is 'kotlin.Any?', but 'kotlin.Any' was expected.
+w: file:///workspace/oi-file-manager/app/src/test/java/com/omaritoinforma/oiarchivos/data/FileSafetyTest.kt:292:50 Java type mismatch: inferred type is 'kotlin.Any?', but 'kotlin.Any' was expected.
+
+> Task :app:compileDebugUnitTestJavaWithJavac NO-SOURCE
+> Task :app:processDebugUnitTestJavaRes
+
+> Task :app:testDebugUnitTest
+Picked up JAVA_TOOL_OPTIONS:  -Dhttp.proxyHost=proxy -Dhttp.proxyPort=8080 -Dhttps.proxyHost=proxy -Dhttps.proxyPort=8080
+
+BUILD SUCCESSFUL in 17s
+24 actionable tasks: 6 executed, 18 up-to-date

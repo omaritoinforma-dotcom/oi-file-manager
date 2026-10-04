@@ -3,6 +3,8 @@
 package com.omaritoinforma.oiarchivos.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
@@ -14,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.*
@@ -21,24 +24,37 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.omaritoinforma.oiarchivos.data.SafeFiles
+import com.omaritoinforma.oiarchivos.data.*
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
 import java.io.File
+import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
 import java.nio.charset.Charset
+import java.nio.charset.CodingErrorAction
+import java.nio.CharBuffer
+import java.security.MessageDigest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
 @Composable
-fun EditorScreen(vm: MainViewModel, path: String) {
+fun EditorScreen(vm: MainViewModel, path: String, documentOrigin: DocumentOrigin? = null) {
+    val ctx = LocalContext.current
     val file = remember(path) { File(path) }
+    var origin by remember(path, documentOrigin) { mutableStateOf(documentOrigin) }
+    var recovery by remember(path) { mutableStateOf<String?>(null) }
+    var saveError by remember(path) { mutableStateOf<String?>(null) }
     var value by remember(path) { mutableStateOf<TextFieldValue?>(null) }
     var original by remember(path) { mutableStateOf("") }
     var error by remember(path) { mutableStateOf<String?>(null) }
     var confirm by remember { mutableStateOf(false) }
+    var reloadConfirm by remember { mutableStateOf(false) }
     var saving by remember { mutableStateOf(false) }
     var encoding by remember(path) { mutableStateOf("UTF-8") }
     var modifiedTime by remember(path) { mutableLongStateOf(0) }
+    var localFingerprint by remember(path) { mutableStateOf<DocumentFingerprint?>(null) }
     var font by remember { mutableIntStateOf(14) }
     var find by remember { mutableStateOf("") }
     var replace by remember { mutableStateOf("") }
@@ -47,44 +63,144 @@ fun EditorScreen(vm: MainViewModel, path: String) {
     var charsetMenu by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val modified = value?.text?.let { it != original } ?: false
+    var copySnapshot by remember { mutableStateOf<Pair<String, String>?>(null) }
+    val createCopy = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(documentOrigin?.mimeType ?: "text/plain")) { uri ->
+        val snapshot = copySnapshot
+        copySnapshot = null
+        if (uri != null && snapshot != null) {
+            saving = true
+            scope.launch {
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        val sourceUri = origin?.documentUri?.let(android.net.Uri::parse)
+                        if (sourceUri != null && sourceUri.authority == uri.authority &&
+                            android.provider.DocumentsContract.getDocumentId(sourceUri) ==
+                            android.provider.DocumentsContract.getDocumentId(uri))
+                            throw IllegalStateException("Elige un documento nuevo; el original se conserva")
+                        val encoded = Charset.forName(snapshot.second).newEncoder()
+                            .onMalformedInput(CodingErrorAction.REPORT)
+                            .onUnmappableCharacter(CodingErrorAction.REPORT)
+                            .encode(CharBuffer.wrap(snapshot.first))
+                        val bytes = ByteArray(encoded.remaining()).also(encoded::get)
+                        val store = AndroidDocumentStore(ctx)
+                        store.adoptEmptyCreatedDocument(uri.toString())
+                        store.openWriteNew(uri.toString()).use { output ->
+                            for (start in bytes.indices step 131072) {
+                                currentCoroutineContext().ensureActive()
+                                output.write(bytes, start, minOf(131072, bytes.size - start))
+                            }
+                            output.flush()
+                        }
+                        val expected = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+                        val readBack = DocumentTransactions.fingerprint(store, uri.toString())
+                        if (readBack.size != bytes.size.toLong() || readBack.sha256 != expected)
+                            throw IllegalStateException("El proveedor no confirmó la copia completa. Tus cambios siguen en el editor.")
+                    }
+                }.onSuccess { vm.toast("Copia guardada y verificada. El original se conserva."); saveError = null }
+                 .onFailure { saveError = it.message ?: "No se pudo guardar la copia" }
+                saving = false
+            }
+        }
+    }
     LaunchedEffect(path, encoding) {
         error = null
+        value = null
         withContext(Dispatchers.IO) {
                 runCatching {
                     if (file.length() > 8L * 1024 * 1024)
                         throw IllegalStateException("El editor permite archivos de hasta 8 MB")
-                    file.readText(Charset.forName(encoding)) to file.lastModified()
+                    val bytes = ByteArrayOutputStream().apply {
+                        file.inputStream().use { input ->
+                            val buffer = ByteArray(131072)
+                            while (true) {
+                                currentCoroutineContext().ensureActive()
+                                val count = input.read(buffer)
+                                if (count < 0) break
+                                if (size().toLong() + count > 8L * 1024 * 1024)
+                                    throw IllegalStateException("El editor permite archivos de hasta 8 MB")
+                                write(buffer, 0, count)
+                            }
+                        }
+                    }.toByteArray()
+                    val fingerprint = DocumentTransactions.fingerprint(LocalDocumentStore(), file.absolutePath, 8L * 1024 * 1024)
+                    val digest = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+                    if (fingerprint.size != bytes.size.toLong() || fingerprint.sha256 != digest)
+                        throw IllegalStateException("El archivo cambió al abrirlo; vuelve a intentarlo")
+                    val text = try {
+                        Charset.forName(encoding).newDecoder()
+                            .onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT)
+                            .decode(ByteBuffer.wrap(bytes)).toString()
+                    } catch (failure: java.nio.charset.CharacterCodingException) {
+                        throw IllegalStateException("El archivo no es texto válido con $encoding. Prueba otra codificación.", failure)
+                    }
+                    text to fingerprint
                 }
             }
             .onSuccess {
                 value = TextFieldValue(it.first)
                 original = it.first
-                modifiedTime = it.second
+                localFingerprint = it.second
+                modifiedTime = it.second.modified
             }
             .onFailure { error = it.message }
     }
     fun save(then: () -> Unit = {}) {
         val snapshot = value?.text ?: return
+        val source = origin
         saving = true
+        saveError = null
         scope.launch {
             withContext(Dispatchers.IO) {
                     runCatching {
+                        if (source != null) {
+                            val store = AndroidDocumentStore(ctx)
+                            val originalId = store.requireSafeReplacement(source.parentUri, source.documentUri)
+                            val saved = DocumentTransactions.saveText(store, source.parentUri,
+                                originalId, source.fingerprint, snapshot, source.mimeType,
+                                Charset.forName(encoding))
+                            // The preview remains a convenience; a failure here does not undo a verified save.
+                            runCatching { SafeFiles.writeAtomic(file) { it.writeText(snapshot, Charset.forName(encoding)) } }
+                            return@runCatching saved
+                        }
                         if (file.lastModified() != modifiedTime)
                             throw IllegalStateException(
                                 "El archivo cambió fuera del editor. Vuelve a abrirlo antes de guardar.")
+                        val current = DocumentTransactions.fingerprint(LocalDocumentStore(), file.absolutePath, 8L * 1024 * 1024)
+                        if (current.size != localFingerprint?.size || current.sha256 != localFingerprint?.sha256)
+                            throw IllegalStateException("El archivo cambió fuera del editor. Vuelve a abrirlo antes de guardar.")
+                        val encoded = Charset.forName(encoding).newEncoder()
+                            .onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT)
+                            .encode(CharBuffer.wrap(snapshot))
+                        val bytes = ByteArray(encoded.remaining()).also(encoded::get)
                         SafeFiles.writeAtomic(file) {
-                            it.writeText(snapshot, Charset.forName(encoding))
+                            it.writeBytes(bytes)
                         }
-                        file.lastModified()
+                        localFingerprint = DocumentTransactions.fingerprint(LocalDocumentStore(), file.absolutePath)
+                        null
                     }
                 }
                 .onSuccess {
-                    modifiedTime = it
+                    if (it != null && source != null) {
+                        origin = source.copy(documentUri = it.id, fingerprint = it.fingerprint)
+                        recovery = "Respaldo anterior: ${android.net.Uri.parse(it.backupId).lastPathSegment ?: it.backupId}"
+                    }
+                    modifiedTime = file.lastModified()
                     original = snapshot
-                    vm.toast("Guardado")
+                    vm.toast(if (source != null) "Guardado en el documento original y verificado. Respaldo conservado." else "Guardado")
                     then()
                 }
-                .onFailure { vm.toast(it.message ?: "No se pudo guardar") }
+                .onFailure {
+                    saveError = it.message ?: "No se pudo guardar"
+                    if (it is DocumentSaveException) {
+                        it.backupId?.let { backup -> recovery = "Original conservado en: $backup" }
+                        if (it.restoredId != null && source != null) {
+                            val fingerprint = withContext(Dispatchers.IO) { runCatching {
+                                DocumentTransactions.fingerprint(AndroidDocumentStore(ctx), it.restoredId)
+                            }.getOrNull() }
+                            origin = source.copy(documentUri = it.restoredId, fingerprint = fingerprint ?: source.fingerprint)
+                        }
+                    }
+                }
             saving = false
         }
     }
@@ -98,17 +214,63 @@ fun EditorScreen(vm: MainViewModel, path: String) {
         if (pos < 0) vm.toast("No se encontró el texto")
         else value = current.copy(selection = TextRange(pos, pos + find.length))
     }
-    BackHandler(modified) { confirm = true }
+    fun reloadOriginal() {
+        val source = origin ?: return
+        saving = true
+        scope.launch {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val store = AndroidDocumentStore(ctx)
+                    val before = DocumentTransactions.fingerprint(store, source.documentUri, 8L * 1024 * 1024)
+                    if (before.size > 8L * 1024 * 1024) throw IllegalStateException("El editor permite archivos de hasta 8 MB")
+                    val bytes = ByteArrayOutputStream().apply {
+                        store.openRead(source.documentUri).use { input ->
+                            val buffer = ByteArray(131072)
+                            while (true) {
+                                currentCoroutineContext().ensureActive()
+                                val count = input.read(buffer)
+                                if (count < 0) break
+                                if (size().toLong() + count > 8L * 1024 * 1024)
+                                    throw IllegalStateException("El editor permite archivos de hasta 8 MB")
+                                write(buffer, 0, count)
+                            }
+                        }
+                    }.toByteArray()
+                    val after = DocumentTransactions.fingerprint(store, source.documentUri, 8L * 1024 * 1024)
+                    val digest = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+                    if (before.sha256 != after.sha256 || after.sha256 != digest || after.size != bytes.size.toLong())
+                        throw IllegalStateException("El documento cambió al recargar; tus cambios siguen en el editor")
+                    val text = Charset.forName(encoding).newDecoder()
+                        .onMalformedInput(CodingErrorAction.REPORT).onUnmappableCharacter(CodingErrorAction.REPORT)
+                        .decode(ByteBuffer.wrap(bytes)).toString()
+                    SafeFiles.writeAtomic(file) { it.writeBytes(bytes) }
+                    text to after
+                }
+            }.onSuccess {
+                value = TextFieldValue(it.first)
+                original = it.first
+                origin = source.copy(fingerprint = it.second)
+                modifiedTime = file.lastModified()
+                saveError = null
+            }.onFailure { saveError = it.message ?: "No se pudo recargar; tus cambios siguen en el editor" }
+            saving = false
+        }
+    }
+    BackHandler(modified && !saving) { confirm = true }
+    BackHandler(saving) { vm.toast("Espera a que termine el guardado") }
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(file.name + if (modified) " •" else "") },
+                title = { Text((origin?.name ?: file.name) + if (modified) " •" else "") },
                 navigationIcon = {
-                    IconButton(onClick = { if (modified) confirm = true else vm.back() }) {
+                    IconButton(onClick = { if (modified) confirm = true else vm.back() }, enabled = !saving) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás")
                     }
                 },
                 actions = {
+                    TextButton(onClick = {
+                        value?.text?.let { copySnapshot = it to encoding; createCopy.launch(origin?.name ?: file.name) }
+                    }, enabled = value != null && !saving) { Text("Guardar copia") }
                     TextButton(onClick = { search = !search }) { Text("Buscar") }
                     IconButton(onClick = { save() }, enabled = modified && !saving) {
                         Icon(Icons.Filled.Save, "Guardar")
@@ -116,6 +278,12 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                 })
         }) { pad ->
             Column(Modifier.fillMaxSize().padding(pad).imePadding()) {
+                if (saving) LinearProgressIndicator(Modifier.fillMaxWidth())
+                origin?.let { Text("Documento original: ${it.name}", Modifier.padding(horizontal = 8.dp), style = MaterialTheme.typography.labelSmall) }
+                saveError?.let { Text(it, Modifier.padding(8.dp), color = MaterialTheme.colorScheme.error) }
+                if (saveError != null && origin != null)
+                    TextButton(onClick = { reloadConfirm = true }, enabled = !saving) { Text("Recargar original") }
+                recovery?.let { Text(it, Modifier.padding(horizontal = 8.dp), style = MaterialTheme.typography.labelSmall) }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box {
                         TextButton(
@@ -257,6 +425,12 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                         Text("Descartar")
                     }
             })
+    if (reloadConfirm)
+        AlertDialog(onDismissRequest = { reloadConfirm = false },
+            title = { Text("Recargar documento original") },
+            text = { Text("Los cambios del editor se sustituirán por el contenido actual del documento. Puedes guardar una copia antes de recargar.") },
+            confirmButton = { TextButton(onClick = { reloadConfirm = false; reloadOriginal() }) { Text("Recargar") } },
+            dismissButton = { TextButton(onClick = { reloadConfirm = false }) { Text("Cancelar") } })
 }
 
 private class CodeColor : VisualTransformation {

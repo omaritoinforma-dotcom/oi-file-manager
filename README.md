@@ -2,7 +2,9 @@
 
 Gestor de archivos Android en Kotlin y Jetpack Compose. El objetivo del proyecto se mantiene: cubrir las funciones de ES File Explorer y añadir herramientas útiles, sin anuncios ni analítica.
 
-**La copia local v0.2.5 genera un APK firmado y pasa 41 pruebas unitarias sin omisiones. La revisión estática y las pruebas de integración de esta versión siguen pendientes; no se declara todavía equivalencia completa con ES.** Consulta [FEATURES.md](FEATURES.md) para distinguir funciones implementadas, dependencias externas y lo que falta.
+**Desarrollo detenido por petición del usuario el 4 de octubre de 2026.** Todos los cambios de la sesión se conservan en `codex/remote-transfer-safety`. El [reporte de pendientes y cambios](REPORTE_PENDIENTES_2026-10-04.md) describe qué se implementó, qué quedó a medio integrar y cómo retomar. La comprobación final compila el código Kotlin y ejecuta 141 pruebas: 135 pasan y 6 fallan. Esta rama es trabajo en curso; el mínimo de ES todavía no está alcanzado.
+
+La última entrega anterior validada es v0.2.10 de desarrollo: 56 pruebas aprobadas y 20 comprobaciones Android 15. Esos resultados no corresponden al snapshot nuevo. Consulta [FEATURES.md](FEATURES.md) y el [informe histórico](INFORME_AVANCE.md).
 
 ## Instalar
 
@@ -15,7 +17,7 @@ Concede acceso a todos los archivos para organizar el almacenamiento compartido.
 - FTP, FTPS, SFTP con huella verificada, SMB 2/3 y WebDAV.
 - Google Drive, Dropbox, OneDrive, Box, Yandex Disk, S3, Baidu y SugarSync; secretos protegidos por Android Keystore. El código de autorización y renovación está integrado; falta configurar los registros OAuth y validarlo con cuentas reales.
 - Servidores HTTP y FTP locales, con contraseña aleatoria y una carpeta elegida explícitamente.
-- Transferencias en un servicio de primer plano, cancelación e historial; copias locales pausables y recuperables desde la pantalla Transferencias tras un cierre. Recuperación persistente de red/nube pendiente.
+- Transferencias en un servicio de primer plano, cancelación e historial; copias locales y descargas de red/nube pausables y recuperables. Esta rama añade subidas y transferencias entre servidores con integración y validación pendientes; véase el reporte.
 - Crear ZIP, 7z, TAR y TAR.GZ; ZIP/7z con contraseña; lectura/extracción de ZIP, 7z, RAR clásico/RAR5 y compresores GZ/BZ2/XZ. Las pruebas de RAR cifrado se ejecutan en el host; falta validar el motor dentro de Android.
 - Galería con zoom, reproductor con listas, PDF, búsqueda avanzada, análisis de espacio y duplicados, doble panel.
 - Editor con números de línea, resaltado sencillo, búsqueda/reemplazo, tamaño de fuente y codificación.

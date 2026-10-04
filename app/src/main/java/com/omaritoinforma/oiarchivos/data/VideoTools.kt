@@ -3,7 +3,6 @@ package com.omaritoinforma.oiarchivos.data
 import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.text.SpannableString
 import androidx.media3.common.*
 import androidx.media3.common.audio.SonicAudioProcessor
 import androidx.media3.effect.*
@@ -27,7 +26,7 @@ data class VideoEdit(
     val canvasWidth: Int = 0,
     val canvasHeight: Int = 0,
     val backgroundColor: Int = android.graphics.Color.BLACK,
-    val backgroundImage: String = ""
+    val backgroundImage: String = "",
 )
 
 @androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
@@ -37,9 +36,20 @@ object VideoTools {
         source: File,
         target: File,
         edit: VideoEdit,
-        report: (OpProgress) -> Unit
+        report: (OpProgress) -> Unit,
     ) {
-        val part = File.createTempFile(".oi-video-", ".mp4", target.parentFile)
+        val prepared = prepare(source, edit)
+        render(ctx, source, target, prepared.first, report)
+    }
+
+    private suspend fun render(
+        ctx: Context,
+        source: File,
+        target: File,
+        edit: VideoEdit,
+        report: (OpProgress) -> Unit,
+    ) {
+        val part = File.createTempFile(".oi-video-", ".mp4", target.absoluteFile.parentFile)
         part.delete()
         try {
             val cues =
@@ -66,12 +76,10 @@ object VideoTools {
                             edit.canvasWidth,
                             edit.canvasHeight,
                             edit.backgroundColor,
-                            edit.backgroundImage)
+                            edit.backgroundImage,
+                        )
                 val overlays = ArrayList<TextureOverlay>()
-                if (edit.caption.isNotBlank())
-                    overlays +=
-                        TextOverlay.createStaticTextOverlay(
-                            SpannableString(edit.caption), OverlaySettings.Builder().build())
+                if (edit.caption.isNotBlank()) overlays += VideoOverlays.caption(edit.caption)
                 if (cues.isNotEmpty()) overlays += VideoOverlays.subtitles(cues)
                 if (edit.image.isNotBlank()) overlays += VideoOverlays.image(edit.image)
                 if (overlays.isNotEmpty()) canvas += OverlayEffect(overlays)
@@ -89,7 +97,8 @@ object VideoTools {
                             MediaItem.Builder()
                                 .setUri(Uri.fromFile(source))
                                 .setClippingConfiguration(clip)
-                                .build())
+                                .build()
+                        )
                         .setRemoveAudio(edit.mute)
                         .setEffects(Effects(audio, effects))
                         .build()
@@ -105,12 +114,19 @@ object VideoTools {
                 sequences += EditedMediaItemSequence(items)
                 if (edit.music.isNotBlank())
                     sequences +=
-                        EditedMediaItemSequence(
-                            listOf(
-                                EditedMediaItem.Builder(
-                                        MediaItem.fromUri(Uri.fromFile(File(edit.music))))
-                                    .setRemoveVideo(true)
-                                    .build()))
+                        EditedMediaItemSequence.Builder(
+                                listOf(
+                                    EditedMediaItem.Builder(
+                                            MediaItem.fromUri(Uri.fromFile(File(edit.music)))
+                                        )
+                                        .setRemoveVideo(true)
+                                        .build()
+                                )
+                            )
+                            // Background audio follows the video timeline, even when the track
+                            // is longer (or shorter) than the edited sequence.
+                            .setIsLooping(true)
+                            .build()
                 val composition =
                     Composition.Builder(sequences)
                         .setEffects(Effects(emptyList(), canvas))
@@ -125,7 +141,7 @@ object VideoTools {
                             object : Transformer.Listener {
                                 override fun onCompleted(
                                     composition: Composition,
-                                    result: ExportResult
+                                    result: ExportResult,
                                 ) {
                                     done.complete(Unit)
                                 }
@@ -133,20 +149,26 @@ object VideoTools {
                                 override fun onError(
                                     composition: Composition,
                                     result: ExportResult,
-                                    exception: ExportException
+                                    exception: ExportException,
                                 ) {
                                     done.completeExceptionally(exception)
                                 }
-                            })
+                            }
+                        )
                         .build()
-                transformer.start(composition, part.path)
                 try {
+                    transformer.start(composition, part.path)
                     val p = ProgressHolder()
                     while (!done.isCompleted) {
                         if (transformer.getProgress(p) == Transformer.PROGRESS_STATE_AVAILABLE)
                             report(
                                 OpProgress(
-                                    "Exportando video", source.name, p.progress.toLong(), 100))
+                                    "Exportando video",
+                                    source.name,
+                                    p.progress.toLong(),
+                                    100,
+                                )
+                            )
                         delay(250)
                     }
                     done.await()
@@ -161,56 +183,152 @@ object VideoTools {
         }
     }
 
-    /**
-     * Small animated GIFs, uniform RGB palette, bounded duration/resolution and streamed frames.
-     */
+    /** GIF uses the same visual composition as MP4. The format does not carry audio. */
     suspend fun gif(
+        ctx: Context,
         source: File,
         target: File,
-        startMs: Long,
-        endMs: Long,
-        report: (OpProgress) -> Unit
+        edit: VideoEdit,
+        report: (OpProgress) -> Unit,
     ) {
-        val duration = (endMs - startMs).coerceAtMost(10000)
-        if (duration <= 0) throw IOException("Elige un intervalo de hasta 10 segundos")
-        val temp = File.createTempFile(".oi-gif-", ".tmp", target.parentFile)
+        val (prepared, duration) = prepare(source, edit)
+        if (duration > GIF_MAX_DURATION_MS)
+            throw IOException(
+                "El GIF editado debe durar como máximo 10 segundos, contando velocidad y unión"
+            )
+        val rendered = File.createTempFile(".oi-gif-render-", ".mp4", ctx.cacheDir)
+        rendered.delete()
+        try {
+            render(ctx, source, rendered, prepared.copy(mute = true, music = ""), report)
+            withContext(Dispatchers.IO) {
+                encodeGif(rendered, target, duration, source.name, report)
+            }
+        } finally {
+            rendered.delete()
+        }
+    }
+
+    /** A short, real render of the first clip; the exported composition remains unchanged. */
+    suspend fun preview(
+        ctx: Context,
+        source: File,
+        target: File,
+        edit: VideoEdit,
+        report: (OpProgress) -> Unit,
+    ) {
+        val (prepared, _) = prepare(source, edit.copy(join = emptyList()))
+        export(
+            ctx,
+            source,
+            target,
+            prepared.copy(
+                endMs = minOf(prepared.endMs, prepared.startMs + (2000 * prepared.speed).toLong())
+            ),
+            report,
+        )
+    }
+
+    private suspend fun prepare(source: File, edit: VideoEdit): Pair<VideoEdit, Long> =
+        withContext(Dispatchers.IO) {
+            if (!source.isFile || edit.startMs < 0 || edit.endMs <= edit.startMs)
+                throw IOException("Revisa el video y el intervalo de tiempo")
+            if (!edit.speed.isFinite() || edit.speed !in 0.25f..4f || !edit.rotation.isFinite())
+                throw IOException("La velocidad debe estar entre 0,25 y 4 veces")
+            if (
+                (edit.canvasWidth != 0 || edit.canvasHeight != 0) &&
+                    (edit.canvasWidth !in 2..3840 ||
+                        edit.canvasHeight !in 2..3840 ||
+                        edit.canvasWidth % 2 != 0 ||
+                        edit.canvasHeight % 2 != 0)
+            )
+                throw IOException("El lienzo debe tener dimensiones pares de hasta 3840 píxeles")
+            val extra =
+                edit.join +
+                    listOf(edit.music, edit.image, edit.subtitles, edit.backgroundImage).filter {
+                        it.isNotBlank()
+                    }
+            if (extra.any { !File(it).isFile })
+                throw IOException("Ya no existe uno de los archivos adicionales")
+            val end = minOf(edit.endMs, durationMs(source))
+            if (end <= edit.startMs) throw IOException("El inicio está fuera del video")
+            var duration = (end - edit.startMs).toDouble()
+            for (path in edit.join) {
+                currentCoroutineContext().ensureActive()
+                duration += durationMs(File(path))
+            }
+            val output = kotlin.math.ceil(duration / edit.speed).toLong().coerceAtLeast(1)
+            edit.copy(endMs = end) to output
+        }
+
+    private fun durationMs(source: File): Long {
         val retriever = MediaMetadataRetriever()
         try {
             retriever.setDataSource(source.path)
+            if (retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_HAS_VIDEO) != "yes")
+                throw IOException("«${source.name}» no contiene video")
+            return retriever
+                .extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                ?.toLongOrNull()
+                ?.takeIf { it > 0 }
+                ?: throw IOException("No se pudo leer la duración de «${source.name}»")
+        } finally {
+            retriever.release()
+        }
+    }
+
+    private suspend fun encodeGif(
+        source: File,
+        target: File,
+        requestedDuration: Long,
+        displayName: String,
+        report: (OpProgress) -> Unit,
+    ) {
+        val temp = File.createTempFile(".oi-gif-", ".tmp", target.absoluteFile.parentFile)
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(source.path)
+            val duration = minOf(requestedDuration, durationMs(source), GIF_MAX_DURATION_MS)
             val frame =
-                retriever.getFrameAtTime(startMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
+                retriever.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST)
                     ?: throw IOException("No se pudo leer el video")
-            val width = frame.width.coerceAtMost(480)
-            val height = (frame.height.toDouble() * width / frame.width).toInt().coerceAtLeast(1)
+            val (width, height) = gifDimensions(frame.width, frame.height)
             frame.recycle()
             temp.outputStream().buffered().use { out ->
                 val encoder = GifWriter(out, width, height)
                 encoder.begin()
-                val count = (duration / 125).toInt().coerceAtLeast(1)
+                val count = ((duration + 124) / 125).toInt().coerceAtLeast(1)
                 repeat(count) { i ->
                     currentCoroutineContext().ensureActive()
                     val raw =
                         if (android.os.Build.VERSION.SDK_INT >= 27)
                             retriever.getScaledFrameAtTime(
-                                (startMs + i * 125) * 1000,
+                                i * 125_000L,
                                 MediaMetadataRetriever.OPTION_CLOSEST,
                                 width,
-                                height)
+                                height,
+                            )
                         else
                             retriever.getFrameAtTime(
-                                (startMs + i * 125) * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
+                                i * 125_000L,
+                                MediaMetadataRetriever.OPTION_CLOSEST,
+                            )
                     val original = raw ?: throw IOException("No se pudo leer un fotograma")
                     val bitmap =
                         if (original.width == width && original.height == height) original
                         else
                             android.graphics.Bitmap.createScaledBitmap(
-                                    original, width, height, true)
+                                    original,
+                                    width,
+                                    height,
+                                    true,
+                                )
                                 .also { original.recycle() }
                     val pixels = IntArray(width * height)
                     bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
                     bitmap.recycle()
-                    encoder.frame(pixels, 13)
-                    report(OpProgress("Creando GIF", source.name, (i + 1).toLong(), count.toLong()))
+                    // GIF delays use centiseconds: 12/13 alternation averages exactly 8 fps.
+                    encoder.frame(pixels, if (i % 2 == 0) 12 else 13)
+                    report(OpProgress("Creando GIF", displayName, (i + 1).toLong(), count.toLong()))
                 }
                 encoder.end()
             }
@@ -221,12 +339,20 @@ object VideoTools {
             temp.delete()
         }
     }
+
+    const val GIF_MAX_DURATION_MS = 10_000L
+}
+
+internal fun gifDimensions(width: Int, height: Int): Pair<Int, Int> {
+    require(width > 0 && height > 0)
+    val scale = minOf(1.0, 480.0 / maxOf(width, height))
+    return (width * scale).toInt().coerceAtLeast(1) to (height * scale).toInt().coerceAtLeast(1)
 }
 
 internal class GifWriter(
     private val out: OutputStream,
     private val width: Int,
-    private val height: Int
+    private val height: Int,
 ) {
     private fun short(value: Int) {
         out.write(value and 255)
