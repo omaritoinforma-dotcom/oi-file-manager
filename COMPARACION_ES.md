@@ -1,6 +1,6 @@
 # Comparación con ES File Explorer
 
-Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android: `scripts/android_features.py`, 24/24 aprobadas). Esta matriz define el **mínimo** del proyecto: cada función de ES que un usuario puede usar, frente a su estado en OI Archivos.
+Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android: `scripts/android_features.py`, 33 de 35 aprobadas; los 2 fallos eran de la prueba y están corregidos). Esta matriz define el **mínimo** del proyecto: cada función de ES que un usuario puede usar, frente a su estado en OI Archivos.
 
 ## Fuente y método
 
@@ -39,7 +39,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | «Abrir como» (elegir tipo) y gestión de apps predeterminadas | ❌ | |
 | Fijar elementos arriba | ❌ | |
 | Papelera de reciclaje (activar, restaurar, vaciar) | ✅ | Emulador Android 15 |
-| Ocultar archivos y lista de ocultos protegida con contraseña | 🟠 | Ocultar o mostrar por nombre existe; falta la lista protegida con contraseña |
+| Ocultar archivos y lista de ocultos protegida con contraseña | 🟠 | Mostrar los ocultos puede pedir contraseña (comprobado en el emulador); falta la lista de ocultos propia de ES |
 | Accesos directos en el escritorio | 🟡 | |
 | Comprimir ZIP/7z con nivel de compresión | 🟠 | Crear y cifrar sí; falta elegir el nivel |
 | Extraer ZIP | ✅ | Emulador |
@@ -61,9 +61,9 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Temas: claro y oscuro | ✅ | Emulador Android 15 (brillo de pantalla medido) |
 | Temas: colores, fondo, estilo de carpetas | ❌ | |
 | Idioma dentro de la app | ❌ | Hoy sigue el idioma del sistema |
-| Contraseña para abrir la app | ❌ | |
-| Contraseña para recursos de red | ❌ | Las credenciales sí están cifradas con Keystore |
-| Copia y restauración de ajustes | ❌ | |
+| Contraseña para abrir la app | ✅ | Emulador Android 15: pide la contraseña al abrir, rechaza una incorrecta y desbloquea con la buena. Se guarda como hash PBKDF2 con sal (ES la guardaba cifrada de forma reversible) |
+| Contraseña para recursos de red | ✅ | Emulador Android 15: abrir una conexión y mostrar los ocultos piden la contraseña |
+| Copia y restauración de ajustes | ✅ | Emulador Android 15: se guarda el JSON (sin contraseña) y al restaurar vuelve el tema oscuro |
 
 ### Búsqueda y análisis
 
@@ -87,7 +87,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Listas de reproducción guardadas | ❌ | Solo cola temporal |
 | Audio en segundo plano con notificación | ✅ | Emulador Android 15: sigue sonando al salir, con notificación |
 | Poner como tono, alarma o notificación | ❌ | |
-| Reproducir desde red sin descargar (streaming) | ❌ | Hoy se descarga a caché antes de abrir |
+| Reproducir desde red sin descargar (streaming) | ✅ | Emulador Android 15: un audio de 19 MB en un SFTP limitado a 256 KB/s suena a los 3 s. Servidor local solo en 127.0.0.1 y con clave por enlace (el de ES estaba abierto a toda la red, CVE-2019-6447) |
 | Visor de PDF | ✅ | Emulador |
 | Editor de texto: codificación, buscar y reemplazar, tamaño de letra | ✅ | Guardado comprobado en el emulador |
 | Editor de texto: resaltado de sintaxis, sangría automática, mayúsculas y minúsculas, duplicar línea, guardado automático | 🟠 | Resaltado sencillo; faltan el resto |
@@ -101,7 +101,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Lista de apps, abrir, desinstalar, compartir, información | 🟡 | Lista y búsqueda usadas en el emulador; faltan abrir, desinstalar y compartir |
 | Copia de seguridad de APK (también divididos) | ✅ | Emulador Android 15 (APK simple) |
 | Instalar o desinstalar varias apps a la vez | ❌ | |
-| Copia antes de desinstalar, limpiar carpetas asociadas | ❌ | |
+| Copia antes de desinstalar, limpiar carpetas asociadas | 🟠 | Copia del APK antes de desinstalar comprobada en el emulador; los restos de apps desinstaladas se limpian desde «Limpiar basura» |
 | Desinstalar apps del sistema (root) | ❌ | |
 | Ver el contenido de un APK | ✅ | Emulador Android 15 |
 
@@ -122,7 +122,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Servidor HTTP desde el navegador | ✅ | Emulador |
 | Enviar archivos entre teléfonos (ES Sender: misma Wi-Fi, punto de acceso, código QR) | 🟠 | Misma Wi-Fi: enviar y recibir comprobados en el emulador, con aceptación y SHA-256 por archivo; faltan punto de acceso y código QR |
 | Crear un punto de acceso Wi-Fi para transferir | ❌ | |
-| Enviar a la TV: DLNA/UPnP y Chromecast | ❌ | |
+| Enviar a la TV: DLNA/UPnP y Chromecast | 🟠 | DLNA comprobado en el emulador con una TV de prueba (reproducir, pausa, detener; solo esa TV puede leer el archivo). Falta Chromecast |
 | Instalar y gestionar una Android TV por ADB | ❌ | |
 | Bluetooth: compartir y explorar (cliente OBEX) | 🟡 | Falta un dispositivo real |
 | Bluetooth: servidor OBEX FTP (que otros exploren el teléfono) | ❌ | |
@@ -153,25 +153,22 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 
 | Estado | Funciones |
 | --- | ---: |
-| ✅ Comprobadas en su entorno real | 24 |
+| ✅ Comprobadas en su entorno real | 28 |
 | 🟡 Implementadas, sin comprobar | 15 |
-| 🟠 Parciales | 11 |
-| ❌ Faltan | 29 |
+| 🟠 Parciales | 13 |
+| ❌ Faltan | 23 |
 | **Total de filas** | **79** |
 
 **OI Archivos no cubre todavía el mínimo.** Las funciones que faltan más grandes, por valor para el usuario:
 
-1. Enviar a la TV por DLNA o Chromecast.
-2. Reproducir desde red sin descargar.
-3. Copia automática a la nube.
-4. Gestor de descargas.
-5. Contraseña de la app y de los recursos.
-6. Ajustes de ES: limpieza al salir, carpetas, ventana inicial, copia de ajustes.
-7. Portapapeles visible.
-8. Listas de reproducción y tonos.
-9. Limpieza de basura completa.
-10. Instalación y desinstalación por lotes.
-11. Aviso de archivos nuevos.
-12. Enviar entre teléfonos por punto de acceso o código QR.
+1. Copia automática a la nube.
+2. Enviar a la TV por Chromecast (DLNA ya está).
+3. Listas de reproducción guardadas.
+4. Instalación y desinstalación por lotes.
+5. Aviso de archivos nuevos y de poco espacio.
+6. Enviar entre teléfonos por punto de acceso o código QR.
+7. Idioma y temas dentro de la app; barra lateral personalizable.
 
-Los recuentos son por fila de esta matriz; una fila puede agrupar varias funciones pequeñas. Solo 24 de 79 cumplen ya el criterio de terminación (conectadas y comprobadas en su entorno real).
+Hechos y pendientes de su comprobación en el emulador (CI en curso): gestor de descargas desde URL, portapapeles de varias carpetas, poner como tono, limpiar basura y ajustes del editor.
+
+Los recuentos son por fila de esta matriz; una fila puede agrupar varias funciones pequeñas. Solo 28 de 79 cumplen ya el criterio de terminación (conectadas y comprobadas en su entorno real).
