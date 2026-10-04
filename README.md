@@ -15,7 +15,7 @@ Concede acceso a todos los archivos para organizar el almacenamiento compartido.
 - FTP, FTPS, SFTP con huella verificada, SMB 2/3 y WebDAV.
 - Google Drive, Dropbox, OneDrive, Box, Yandex Disk, S3, Baidu y SugarSync; secretos protegidos por Android Keystore. El código de autorización y renovación está integrado; falta configurar los registros OAuth y validarlo con cuentas reales.
 - Servidores HTTP y FTP locales, con contraseña aleatoria y una carpeta elegida explícitamente.
-- Transferencias en un servicio de primer plano, cancelación e historial; copias locales pausables y recuperables desde la pantalla Transferencias tras un cierre. Recuperación persistente de red/nube pendiente.
+- Transferencias en un servicio de primer plano, cancelación e historial; copias locales y descargas/subidas de red y nube pausables y recuperables desde la pantalla Transferencias tras un cierre o error (falta probarlas en Android con servidores y cuentas reales; el pegado de remoto a remoto aún no es reanudable).
 - Crear ZIP, 7z, TAR y TAR.GZ; ZIP/7z con contraseña; lectura/extracción de ZIP, 7z, RAR clásico/RAR5 y compresores GZ/BZ2/XZ. Las pruebas de RAR cifrado se ejecutan en el host; falta validar el motor dentro de Android.
 - Galería con zoom, reproductor con listas, PDF, búsqueda avanzada, análisis de espacio y duplicados, doble panel.
 - Editor con números de línea, resaltado sencillo, búsqueda/reemplazo, tamaño de fuente y codificación.
