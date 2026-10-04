@@ -89,7 +89,6 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Verificar la aplicación en Android 15
-        env:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
