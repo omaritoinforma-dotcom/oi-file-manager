@@ -222,7 +222,10 @@ fun AdvancedSearchScreen(vm: MainViewModel, root: String) {
                                 val results = AnalysisTools.search(File(root), filter, report)
                                 withContext(Dispatchers.Main) {
                                     vm.showResults(
-                                        results, root, name.ifBlank { "Filtros avanzados" })
+                                        results,
+                                        root,
+                                        name.ifBlank { "Filtros avanzados" },
+                                        filter)
                                 }
                                 OperationResult(
                                     "${results.size} resultados" +

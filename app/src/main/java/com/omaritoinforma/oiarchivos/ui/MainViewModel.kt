@@ -12,6 +12,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.omaritoinforma.oiarchivos.data.AppInfo
 import com.omaritoinforma.oiarchivos.data.AppsRepo
+import com.omaritoinforma.oiarchivos.data.AnalysisTools
 import com.omaritoinforma.oiarchivos.data.ArchiveTools
 import com.omaritoinforma.oiarchivos.data.Categories
 import com.omaritoinforma.oiarchivos.data.Clipboard
@@ -30,6 +31,7 @@ import com.omaritoinforma.oiarchivos.data.Prefs
 import com.omaritoinforma.oiarchivos.data.RecycleBin
 import com.omaritoinforma.oiarchivos.data.RenameRules
 import com.omaritoinforma.oiarchivos.data.SafeFiles
+import com.omaritoinforma.oiarchivos.data.SearchFilter
 import com.omaritoinforma.oiarchivos.data.SortBy
 import com.omaritoinforma.oiarchivos.data.Sorter
 import com.omaritoinforma.oiarchivos.data.StorageInfo
@@ -354,8 +356,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         prefs.history = emptyList()
     }
 
-    fun showResults(items: List<FileItem>, root: String, query: String) {
-        val tab = TabState(Location.Search(root, query))
+    fun showResults(items: List<FileItem>, root: String, query: String, filter: SearchFilter) {
+        val tab = TabState(Location.Search(root, query, filter))
         tab.items.addAll(Sorter.sort(items, sortBy, ascending))
         tabs.add(tab)
         activeTab = tabs.lastIndex
@@ -499,7 +501,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         tab.job =
             viewModelScope.launch {
                 try {
-                    if (loc is Location.Search) {
+                    if (loc is Location.Search && loc.filter != null) {
+                        // Refreshing advanced results repeats the same filters, not a name search
+                        // for the tab title.
+                        val found =
+                            withContext(Dispatchers.IO) {
+                                AnalysisTools.search(File(loc.root), loc.filter) {}
+                            }
+                        tab.items.clear()
+                        tab.items.addAll(sorted(found, loc))
+                    } else if (loc is Location.Search) {
                         tab.items.clear()
                         FileRepo.search(File(loc.root), loc.query, showHidden).collect {
                             tab.items.add(it)

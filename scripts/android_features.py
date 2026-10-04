@@ -361,6 +361,7 @@ def bookmarks():
     open_test_folder()
     long_press("Nueva")
     more("Agregar a marcadores")
+    tap("Cancelar selección")
     tap("Menú")
     wait("Nueva")
     # A bookmark must survive the app being closed.
@@ -449,13 +450,18 @@ def inspect_apk():
 def background_audio():
     open_test_folder()
     tap(find("tono.wav").get("text"))
-    time.sleep(3)
+
+    def playing(stage):
+        sessions = sh("dumpsys", "media_session")
+        (OUTPUT / f"audio-media-session-{stage}.txt").write_text(sessions, encoding="utf-8")
+        owner = [block for block in sessions.split("\n\n") if ui.PACKAGE in block]
+        # Depending on the Android version the state prints as "state=3" or "PLAYING(3)".
+        return owner and any("state=3" in b or "PLAYING" in b for b in owner)
+
+    until(lambda: playing("en-la-app"), "El audio no empezó a reproducirse en la app", 20)
     adb("shell", "input", "keyevent", "KEYCODE_HOME")
     time.sleep(3)
-    sessions = sh("dumpsys", "media_session")
-    owner = [block for block in sessions.split("\n\n") if ui.PACKAGE in block]
-    assert owner, "No hay sesión multimedia de la app"
-    assert any("state=3" in block for block in owner), "La sesión no está reproduciendo tras salir"
+    assert playing("tras-salir"), "La reproducción se detuvo al salir de la app"
     assert ui.PACKAGE in sh("dumpsys", "notification", "--noredact"), "Sin notificación de reproducción"
     ui.launch()
 
