@@ -159,7 +159,7 @@ def open_test_folder():
 
 
 def long_press(label):
-    node, _ = wait(label)
+    node = find(label)
     import re
 
     x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds")))
@@ -183,14 +183,16 @@ def wait_text(fragment, timeout=30):
     raise AssertionError(f"Text not shown: {fragment}")
 
 
-def find(label, swipes=8):
-    """Desplaza la lista hasta que aparece el control (las listas perezosas solo crean lo visible)."""
-    for _ in range(swipes):
-        found = nodes(label, hierarchy())
-        if found:
-            return found[0]
-        adb("shell", "input", "swipe", "540", "1500", "540", "700", "400")
-        time.sleep(0.5)
+def find(label, swipes=10):
+    """Desplaza la lista hasta que aparece el control (las listas perezosas solo crean lo visible):
+    primero hacia abajo y, si no estaba, de vuelta hacia arriba."""
+    for direction in ((1500, 700), (700, 1500)):
+        for _ in range(swipes):
+            found = nodes(label, hierarchy())
+            if found:
+                return found[0]
+            adb("shell", "input", "swipe", "540", str(direction[0]), "540", str(direction[1]), "400")
+            time.sleep(0.5)
     raise AssertionError(f"Not found after scrolling: {label}")
 
 
@@ -2896,6 +2898,7 @@ if os.environ.get("OI_REMOTE_TEST_ROOT"):
         """Abre un archivo del SFTP de CI, lo edita y comprueba en el disco del servidor que el cambio
         subió solo; después provoca un conflicto (el servidor cambia mientras se edita) y elige «Subir como copia»."""
         server = pathlib.Path(os.environ["OI_REMOTE_TEST_ROOT"])
+        server.mkdir(parents=True, exist_ok=True)
         remote = server / "editar-oi.txt"
         for leftover in server.glob("editar-oi*"):
             leftover.unlink()
@@ -3118,8 +3121,16 @@ def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()
     ui.keyboards(enable=False)
+    # OI_SHARD="k/n": solo se ejecuta el k-ésimo de n bloques contiguos de comprobaciones (cada uno en un emulador nuevo).
+    selected = CHECKS
+    shard = os.environ.get("OI_SHARD")
+    if shard:
+        k, n = (int(v) for v in shard.split("/"))
+        size = -(-len(CHECKS) // n)
+        selected = CHECKS[(k - 1) * size:k * size]
+        print(f"Bloque {k} de {n}: {len(selected)} de {len(CHECKS)} comprobaciones", flush=True)
     try:
-        for run in CHECKS:
+        for run in selected:
             run()
     finally:
         ui.keyboards(enable=True)
