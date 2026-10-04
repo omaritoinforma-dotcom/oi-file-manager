@@ -1125,6 +1125,10 @@ private fun AppSettings(vm: MainViewModel) {
             "Guardar el APK de una app antes de desinstalarla",
             vm.backupBeforeUninstall)
         SwitchRow(
+            "Limpiar carpetas al desinstalar",
+            "Tras desinstalar una app desde OI Archivos, proponer mover a la papelera las carpetas con su nombre que dejó en el almacenamiento",
+            vm.cleanAssociatedFolders)
+        SwitchRow(
             "Avisar de los permisos al instalar",
             "Al instalar una app desde OI Archivos, una notificación dice qué permisos delicados pide",
             vm.appPermissionNotify)

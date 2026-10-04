@@ -306,6 +306,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("ftp_stop_on_exit", false)
         set(v) = sp.edit().putBoolean("ftp_stop_on_exit", v).apply()
 
+    /** Tras desinstalar una app, proponer borrar las carpetas con su nombre («Clean associated folders» de ES). */
+    var cleanAssociatedFolders: Boolean
+        get() = sp.getBoolean("clean_associated_folders", true)
+        set(v) = sp.edit().putBoolean("clean_associated_folders", v).apply()
+
     /** Avisar de los permisos delicados de una app recién instalada desde OI Archivos. */
     var appPermissionNotify: Boolean
         get() = sp.getBoolean("app_permission_notify", true)

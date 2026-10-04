@@ -3161,6 +3161,57 @@ def nearby_qr():
         server.shutdown()
 
 
+def center_y(node):
+    y1, y2 = (int(v) for v in re.findall(r"\d+", node.get("bounds"))[1::2])
+    return (y1 + y2) // 2
+
+
+@check("limpiar-carpetas-que-deja-una-app")
+def clean_leftover_folders():
+    package, label = "com.omaritoinforma.prueba.limpia", "Prueba limpia"
+    # Lo que una app crea por su cuenta en la raíz del almacenamiento: Android no lo borra al desinstalarla.
+    leftover, other = "/sdcard/Prueba limpia", "/sdcard/Prueba limpia vieja"
+    sh("pm", "uninstall", package, check=False)
+    sh("rm", "-rf", q(leftover), q(other), check=False)
+    with tempfile.TemporaryDirectory() as tmp:
+        adb("install", "-r", str(build_test_apk(pathlib.Path(tmp), package, label)), timeout=180)
+    assert installed(package), "No se instaló la app de prueba"
+    sh("mkdir", "-p", q(leftover), q(other))
+    sh("echo", "datos", ">", q(f"{leftover}/datos.txt"))
+    sh("echo", "otra", ">", q(f"{other}/otra.txt"))
+    try:
+        settings("Aplicaciones")
+        set_switch("Copia antes de desinstalar", False)
+        set_switch("Limpiar carpetas al desinstalar", True)
+        launch_home()
+        ui.drawer("Aplicaciones")
+        fill("Buscar app…", "Prueba limp")
+        wait(label)
+        tap("Opciones")
+        tap("Desinstalar")
+        answer_system_dialogs(["OK"], lambda: not installed(package), "No se desinstaló la app de prueba")
+        # OI Archivos propone solo la carpeta con el nombre exacto de la app, no la que se le parece.
+        wait(f"Carpetas que dejó «{label}»", timeout=60)
+        tree = hierarchy()
+        assert nodes(f"{INTERNAL}/Prueba limpia", tree), "No se propuso la carpeta de la app"
+        assert not nodes(f"{INTERNAL}/Prueba limpia vieja", tree), "Se propuso una carpeta que no es de la app"
+        evidence("carpetas-que-deja-una-app")
+        tap("Mover a la papelera")
+        until(lambda: not exists(leftover), "La carpeta no se movió a la papelera", 60)
+        assert read(f"{other}/otra.txt").strip() == "otra", "Se tocó una carpeta que no era de la app"
+        # Va a la papelera y desde ahí se recupera entera.
+        time.sleep(2)
+        launch_home()
+        ui.drawer("Papelera")
+        row, tree = wait(label)
+        tap_node(min(nodes("Restaurar", tree), key=lambda n: abs(center_y(n) - center_y(row))))
+        until(lambda: read(f"{leftover}/datos.txt").strip() == "datos",
+              "La carpeta no se recuperó desde la papelera", 30)
+    finally:
+        sh("pm", "uninstall", package, check=False)
+        sh("rm", "-rf", q(leftover), q(other), check=False)
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()

@@ -289,6 +289,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Los tipos elegidos para «Documentos», ya como enumerado. */
     fun documentTypeSet(): Set<DocumentType> =
         documentTypes.value.mapNotNull { name -> DocumentType.entries.firstOrNull { it.name == name } }.toSet()
+    val cleanAssociatedFolders =
+        PrefState({ prefs.cleanAssociatedFolders }, { prefs.cleanAssociatedFolders = it })
     val appPermissionNotify = PrefState({ prefs.appPermissionNotify }, { prefs.appPermissionNotify = it })
     val showWindowsButton = PrefState({ prefs.showWindowsButton }, { prefs.showWindowsButton = it })
     val homeSearch = PrefState({ prefs.homeSearch }, { prefs.homeSearch = it })
@@ -499,6 +501,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             documentTypes,
             showWindowsButton,
             appPermissionNotify,
+            cleanAssociatedFolders,
             homeSearch,
             ftpStopOnExit,
             backgroundStrength,
@@ -1565,15 +1568,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Desinstala [app]; antes guarda su APK si así se eligió en Ajustes → Aplicaciones. */
     fun uninstall(app: AppInfo) {
+        // Con PackageInstaller (como la tanda) se sabe cuándo terminó: hace falta para ofrecer
+        // limpiar las carpetas que deja la app. Android pide confirmar igual que con ACTION_DELETE.
         val startUninstall = {
-            runCatching {
-                ctx.startActivity(
-                    android.content.Intent(
-                            android.content.Intent.ACTION_DELETE,
-                            android.net.Uri.parse("package:${app.packageName}"))
-                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
-            }
-            Unit
+            if (!AppInstaller.start(ctx, listOf(AppInstaller.Uninstall(app.packageName, app.label))))
+                toast("Espera a que termine la tanda en curso")
         }
         if (!backupBeforeUninstall.value) return startUninstall()
         val folder = File(appBackupFolder.value)

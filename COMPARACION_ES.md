@@ -1,6 +1,6 @@
 # Comparación con ES File Explorer
 
-Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android: `scripts/android_features.py`, 33 de 35 aprobadas; los 2 fallos eran de la prueba y están corregidos). Esta matriz define el **mínimo** del proyecto: cada función de ES que un usuario puede usar, frente a su estado en OI Archivos.
+Fecha: 4 de octubre de 2026 (actualizada con la última pasada completa de `scripts/android_features.py` en el emulador Android 15 del CI: 47 de 57 aprobadas en la ejecución 37215783930; los 10 fallos eran de la prueba y están corregidos). Esta matriz define el **mínimo** del proyecto: cada función de ES que un usuario puede usar, frente a su estado en OI Archivos.
 
 ## Fuente y método
 
@@ -107,7 +107,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Copia de seguridad de APK (también divididos) | ✅ | Emulador Android 15 (APK simple) |
 | Instalar o desinstalar varias apps a la vez | 🟡 | Varios APK desde el explorador y varias apps desde Aplicaciones (mantener pulsado), de una en una con la confirmación de Android; comprobación en el emulador preparada |
 | Aviso de los permisos de una app recién instalada («Notificarme los permisos de aplicaciones» de ES) | 🟡 | Al terminar de instalar un APK desde OI Archivos, una notificación dice qué permisos delicados pide (ubicación, cámara, micrófono…) y al tocarla abre «Analizar permisos»; se desactiva en Ajustes → «Aplicaciones» y va en la copia de ajustes. Solo cubre lo instalado desde la app (Android no deja avisar de instalaciones ajenas sin un receptor que ya no se permite). Pruebas JVM del texto y comprobación en el emulador preparada |
-| Copia antes de desinstalar, limpiar carpetas asociadas | 🟠 | Copia del APK antes de desinstalar comprobada en el emulador. Android ya borra Android/data, media y obb de la app al desinstalarla; lo que queda se limpia desde «Limpiar basura». Las carpetas que ES asocia a cada app vienen de su base de datos en línea; adivinarlas por el nombre podría borrar datos del usuario, así que no se hace |
+| Copia antes de desinstalar, limpiar carpetas asociadas | 🟡 | Copia del APK antes de desinstalar comprobada en el emulador. Limpiar carpetas: tras desinstalar una app desde OI Archivos, se proponen las carpetas de la raíz del almacenamiento con el nombre exacto de la app o de su paquete (nunca las de Android ni nombres genéricos); el usuario elige cuáles y van a la papelera. ES las saca de su base de datos en línea; aquí solo se compara el nombre, por eso es conservador. Android ya borra Android/data, media y obb. Comprobación en el emulador preparada |
 | Desinstalar apps del sistema (root) | ❌ | |
 | Ver el contenido de un APK | ✅ | Emulador Android 15 |
 
@@ -157,20 +157,21 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 
 ## Resumen
 
-| Estado | Funciones |
+| Estado | Filas |
 | --- | ---: |
-| ✅ Comprobadas en su entorno real | 32 |
-| 🟡 Implementadas, sin comprobar | 29 |
-| 🟠 Parciales | 8 |
-| ❌ Faltan | 10 |
-| **Total de filas** | **79** |
+| ✅ Comprobadas en su entorno real | 40 |
+| 🟡 Implementadas; su comprobación en el emulador está escrita y espera su pasada | 33 |
+| 🟠 Parciales | 3 |
+| ❌ Faltan | 9 |
+| **Total de filas** | **85** |
 
-**OI Archivos no cubre todavía el mínimo.** Las funciones que faltan más grandes, por valor para el usuario:
+**OI Archivos no cubre todavía el mínimo.** Lo que falta, por valor para el usuario:
 
-1. Enviar a la TV por Chromecast (DLNA ya está).
-2. Enviar entre teléfonos por punto de acceso o código QR.
-3. Idioma y temas dentro de la app; barra lateral personalizable.
+1. Idioma dentro de la app: sacar los textos a recursos y añadir al menos inglés.
+2. Enviar a la TV por Chromecast (DLNA ya está) y enviar entre teléfonos por punto de acceso Wi-Fi (misma Wi-Fi y código QR ya están).
+3. Intro y outro en el editor de vídeo.
+4. Lo que exige hardware, root o cuentas que el CI no tiene: Android TV por ADB, servidor OBEX, expulsar USB, punto de acceso propio, funciones root y nubes minoritarias.
 
-Hechos y pendientes de su comprobación en el emulador (CI en curso): listas de reproducción, aviso de archivos nuevos, aviso de poco espacio, instalar y desinstalar apps por lotes, copia automática, herramientas del editor, fijar arriba, abrir como, nivel de compresión y subcategorías.
+Las filas en 🟡 pasan a ✅ cuando las aprueba una pasada del emulador en el CI.
 
-Los recuentos son por fila de esta matriz; una fila puede agrupar varias funciones pequeñas. Solo 32 de 79 cumplen ya el criterio de terminación (conectadas y comprobadas en su entorno real).
+Los recuentos son por fila de esta matriz; una fila puede agrupar varias funciones pequeñas. Solo 40 de 85 cumplen ya el criterio de terminación (conectadas y comprobadas en su entorno real).

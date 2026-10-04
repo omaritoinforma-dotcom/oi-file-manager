@@ -64,6 +64,7 @@ object SettingsBackup {
             "show_windows_button" to Kind.Flag,
             "storage_notification" to Kind.Flag,
             "app_permission_notify" to Kind.Flag,
+            "clean_associated_folders" to Kind.Flag,
             "ftp_stop_on_exit" to Kind.Flag,
             "folder_style" to choice(FolderStyle.entries.toTypedArray()),
             "background_strength" to Kind.Number(BackgroundImage.strengths),

@@ -91,6 +91,11 @@ object AppInstaller {
     /** Resumen de cada tanda terminada. */
     val finished = MutableSharedFlow<String>(extraBufferCapacity = 4)
 
+    /** Carpetas que dejó una app desinstalada, para proponer borrarlas. */
+    data class Leftovers(val label: String, val folders: List<File>)
+
+    val leftovers = MutableStateFlow<List<Leftovers>>(emptyList())
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var queue: BatchQueue<Job>? = null
     private var installing = false
@@ -196,6 +201,18 @@ object AppInstaller {
         val q = queue ?: return
         val job = q.current
         if (!q.result(key, success, reason)) return
+        if (success && job is Uninstall && Prefs(ctx).cleanAssociatedFolders)
+            scope.launch {
+                val found =
+                    withContext(Dispatchers.IO) {
+                        runCatching {
+                                AssociatedFolders.find(
+                                    android.os.Environment.getExternalStorageDirectory(), job.label, job.packageName)
+                            }
+                            .getOrDefault(emptyList())
+                    }
+                if (found.isNotEmpty()) leftovers.value = leftovers.value + Leftovers(job.label, found)
+            }
         if (success && job is Install && Prefs(ctx).appPermissionNotify)
             runCatching {
                 InstallNotice.inspect(ctx, job.apk)?.let { (label, groups) ->

@@ -18,6 +18,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -27,6 +28,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -46,6 +48,7 @@ import androidx.compose.material.icons.filled.SdCard
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -65,6 +68,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -89,6 +93,7 @@ import com.omaritoinforma.oiarchivos.data.GestureAction
 import com.omaritoinforma.oiarchivos.data.OpProgress
 import com.omaritoinforma.oiarchivos.data.DrawerEntry
 import com.omaritoinforma.oiarchivos.data.DrawerLayout
+import com.omaritoinforma.oiarchivos.data.toItem
 import com.omaritoinforma.oiarchivos.ui.components.LocalPinned
 import com.omaritoinforma.oiarchivos.ui.components.LocalFolderStyle
 import com.omaritoinforma.oiarchivos.ui.components.LocalThumbnails
@@ -507,6 +512,8 @@ private fun Overlays(vm: MainViewModel) {
 
     vm.unlockRequest?.let { UnlockDialog(vm, it) }
 
+    LeftoverFoldersDialog(vm)
+
     vm.remoteConflict?.let { edit ->
         AlertDialog(
             onDismissRequest = { vm.resolveRemoteConflict(null) },
@@ -628,3 +635,51 @@ private fun formatEta(seconds: Long): String =
         seconds < 3600 -> "${seconds / 60}m ${seconds % 60}s"
         else -> "${seconds / 3600}h ${(seconds % 3600) / 60}m"
     }
+
+/**
+ * Carpetas con el nombre de una app recién desinstalada («Clean associated folders» de ES). Vienen
+ * todas marcadas; se mueven a la papelera (o se borran si la papelera está desactivada).
+ */
+@Composable
+private fun LeftoverFoldersDialog(vm: MainViewModel) {
+    val pending by com.omaritoinforma.oiarchivos.data.AppInstaller.leftovers.collectAsState()
+    val current = pending.firstOrNull() ?: return
+    val chosen = remember(current) { mutableStateListOf<String>().apply { addAll(current.folders.map { it.path }) } }
+    fun next() {
+        com.omaritoinforma.oiarchivos.data.AppInstaller.leftovers.value = pending.drop(1)
+    }
+    AlertDialog(
+        onDismissRequest = { next() },
+        title = { Text("Carpetas que dejó «${current.label}»") },
+        text = {
+            Column {
+                Text(
+                    if (vm.useTrash) "Se moverán a la papelera, de donde se pueden recuperar."
+                    else "La papelera está desactivada: se borrarán.")
+                current.folders.forEach { folder ->
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .toggleable(
+                                folder.path in chosen,
+                                role = androidx.compose.ui.semantics.Role.Checkbox,
+                                onValueChange = { on -> if (on) chosen += folder.path else chosen -= folder.path }),
+                        verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(folder.path in chosen, null)
+                            Text(folder.path, Modifier.padding(start = 8.dp))
+                        }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val items = current.folders.filter { it.path in chosen }.map { it.toItem() }
+                    if (items.isNotEmpty()) vm.delete(items, vm.useTrash)
+                    next()
+                },
+                enabled = chosen.isNotEmpty()) {
+                    Text(if (vm.useTrash) "Mover a la papelera" else "Borrar")
+                }
+        },
+        dismissButton = { TextButton(onClick = { next() }) { Text("Dejarlas") } })
+}
