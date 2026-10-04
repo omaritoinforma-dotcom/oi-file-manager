@@ -45,12 +45,19 @@ def nodes(label, tree):
 
 
 def dismiss_system_anr(tree):
-    """A slow emulator can show "<other app> isn't responding" over the app; keep waiting."""
-    if any("isn't responding" in (n.get("text") or "") for n in tree.iter("node")):
-        for n in nodes("Wait", tree):
-            if n.get("package") == "android":
-                tap_node(n)
-                return True
+    """En un emulador lento, otra app (el lanzador) puede mostrar «… isn't responding» encima.
+    Se cierra esa app y Android la vuelve a abrir. Si la que no responde es OI Archivos, es un
+    fallo real y la prueba se detiene."""
+    texts = [n.get("text") or "" for n in tree.iter("node")]
+    frozen = next((t for t in texts if "isn't responding" in t), None)
+    if frozen is None:
+        return False
+    assert "OI Archivos" not in frozen, f"La app dejó de responder: {frozen}"
+    for n in nodes("Close app", tree):
+        if n.get("package") == "android":
+            tap_node(n)
+            time.sleep(2)
+            return True
     return False
 
 
@@ -98,6 +105,9 @@ def drawer(label):
         if found:
             tap_node(found[0])
             return
+        if dismiss_system_anr(tree):
+            tap("Menú")
+            continue
         adb("shell", "input", "swipe", "280", "1600", "280", "500", "400")
     raise AssertionError(f"Drawer item not found: {label}")
 
