@@ -128,6 +128,12 @@ fun ConnectionsScreen(vm: MainViewModel) {
                 }
                 item {
                     ListItem(
+                        headlineContent = { Text("Enviar a la TV") },
+                        supportingContent = { Text("Fotos, música y vídeos en un televisor DLNA") },
+                        modifier = Modifier.clickable { vm.goTo(Screen.Cast) })
+                }
+                item {
+                    ListItem(
                         headlineContent = { Text("Buscar en la red local") },
                         supportingContent = {
                             Text("Servidores SMB, FTP, FTPS y SFTP de tu Wi-Fi")

@@ -1047,6 +1047,134 @@ if os.environ.get("OI_REMOTE_TEST_ROOT"):
         ui.launch()  # Detiene la reproducción.
 
 
+
+class FakeTv:
+    """TV DLNA falsa en el equipo de CI: responde a SSDP en el 1900 y a las órdenes AVTransport.
+    El emulador la ve en 10.0.2.2."""
+
+    def __init__(self, http_port=49152):
+        import http.server
+        import socket
+        import threading
+        import xml.etree.ElementTree as XML
+
+        self.commands = []
+        self.http_port = http_port
+        location = f"http://10.0.2.2:{http_port}/dlna/desc.xml"
+        tv = self
+
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def reply(self, body):
+                data = body.encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/xml")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+
+            def do_GET(self):
+                self.reply(
+                    '<?xml version="1.0"?><root xmlns="urn:schemas-upnp-org:device-1-0"><device>'
+                    "<deviceType>urn:schemas-upnp-org:device:MediaRenderer:1</deviceType>"
+                    "<friendlyName>TV de prueba</friendlyName><serviceList><service>"
+                    "<serviceType>urn:schemas-upnp-org:service:AVTransport:1</serviceType>"
+                    "<controlURL>/dlna/control/avt</controlURL></service></serviceList></device></root>")
+
+            def do_POST(self):
+                body = self.rfile.read(int(self.headers["Content-Length"])).decode()
+                action = self.headers["SOAPACTION"].strip('"').split("#")[1]
+                root = XML.fromstring(body)
+                call = next(e for e in root.iter() if e.tag.endswith("}" + action))
+                tv.commands.append((action, {child.tag: child.text or "" for child in call}))
+                extra = "<RelTime>0:01:05</RelTime><TrackDuration>0:10:00</TrackDuration>" if action == "GetPositionInfo" else ""
+                self.reply(
+                    '<?xml version="1.0"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body>'
+                    f'<u:{action}Response xmlns:u="urn:schemas-upnp-org:service:AVTransport:1">{extra}'
+                    f"</u:{action}Response></s:Body></s:Envelope>")
+
+        self.http = http.server.ThreadingHTTPServer(("0.0.0.0", http_port), Handler)
+        threading.Thread(target=self.http.serve_forever, daemon=True).start()
+        self.ssdp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.ssdp.bind(("0.0.0.0", 1900))
+        answer = (f"HTTP/1.1 200 OK\r\nCACHE-CONTROL: max-age=1800\r\nLOCATION: {location}\r\n"
+                  "ST: urn:schemas-upnp-org:device:MediaRenderer:1\r\n\r\n").encode()
+
+        def ssdp_loop():
+            while True:
+                try:
+                    data, sender = self.ssdp.recvfrom(4096)
+                except OSError:
+                    return
+                if b"M-SEARCH" in data:
+                    self.ssdp.sendto(answer, sender)
+
+        threading.Thread(target=ssdp_loop, daemon=True).start()
+
+    def actions(self):
+        return [action for action, _ in self.commands]
+
+    def close(self):
+        self.http.shutdown()
+        self.ssdp.close()
+
+
+def fetch_from_host(url, host_port=48080):
+    """Pide [url] (del servidor de la app en el emulador) desde el equipo de CI, como haría la TV:
+    la consola del emulador redirige el puerto y la app ve llegar la conexión desde 10.0.2.2."""
+    import urllib.parse
+    import urllib.request
+
+    parsed = urllib.parse.urlparse(url)
+    adb("emu", "redir", "add", f"tcp:{host_port}:{parsed.port}")
+    try:
+        with urllib.request.urlopen(f"http://127.0.0.1:{host_port}{parsed.path}", timeout=30) as reply:
+            return reply.status, reply.read()
+    finally:
+        adb("emu", "redir", "del", f"tcp:{host_port}", check=False)
+
+
+@check("enviar-a-la-tv-dlna")
+def cast_to_tv():
+    import urllib.parse
+
+    tv = FakeTv()
+    try:
+        open_test_folder()
+        find("tono.wav")
+        long_press("tono.wav")
+        more("Enviar a la TV")
+        wait("Añadir por dirección", timeout=30)
+        tap("Añadir por dirección")
+        fill("Dirección de la TV", "10.0.2.2")
+        tap("Buscar")
+        tap(wait("TV de prueba", timeout=30)[0].get("text"))
+        until(lambda: "Play" in tv.actions(), "La TV no recibió la orden de reproducir", 30)
+        load = dict(tv.commands)["SetAVTransportURI"]
+        url = load["CurrentURI"]
+        assert "<dc:title>tono.wav</dc:title>" in load["CurrentURIMetaData"], load
+        # La TV (equipo de CI, 10.0.2.2) puede leer el archivo y llega completo.
+        status, data = fetch_from_host(url)
+        assert status == 200, status
+        assert hashlib.sha256(data).hexdigest() == device_sha256(f"{DIR}/tono.wav"), "La TV recibió otro archivo"
+        # Cualquier otra dirección (aquí, el propio teléfono) recibe 403 aunque conozca el enlace.
+        parsed = urllib.parse.urlparse(url)
+        raw = f"GET {parsed.path} HTTP/1.1\r\nHost: {parsed.hostname}\r\nConnection: close\r\n\r\n".encode()
+        other = subprocess.run(["adb", "shell", "toybox", "nc", "-w", "5", parsed.hostname, str(parsed.port)],
+                               input=raw, capture_output=True, timeout=30).stdout
+        assert b" 403 " in other.split(b"\r\n", 1)[0], other[:200]
+        wait_text("Reproduciendo en «TV de prueba»")
+        wait_text("1:05 / 10:00")
+        tap("Pausa")
+        until(lambda: "Pause" in tv.actions(), "La TV no recibió la pausa", 15)
+        tap("Detener")
+        until(lambda: "Stop" in tv.actions(), "La TV no recibió la orden de detener", 15)
+    finally:
+        tv.close()
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()

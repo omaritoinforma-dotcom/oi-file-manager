@@ -184,6 +184,16 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                             }) {
                                 Text("Descargar")
                             }
+                        val media = selected.values.singleOrNull()?.takeIf { !it.directory && castable(it.name) }
+                        if (media != null)
+                            TextButton(
+                                onClick = {
+                                    selected.clear()
+                                    vm.castTo(
+                                        StreamServer.RemoteSource(c, media.path, media.name, media.size))
+                                }) {
+                                    Text("TV")
+                                }
                     }
                     Row {
                         TextButton(
@@ -323,3 +333,8 @@ fun RemoteNameDialog(
 /** Audio y vídeo que se pueden reproducir desde la red sin descargarlos. */
 private fun streamable(name: String) =
     Kinds.ofExt(name.substringAfterLast('.', "").lowercase()) in setOf(FileKind.AUDIO, FileKind.VIDEO)
+
+/** Fotos, audio y vídeo que se pueden enviar a la TV. */
+private fun castable(name: String) =
+    Kinds.ofExt(name.substringAfterLast('.', "").lowercase()) in
+        setOf(FileKind.IMAGE, FileKind.AUDIO, FileKind.VIDEO)

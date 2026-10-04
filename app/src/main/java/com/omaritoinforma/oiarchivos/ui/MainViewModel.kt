@@ -104,6 +104,9 @@ sealed interface Screen {
 
     /** Reproducir un audio o vídeo de la red sin descargarlo. */
     data class Stream(val url: String, val title: String) : Screen
+
+    /** Enviar una foto, música o vídeo a la TV por DLNA. */
+    data object Cast : Screen
 }
 
 data class PendingPaste(
@@ -254,8 +257,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val volumes = mutableStateListOf<StorageVolumeInfo>()
     var clipboard by mutableStateOf<Clipboard?>(null)
 
-    /** Files chosen in the browser for «Enviar a otro teléfono». */
+    /** Archivos elegidos en el explorador para «Enviar a otro teléfono». */
     var nearbyFiles by mutableStateOf<List<String>>(emptyList())
+
+    /** Lo que se va a enviar a la TV con «Enviar a la TV». */
+    var castSource by mutableStateOf<com.omaritoinforma.oiarchivos.data.StreamServer.Source?>(null)
+
+    fun castTo(source: com.omaritoinforma.oiarchivos.data.StreamServer.Source) {
+        castSource = source
+        goTo(Screen.Cast)
+    }
     var pendingPaste by mutableStateOf<PendingPaste?>(null)
         private set
 

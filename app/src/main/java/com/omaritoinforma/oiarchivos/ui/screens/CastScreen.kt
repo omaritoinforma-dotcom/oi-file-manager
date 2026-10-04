@@ -1,0 +1,175 @@
+package com.omaritoinforma.oiarchivos.ui.screens
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.omaritoinforma.oiarchivos.data.CastSession
+import com.omaritoinforma.oiarchivos.data.Dlna
+import com.omaritoinforma.oiarchivos.ui.MainViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+/** «Enviar a la TV»: elegir un televisor DLNA y controlar la reproducción. */
+@Composable
+fun CastScreen(vm: MainViewModel) {
+    val session by CastSession.state.collectAsState()
+    ToolPage("Enviar a la TV", vm) { pad ->
+        Column(Modifier.fillMaxSize().padding(pad)) {
+            val current = session
+            if (current != null) CastControls(current) else CastPicker(vm)
+        }
+    }
+}
+
+@Composable
+private fun CastControls(state: CastSession.State) {
+    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(state.title, style = MaterialTheme.typography.titleMedium)
+        Text(
+            when {
+                state.busy -> "Enviando a «${state.renderer.name}»…"
+                state.playing -> "Reproduciendo en «${state.renderer.name}»"
+                else -> "En pausa en «${state.renderer.name}»"
+            })
+        if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        if (state.duration > 0) {
+            var dragging by remember { mutableStateOf<Float?>(null) }
+            Slider(
+                value = dragging ?: state.position.toFloat(),
+                onValueChange = { dragging = it },
+                onValueChangeFinished = {
+                    dragging?.let { CastSession.seek(it.toLong()) }
+                    dragging = null
+                },
+                valueRange = 0f..state.duration.toFloat())
+        }
+        Text("${clock(state.position)} / ${if (state.duration > 0) clock(state.duration) else "--:--"}")
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(onClick = CastSession::pauseOrResume, enabled = !state.busy && state.error == null) {
+                Text(if (state.playing) "Pausa" else "Reanudar")
+            }
+            OutlinedButton(onClick = CastSession::stop) { Text("Detener") }
+        }
+        Text(
+            "La TV lee el archivo directamente de este teléfono; mantén la app abierta o en " +
+                "segundo plano mientras se reproduce.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun CastPicker(vm: MainViewModel) {
+    val source = vm.castSource
+    val found = remember { mutableStateListOf<Dlna.Renderer>() }
+    var searching by remember { mutableStateOf(false) }
+    var round by remember { mutableIntStateOf(0) }
+    var adding by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(round) {
+        searching = true
+        withContext(Dispatchers.IO) {
+            runCatching {
+                Dlna.search { renderer ->
+                    scope.launch {
+                        if (found.none { it.location == renderer.location }) found += renderer
+                    }
+                }
+            }
+        }
+        searching = false
+    }
+    LazyColumn {
+        item {
+            Text(
+                if (source == null)
+                    "Elige una foto, música o vídeo en el explorador y usa Más → Enviar a la TV."
+                else "Enviar «${source.name}» a:",
+                Modifier.padding(16.dp))
+            if (searching) LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
+            else if (found.isEmpty())
+                Text(
+                    "No se encontró ninguna TV. Debe estar encendida y en la misma Wi-Fi; " +
+                        "también puedes añadirla por su dirección.",
+                    Modifier.padding(16.dp))
+        }
+        items(found, key = { it.location }) { renderer ->
+            ListItem(
+                headlineContent = { Text(renderer.name) },
+                supportingContent = { Text(renderer.host) },
+                modifier =
+                    Modifier.clickable(enabled = source != null) {
+                        source?.let { CastSession.start(renderer, it) }
+                    })
+        }
+        item {
+            Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = { round++ }, enabled = !searching) { Text("Buscar otra vez") }
+                OutlinedButton(onClick = { adding = true }) { Text("Añadir por dirección") }
+            }
+        }
+    }
+    if (adding)
+        AddRendererDialog(
+            onDismiss = { adding = false },
+            onFound = { renderer ->
+                adding = false
+                if (found.none { it.location == renderer.location }) found += renderer
+            })
+}
+
+@Composable
+private fun AddRendererDialog(onDismiss: () -> Unit, onFound: (Dlna.Renderer) -> Unit) {
+    var address by remember { mutableStateOf("") }
+    var error by remember { mutableStateOf<String?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Añadir TV") },
+        text = {
+            Column {
+                Text("IP de la TV (por ejemplo 192.168.1.50) o la URL de su descripción.")
+                OutlinedTextField(
+                    address,
+                    {
+                        address = it
+                        error = null
+                    },
+                    label = { Text("Dirección de la TV") },
+                    singleLine = true,
+                    isError = error != null,
+                    supportingText = { error?.let { Text(it) } })
+                if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = address.isNotBlank() && !busy,
+                onClick = {
+                    busy = true
+                    scope.launch {
+                        val renderer =
+                            withContext(Dispatchers.IO) { runCatching { Dlna.find(address) } }
+                        busy = false
+                        renderer
+                            .onSuccess { if (it != null) onFound(it) else error = "No respondió ninguna TV" }
+                            .onFailure { error = it.message ?: "No se pudo conectar" }
+                    }
+                }) {
+                    Text("Buscar")
+                }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+}
+
+private fun clock(seconds: Long) =
+    if (seconds >= 3600) "%d:%02d:%02d".format(seconds / 3600, seconds % 3600 / 60, seconds % 60)
+    else "%d:%02d".format(seconds / 60, seconds % 60)

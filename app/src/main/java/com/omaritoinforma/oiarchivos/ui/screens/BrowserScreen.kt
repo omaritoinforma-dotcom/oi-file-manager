@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
@@ -108,6 +109,7 @@ import com.omaritoinforma.oiarchivos.ui.components.Breadcrumb
 import com.omaritoinforma.oiarchivos.ui.components.FileRow
 import com.omaritoinforma.oiarchivos.ui.components.GridCell
 import com.omaritoinforma.oiarchivos.ui.components.MenuItem
+import com.omaritoinforma.oiarchivos.util.FileKind
 import com.omaritoinforma.oiarchivos.util.Kinds
 import com.omaritoinforma.oiarchivos.util.Opener
 import com.omaritoinforma.oiarchivos.util.PathUtil
@@ -442,6 +444,16 @@ private fun SelectionBottomBar(
                         vm.clearSelection()
                         vm.goTo(Screen.Nearby)
                     }
+                    val media = files.singleOrNull()?.takeIf {
+                        Kinds.of(it) in setOf(FileKind.IMAGE, FileKind.AUDIO, FileKind.VIDEO)
+                    }
+                    if (media != null)
+                        MenuItem("Enviar a la TV", Icons.Filled.Cast) {
+                            menu = false
+                            vm.clearSelection()
+                            vm.castTo(
+                                com.omaritoinforma.oiarchivos.data.StreamServer.LocalSource(media.file))
+                        }
                 }
                 MenuItem("Comprimir en ZIP", Icons.Filled.Archive) {
                     menu = false
