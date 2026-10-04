@@ -47,7 +47,7 @@ private fun Pane(vm: MainViewModel, path: String, navigate: (String) -> Unit, mo
                 }
             }
             .onSuccess {
-                entries = Sorter.sort(it, vm.sortBy, vm.ascending)
+                entries = Sorter.sort(it, vm.sortBy, vm.ascending, vm.pinned.toSet())
                 selection.keys.filter { key -> entries.none { it.path == key } }.forEach(selection::remove)
             }
             .onFailure { error = it.message }

@@ -55,6 +55,7 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
@@ -424,6 +425,28 @@ private fun SelectionBottomBar(
     var menu by remember { mutableStateOf(false) }
     var ringtone by remember { mutableStateOf<java.io.File?>(null) }
     var playlistPaths by remember { mutableStateOf<List<String>?>(null) }
+    var openAs by remember { mutableStateOf<java.io.File?>(null) }
+    openAs?.let { target ->
+        AlertDialog(
+            onDismissRequest = { openAs = null },
+            title = { Text("Abrir como") },
+            text = {
+                Column {
+                    com.omaritoinforma.oiarchivos.util.OpenAs.entries.forEach { type ->
+                        ListItem(
+                            headlineContent = { Text(type.label) },
+                            modifier =
+                                Modifier.clickable {
+                                    openAs = null
+                                    vm.clearSelection()
+                                    if (type.mime == null) vm.openEditor(target.path)
+                                    else Opener.open(ctx, target, chooser = true, mimeType = type.mime)
+                                })
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { openAs = null }) { Text("Cancelar") } })
+    }
     playlistPaths?.let { paths -> AddToPlaylistDialog(vm, paths) { playlistPaths = null } }
     ringtone?.let { audio ->
         AlertDialog(
@@ -463,6 +486,14 @@ private fun SelectionBottomBar(
         Box(Modifier.weight(1f)) {
             BarAction(Icons.Filled.MoreVert, "Más", Modifier.fillMaxWidth()) { menu = true }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                if (selectedItems.isNotEmpty())
+                    MenuItem(
+                        if (selectedItems.all { it.path in vm.pinned }) "Quitar de fijados"
+                        else "Fijar arriba",
+                        Icons.Filled.PushPin) {
+                            menu = false
+                            vm.togglePin(selectedItems)
+                        }
                 if (vm.clipboard != null)
                     MenuItem("Añadir al portapapeles", Icons.Filled.ContentCopy) {
                         menu = false
@@ -543,6 +574,10 @@ private fun SelectionBottomBar(
                     MenuItem("Abrir con…", Icons.Filled.OpenInNew) {
                         menu = false
                         Opener.open(ctx, single.file, chooser = true)
+                    }
+                    MenuItem("Abrir como…", Icons.Filled.OpenInNew) {
+                        menu = false
+                        openAs = single.file
                     }
                     MenuItem("Editar como texto", Icons.Filled.Edit) {
                         menu = false

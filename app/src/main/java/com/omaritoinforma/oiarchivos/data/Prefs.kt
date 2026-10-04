@@ -59,6 +59,11 @@ class Prefs(context: Context) {
         get() = sp.getString("bookmarks", "").orEmpty().split('\n').filter { it.isNotBlank() }
         set(v) = sp.edit().putString("bookmarks", v.joinToString("\n")).apply()
 
+    /** Archivos y carpetas fijados arriba («Fijar elementos arriba» de ES), una ruta por línea. */
+    var pinned: List<String>
+        get() = sp.getString("pinned", "").orEmpty().split('\n').filter { it.isNotBlank() }
+        set(v) = sp.edit().putString("pinned", v.joinToString("\n")).apply()
+
     // ---- Pantalla ----
 
     var thumbnails: Boolean

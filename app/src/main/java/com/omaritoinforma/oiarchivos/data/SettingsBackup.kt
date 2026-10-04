@@ -51,6 +51,7 @@ object SettingsBackup {
             "swipe_left" to choice(GestureAction.entries.toTypedArray()),
             "swipe_right" to choice(GestureAction.entries.toTypedArray()),
             "bookmarks" to Kind.Folders,
+            "pinned" to Kind.Folders,
             "thumbnails" to Kind.Flag,
             "history_folders_only" to Kind.Flag,
             "clear_history_on_exit" to Kind.Flag,

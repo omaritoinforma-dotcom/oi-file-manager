@@ -11,6 +11,17 @@ import android.widget.Toast
 import androidx.core.content.FileProvider
 import java.io.File
 
+/** «Abrir como» de ES: abrir un archivo como si fuera de otro tipo, sea cual sea su extensión. */
+enum class OpenAs(val label: String, val mime: String?) {
+    /** Se abre en el editor de texto de OI Archivos. */
+    TEXT("Texto (editor de OI Archivos)", null),
+    IMAGE("Imagen", "image/*"),
+    AUDIO("Audio", "audio/*"),
+    VIDEO("Vídeo", "video/*"),
+    PDF("PDF", "application/pdf"),
+    ANY("Cualquier tipo", "*/*")
+}
+
 /** Abrir, compartir e instalar archivos con otras apps. */
 object Opener {
     fun uri(ctx: Context, f: File): Uri = FileProvider.getUriForFile(ctx, "${ctx.packageName}.provider", f)

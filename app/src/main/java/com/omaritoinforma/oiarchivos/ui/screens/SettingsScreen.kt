@@ -700,6 +700,20 @@ private fun AppSettings(vm: MainViewModel) {
             "Copia antes de desinstalar",
             "Guardar el APK de una app antes de desinstalarla",
             vm.backupBeforeUninstall)
+        val ctx = LocalContext.current
+        ListItem(
+            headlineContent = { Text("Apps predeterminadas") },
+            supportingContent = {
+                Text("Cambiar con qué app se abre cada tipo de archivo (ajustes de Android)")
+            },
+            modifier =
+                Modifier.clickable {
+                    runCatching {
+                        ctx.startActivity(
+                            Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                })
         ListItem(
             headlineContent = { Text("Carpeta de copias de apps") },
             supportingContent = { Text(vm.appBackupFolder.value) },

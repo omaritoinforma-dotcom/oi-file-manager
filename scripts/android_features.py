@@ -1697,6 +1697,63 @@ def editor_tools():
         set_switch("Usar espacios en lugar de tabuladores", False)
 
 
+def row_top(label):
+    """Altura en pantalla de un elemento visible: sirve para comprobar el orden de una lista."""
+    node = wait(label)[0]
+    return int(re.findall(r"\d+", node.get("bounds"))[1])
+
+
+def focused_window():
+    out = sh("dumpsys", "window", check=False)
+    return next((line.strip() for line in out.splitlines() if "mCurrentFocus" in line), "")
+
+
+@check("fijar-arriba-y-abrir-como")
+def pin_and_open_as():
+    folder = f"{DIR}/fijar"
+    sh("rm", "-rf", q(folder), check=False)
+    sh("mkdir", "-p", q(folder))
+    for name in ("aaa.txt", "bbb.txt", "zzz.txt"):
+        push_bytes(name.encode(), f"{folder}/{name}")
+    push_bytes(b"contenido-xyz", f"{folder}/datos.xyz")
+    open_test_folder()
+    tap(find("fijar").get("text"))
+    wait("zzz.txt")
+    assert row_top("aaa.txt") < row_top("zzz.txt"), "El orden de partida no es el alfabético"
+    # Fijar: zzz.txt sube al principio y lleva su alfiler.
+    long_press("zzz.txt")
+    menu_option("Fijar arriba")
+    until(lambda: row_top("zzz.txt") < row_top("aaa.txt"), "El archivo fijado no subió arriba", 15)
+    wait("Fijado")
+    # Sigue fijado al cerrar y volver a abrir la app.
+    time.sleep(2)
+    open_test_folder()
+    tap(find("fijar").get("text"))
+    wait("zzz.txt")
+    assert row_top("zzz.txt") < row_top("aaa.txt"), "Lo fijado no se conservó al reabrir la app"
+    # Quitar de fijados: vuelve a su sitio.
+    long_press("zzz.txt")
+    menu_option("Quitar de fijados")
+    until(lambda: row_top("aaa.txt") < row_top("zzz.txt"), "Al quitar el alfiler no volvió a su sitio", 15)
+    assert not nodes("Fijado", hierarchy()), "Sigue el alfiler tras quitarlo"
+    # Abrir como texto un archivo con una extensión que no es de texto.
+    long_press("datos.xyz")
+    menu_option("Abrir como…")
+    tap("Texto (editor de OI Archivos)")
+    wait_text("contenido-xyz")
+    adb("shell", "input", "keyevent", "4")
+
+
+@check("apps-predeterminadas-de-android")
+def default_apps():
+    settings("Aplicaciones")
+    tap("Apps predeterminadas")
+    until(lambda: "settings" in focused_window().lower(),
+          f"No se abrieron los ajustes de apps predeterminadas de Android: {focused_window()}", 20)
+    evidence("apps-predeterminadas-ajustes-de-android")
+    ui.launch()
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()

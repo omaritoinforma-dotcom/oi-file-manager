@@ -216,6 +216,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     val bookmarks = mutableStateListOf<String>().apply { addAll(prefs.bookmarks) }
 
+    /** Rutas fijadas arriba en las listas de archivos. */
+    val pinned = mutableStateListOf<String>().apply { addAll(prefs.pinned) }
+
+    fun togglePin(items: List<FileItem>) {
+        if (items.isEmpty()) return
+        // Si alguno no está fijado se fijan todos; si todos lo están, se quitan.
+        val pin = items.any { it.path !in pinned }
+        items.forEach { if (pin) { if (it.path !in pinned) pinned.add(it.path) } else pinned.remove(it.path) }
+        prefs.pinned = pinned.toList()
+        currentTab?.selected?.clear()
+        tabs.forEach { it.cache.clear() }
+        refresh()
+        toast(if (pin) "Fijado arriba" else "Ya no está fijado")
+    }
+
     // ---- Ajustes al estilo de ES ----
 
     val thumbnails = PrefState({ prefs.thumbnails }, { prefs.thumbnails = it })
@@ -584,7 +599,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun showResults(items: List<FileItem>, root: String, query: String, filter: SearchFilter) {
         val tab = TabState(Location.Search(root, query, filter))
-        tab.items.addAll(Sorter.sort(items, sortBy, ascending))
+        tab.items.addAll(Sorter.sort(items, sortBy, ascending, pinned.toSet()))
         tabs.add(tab)
         activeTab = tabs.lastIndex
         goTo(Screen.Browser)
@@ -777,7 +792,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun sorted(list: List<FileItem>, loc: Location): List<FileItem> =
         if (loc is Location.Category && loc.category == FileCategory.RECENT) list
-        else Sorter.sort(list, sortBy, ascending)
+        else Sorter.sort(list, sortBy, ascending, pinned.toSet())
 
     // ---------------- Selección ----------------
 
@@ -917,6 +932,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             if (bi >= 0) {
                 bookmarks[bi] = target.absolutePath
                 prefs.bookmarks = bookmarks.toList()
+            }
+            val pi = pinned.indexOf(item.path)
+            if (pi >= 0) {
+                pinned[pi] = target.absolutePath
+                prefs.pinned = pinned.toList()
             }
             currentTab?.selected?.clear()
             afterQuickChange(listOf(item.file, target))
@@ -1442,6 +1462,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         swipeRight = prefs.swipeRight
         bookmarks.clear()
         bookmarks.addAll(prefs.bookmarks)
+        pinned.clear()
+        pinned.addAll(prefs.pinned)
         tabs.forEach { it.cache.clear() }
         refresh()
     }

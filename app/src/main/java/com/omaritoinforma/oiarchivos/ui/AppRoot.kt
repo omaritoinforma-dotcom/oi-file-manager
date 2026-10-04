@@ -86,6 +86,7 @@ import androidx.core.content.ContextCompat
 import com.omaritoinforma.oiarchivos.data.Conflict
 import com.omaritoinforma.oiarchivos.data.GestureAction
 import com.omaritoinforma.oiarchivos.data.OpProgress
+import com.omaritoinforma.oiarchivos.ui.components.LocalPinned
 import com.omaritoinforma.oiarchivos.ui.components.LocalThumbnails
 import com.omaritoinforma.oiarchivos.ui.screens.*
 import com.omaritoinforma.oiarchivos.ui.screens.AppsScreen
@@ -105,7 +106,9 @@ fun AppRoot(vm: MainViewModel) {
             vm.locked -> LockScreen(vm)
             !vm.hasPermission -> PermissionScreen(vm)
             else ->
-                CompositionLocalProvider(LocalThumbnails provides vm.thumbnails.value) {
+                CompositionLocalProvider(
+                    LocalThumbnails provides vm.thumbnails.value,
+                    LocalPinned provides vm.pinned.toSet()) {
                     MainContent(vm)
                 }
         }

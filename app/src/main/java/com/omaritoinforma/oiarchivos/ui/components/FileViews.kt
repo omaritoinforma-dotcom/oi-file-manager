@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -66,6 +67,9 @@ import kotlinx.coroutines.withContext
 
 /** «Miniaturas» de Ajustes → Pantalla: si es falso se muestran iconos en vez de vistas previas. */
 val LocalThumbnails = compositionLocalOf { true }
+
+/** Rutas fijadas arriba; las filas y celdas las marcan con un alfiler. */
+val LocalPinned = compositionLocalOf<Set<String>> { emptySet() }
 
 fun subtitle(item: FileItem): String =
     if (item.isDirectory) "${formatDate(item.lastModified)} · ${item.childCount} elementos"
@@ -119,6 +123,14 @@ fun FileRow(
                 )
             }
         }
+        if (item.path in LocalPinned.current) {
+            Spacer(Modifier.width(8.dp))
+            Icon(
+                Icons.Filled.PushPin,
+                contentDescription = "Fijado",
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.primary)
+        }
         if (!details && !item.isDirectory) {
             Spacer(Modifier.width(8.dp))
             Text(
@@ -144,6 +156,12 @@ fun GridCell(item: FileItem, selected: Boolean, onClick: () -> Unit, onLongClick
     ) {
         FileThumb(item, 64.dp, selected)
         Spacer(Modifier.height(6.dp))
+        if (item.path in LocalPinned.current)
+            Icon(
+                Icons.Filled.PushPin,
+                contentDescription = "Fijado",
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary)
         Text(
             item.name,
             style = MaterialTheme.typography.bodySmall,
