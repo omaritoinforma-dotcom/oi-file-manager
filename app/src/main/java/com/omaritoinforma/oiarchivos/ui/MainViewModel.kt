@@ -226,6 +226,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val startWindow = PrefState({ prefs.startWindow }, { prefs.startWindow = it })
     val closeNotificationWhenDone =
         PrefState({ prefs.closeNotificationWhenDone }, { prefs.closeNotificationWhenDone = it })
+    // Avisos de almacenamiento: al cambiarlos se programan o cancelan los trabajos en segundo plano.
+    val lowSpaceWarning =
+        PrefState({ prefs.lowSpaceWarning }, {
+            prefs.lowSpaceWarning = it
+            scheduleStorageWatch()
+        })
+    val lowSpaceMb = PrefState({ prefs.lowSpaceMb }, {
+        prefs.lowSpaceMb = it
+        prefs.lowSpaceWarned = false
+    })
+    val newFilesNotify =
+        PrefState({ prefs.newFilesNotify }, {
+            prefs.newFilesNotify = it
+            scheduleStorageWatch()
+        })
+    val newFilesKinds = PrefState({ prefs.newFilesKinds }, { prefs.newFilesKinds = it })
+
+    private fun scheduleStorageWatch() {
+        runCatching { com.omaritoinforma.oiarchivos.data.StorageWatch.schedule(ctx) }
+    }
+
     val backupBeforeUninstall =
         PrefState({ prefs.backupBeforeUninstall }, { prefs.backupBeforeUninstall = it })
     val appBackupFolder = PrefState({ prefs.appBackupFolder }, { prefs.appBackupFolder = it })
@@ -251,6 +272,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             downloadFolder,
             startWindow,
             closeNotificationWhenDone,
+            lowSpaceWarning,
+            lowSpaceMb,
+            newFilesNotify,
+            newFilesKinds,
             backupBeforeUninstall,
             appBackupFolder,
             editorFont,
@@ -309,6 +334,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             refreshVolumes()
             openStartWindow()
         }
+        scheduleStorageWatch()
         viewModelScope.launch {
             TransferService.completion.collect { completed ->
                 if (completed != null) {
@@ -326,7 +352,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun receive(intent: android.content.Intent) {
         intent.getStringExtra("folder")?.let { if (File(it).isDirectory) openFolder(it) }
-        if (intent.getStringExtra("screen") == "transfers") goTo(Screen.Transfers)
+        when (intent.getStringExtra("screen")) {
+            "transfers" -> goTo(Screen.Transfers)
+            "cleaner" -> goTo(Screen.Cleaner)
+        }
         if (intent.action in
             setOf(
                 android.content.Intent.ACTION_SEND, android.content.Intent.ACTION_SEND_MULTIPLE)) {
@@ -1258,6 +1287,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun reloadSettings() {
         esSettings.forEach { it.reload() }
+        scheduleStorageWatch()
         viewMode = prefs.viewMode
         sortBy = prefs.sortBy
         ascending = prefs.ascending

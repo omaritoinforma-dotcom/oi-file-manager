@@ -1381,6 +1381,104 @@ def playlists():
         adb("shell", "am", "force-stop", ui.PACKAGE)
 
 
+def app_jobs():
+    """Trabajos de WorkManager de la app en JobScheduler: {id: bloque de dumpsys}."""
+    out = sh("dumpsys", "jobscheduler", ui.PACKAGE, check=False)
+    jobs = {}
+    for block in out.split("JOB #")[1:]:
+        match = re.match(r"u\d+a\d+/(\d+): \S+ " + re.escape(ui.PACKAGE) + r"/androidx\.work", block)
+        if match:
+            jobs[match.group(1)] = block
+    return jobs
+
+
+def notification_shown(notification_id):
+    out = sh("dumpsys", "notification", "--noredact", check=False)
+    return f"|{ui.PACKAGE}|{notification_id}|" in out
+
+
+@check("aviso-de-archivos-nuevos")
+def new_files_notice():
+    folder = "/sdcard/DCIM/OINuevos"
+    sh("rm", "-rf", q(folder), check=False)
+    settings("Notificaciones")
+    set_switch("Avisar de archivos nuevos", True)
+    wait("Tipos de archivo:")
+    try:
+        # Se espera a que el trabajo quede programado con su disparador de MediaStore.
+        until(lambda: any("TRIGGER" in b.upper() or "content" in b for b in app_jobs().values()),
+              "No se programó la vigilancia de archivos nuevos", 30)
+        (OUTPUT / "jobs-archivos-nuevos.txt").write_text(
+            sh("dumpsys", "jobscheduler", ui.PACKAGE, check=False), encoding="utf-8")
+        time.sleep(2)
+        push_bytes(png((0, 0, 255)), f"{folder}/foto_nueva.png")
+        # Lo que hace la cámara o una descarga: el archivo entra en MediaStore.
+        sh("content", "call", "--uri", "content://media", "--method", "scan_volume",
+           "--arg", "external_primary", check=False)
+        # Android lanza el trabajo cuando cambia MediaStore (máx. 1 min de espera).
+        until(lambda: notification_shown(31), "No llegó el aviso de archivo nuevo", 120)
+        out = sh("dumpsys", "notification", "--noredact", check=False)
+        assert "foto_nueva.png" in out, "El aviso no nombra el archivo nuevo"
+        # Tocar el aviso abre la carpeta del archivo.
+        adb("shell", "cmd", "statusbar", "expand-notifications")
+        time.sleep(1)
+        tap(find_text("archivo nuevo"))
+        wait("foto_nueva.png")
+    finally:
+        adb("shell", "cmd", "statusbar", "collapse", check=False)
+        settings("Notificaciones")
+        set_switch("Avisar de archivos nuevos", False)
+        sh("rm", "-rf", q(folder), check=False)
+
+
+def find_text(fragment):
+    """Texto completo del primer nodo que contiene [fragment]."""
+    for _ in range(20):
+        for n in hierarchy().iter("node"):
+            if fragment in (n.get("text") or ""):
+                return n.get("text")
+        time.sleep(0.5)
+    raise AssertionError(f"No se ve: {fragment}")
+
+
+@check("aviso-de-espacio-bajo")
+def low_space_notice():
+    filler = "/sdcard/Download/relleno-espacio.bin"
+    sh("rm", "-f", q(filler), check=False)
+    free_kb = int(sh("df", "-k", "/sdcard").splitlines()[-1].split()[3])
+    gb = 1024 * 1024
+    # Se elige el umbral más bajo que esté por encima del espacio libre del emulador; si hay más
+    # de 10 GB libres se ocupa espacio con un archivo grande.
+    choices = [(1, "1 GB"), (2, "2 GB"), (5, "5 GB"), (10, "10 GB")]
+    target = next(((n, label) for n, label in choices if free_kb < n * gb), None)
+    if target is None:
+        sh("fallocate", "-l", f"{free_kb - 8 * gb}K", q(filler))
+        target = (10, "10 GB")
+    settings("Notificaciones")
+    try:
+        set_switch("Advertencia de espacio bajo", True)
+        tap(target[1])
+        time.sleep(1)
+        jobs = app_jobs()
+        assert jobs, "No hay trabajos programados para revisar el espacio"
+        (OUTPUT / "jobs-espacio.txt").write_text(
+            sh("dumpsys", "jobscheduler", ui.PACKAGE, check=False), encoding="utf-8")
+        for job in jobs:
+            adb("shell", "cmd", "jobscheduler", "run", "-f", ui.PACKAGE, job, check=False)
+        until(lambda: notification_shown(30), "No llegó la advertencia de espacio bajo", 60)
+        assert "Espacio insuficiente" in sh("dumpsys", "notification", "--noredact", check=False)
+        # Tocar el aviso lleva a «Limpiar basura».
+        adb("shell", "cmd", "statusbar", "expand-notifications")
+        time.sleep(1)
+        tap("Espacio insuficiente")
+        wait("Limpiar basura")
+    finally:
+        adb("shell", "cmd", "statusbar", "collapse", check=False)
+        sh("rm", "-f", q(filler), check=False)
+        settings("Notificaciones")
+        tap("1 GB")
+
+
 @check("editor-sangria-y-guardado-automatico")
 def editor_options():
     push_bytes(b"  hola", f"{DIR}/codigo.txt")

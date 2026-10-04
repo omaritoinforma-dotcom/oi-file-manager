@@ -104,7 +104,7 @@ class Playlists(private val dir: File) {
         /** Lee un M3U: se ignoran comentarios, líneas vacías y lo que no sea una ruta absoluta. */
         fun parse(text: String): List<String> =
             text.lineSequence()
-                .map { it.trim().removePrefix("﻿") }
+                .map { it.trim().removePrefix("\uFEFF") }
                 .filter { it.startsWith("/") }
                 .distinct()
                 .toList()

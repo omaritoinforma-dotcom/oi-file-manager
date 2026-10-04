@@ -9,8 +9,10 @@ import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -25,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -55,9 +58,11 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.omaritoinforma.oiarchivos.BuildConfig
 import com.omaritoinforma.oiarchivos.data.GestureAction
+import com.omaritoinforma.oiarchivos.data.NewFileKind
 import com.omaritoinforma.oiarchivos.data.Prefs
 import com.omaritoinforma.oiarchivos.data.SettingsBackup
 import com.omaritoinforma.oiarchivos.data.StartWindow
+import com.omaritoinforma.oiarchivos.data.StorageWatch
 import com.omaritoinforma.oiarchivos.data.ThemeMode
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
 import com.omaritoinforma.oiarchivos.ui.PrefState
@@ -76,7 +81,7 @@ private enum class Section(val group: String, val title: String, val summary: St
     CLEANUP("General", "Limpieza", "Borrar el historial y la caché"),
     FOLDERS("General", "Carpetas", "Carpeta de inicio y carpeta de descargas"),
     START("General", "Ventana inicial", "Qué se abre al iniciar la app"),
-    NOTIFICATIONS("General", "Notificaciones", "Aviso al terminar las tareas"),
+    NOTIFICATIONS("General", "Notificaciones", "Aviso al terminar, espacio bajo y archivos nuevos"),
     PASSWORD("Seguridad", "Contraseña", "Proteger la app, las conexiones y los archivos ocultos"),
     BACKUP("Seguridad", "Copia de ajustes", "Guardar y restaurar los ajustes"),
     APPS("Herramientas", "Aplicaciones", "Copia del APK y carpeta de copias"),
@@ -289,6 +294,47 @@ private fun NotificationSettings(vm: MainViewModel) {
             "Cerrar la notificación al terminar",
             "Si está desactivado, al terminar una copia, descarga u otra tarea queda un aviso con el resultado",
             vm.closeNotificationWhenDone)
+        SwitchRow(
+            "Advertencia de espacio bajo",
+            "Avisar cuando quede poco espacio libre en el teléfono (se revisa cada hora)",
+            vm.lowSpaceWarning)
+        if (vm.lowSpaceWarning.value) {
+            Text(
+                "Avisar con menos de:",
+                Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            ChipRow {
+                StorageWatch.thresholdsMb.forEach { mb ->
+                    FilterChip(
+                        vm.lowSpaceMb.value == mb,
+                        onClick = { vm.lowSpaceMb.value = mb },
+                        label = { Text(if (mb < 1024) "$mb MB" else "${mb / 1024} GB") })
+                }
+            }
+        }
+        SwitchRow(
+            "Avisar de archivos nuevos",
+            "Como el Registrador de ES: una notificación cuando aparecen fotos, vídeos, música, documentos o APK nuevos",
+            vm.newFilesNotify)
+        if (vm.newFilesNotify.value) {
+            Text(
+                "Tipos de archivo:",
+                Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+            ChipRow {
+                NewFileKind.entries.forEach { kind ->
+                    val on = kind in vm.newFilesKinds.value
+                    FilterChip(
+                        on,
+                        onClick = {
+                            val next =
+                                if (on) vm.newFilesKinds.value - kind else vm.newFilesKinds.value + kind
+                            if (next.isNotEmpty()) vm.newFilesKinds.value = next
+                        },
+                        label = { Text(kind.label) })
+                }
+            }
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted =
                 ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) ==
@@ -596,6 +642,16 @@ private fun GestureRow(title: String, action: GestureAction, onChange: (GestureA
             }
         }
     }
+}
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun ChipRow(content: @Composable () -> Unit) {
+    FlowRow(
+        Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            content()
+        }
 }
 
 @Composable

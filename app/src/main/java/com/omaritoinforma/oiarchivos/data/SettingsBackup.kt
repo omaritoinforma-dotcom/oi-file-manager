@@ -26,6 +26,9 @@ object SettingsBackup {
 
         /** Rutas absolutas, una por línea. */
         data object Folders : Kind
+
+        /** Varios valores de una lista, separados por comas. */
+        data class Choices(val names: Set<String>) : Kind
     }
 
     private fun <T : Enum<T>> choice(values: Array<T>) = Kind.Choice(values.map { it.name }.toSet())
@@ -50,6 +53,10 @@ object SettingsBackup {
             "download_folder" to Kind.Folder,
             "start_window" to choice(StartWindow.entries.toTypedArray()),
             "close_notification" to Kind.Flag,
+            "low_space_warning" to Kind.Flag,
+            "low_space_mb" to Kind.Number(100..102400),
+            "new_files_notify" to Kind.Flag,
+            "new_files_kinds" to Kind.Choices(NewFileKind.entries.map { it.name }.toSet()),
             "backup_before_uninstall" to Kind.Flag,
             "app_backup_folder" to Kind.Folder,
             "editor_font" to Kind.Number(10..28),
@@ -105,6 +112,8 @@ object SettingsBackup {
             is Kind.Choice -> value is String && value in kind.names
             Kind.Folder -> value is String && validPath(value)
             Kind.Folders -> value is String && value.split('\n').filter { it.isNotEmpty() }.all(::validPath)
+            is Kind.Choices ->
+                value is String && value.split(',').filter { it.isNotEmpty() }.all { it in kind.names }
         }
 
     private fun validPath(path: String): Boolean =

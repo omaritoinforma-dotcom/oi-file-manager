@@ -51,7 +51,7 @@ class PlaylistsTest {
         val text = File(temp.root, "listas/Mía.m3u8").readText()
         assertTrue(text.startsWith("#EXTM3U\n"))
         assertTrue(text.contains("#EXTINF:-1,canción uno\n/sdcard/Music/canción uno.mp3\n"))
-        val foreign = "﻿#EXTM3U\r\n#EXTINF:10,X\r\n/a/x.mp3\r\nhttp://no/se/usa.mp3\r\n\r\n/a/y.ogg\r\n"
+        val foreign = "\uFEFF#EXTM3U\r\n#EXTINF:10,X\r\n/a/x.mp3\r\nhttp://no/se/usa.mp3\r\n\r\n/a/y.ogg\r\n"
         assertEquals(listOf("/a/x.mp3", "/a/y.ogg"), Playlists.parse(foreign))
     }
 }

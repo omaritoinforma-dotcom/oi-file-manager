@@ -104,6 +104,39 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("close_notification", false)
         set(v) = sp.edit().putBoolean("close_notification", v).apply()
 
+    /** «Mostrar advertencia de espacio bajo» de ES. */
+    var lowSpaceWarning: Boolean
+        get() = sp.getBoolean("low_space_warning", true)
+        set(v) = sp.edit().putBoolean("low_space_warning", v).apply()
+
+    /** Se avisa cuando quedan menos de estos MB libres. */
+    var lowSpaceMb: Int
+        get() = sp.getInt("low_space_mb", 1024)
+        set(v) = sp.edit().putInt("low_space_mb", v.coerceIn(100, 102400)).apply()
+
+    /** Ya se avisó y el espacio no se ha recuperado: no se repite el aviso. */
+    var lowSpaceWarned: Boolean
+        get() = sp.getBoolean("low_space_warned", false)
+        set(v) = sp.edit().putBoolean("low_space_warned", v).apply()
+
+    /** «Notificación del Registrador» de ES: aviso cuando aparecen archivos nuevos. */
+    var newFilesNotify: Boolean
+        get() = sp.getBoolean("new_files_notify", false)
+        set(v) = sp.edit().putBoolean("new_files_notify", v).apply()
+
+    var newFilesKinds: Set<NewFileKind>
+        get() =
+            sp.getString("new_files_kinds", null)
+                ?.split(',')
+                ?.mapNotNull { n -> NewFileKind.entries.firstOrNull { it.name == n } }
+                ?.toSet() ?: NewFileKind.entries.toSet()
+        set(v) = sp.edit().putString("new_files_kinds", v.joinToString(",") { it.name }).apply()
+
+    /** Fecha (segundos) del último archivo ya avisado. */
+    var newFilesSince: Long
+        get() = sp.getLong("new_files_since", 0L)
+        set(v) = sp.edit().putLong("new_files_since", v).apply()
+
     var notificationPermissionAsked: Boolean
         get() = sp.getBoolean("notification_permission_asked", false)
         set(v) = sp.edit().putBoolean("notification_permission_asked", v).apply()
