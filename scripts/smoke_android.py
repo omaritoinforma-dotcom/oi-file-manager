@@ -129,16 +129,19 @@ def seed_files():
             adb("push", str(file), f"/sdcard/Download/{file.name}")
 
 
-def hide_keyboard():
-    """The soft keyboard covers lower fields and is absent from the app's hierarchy dump,
-    so a tap meant for a field would type a key. Back only when it is shown, so a dialog stays."""
-    for _ in range(3):
-        state = adb("shell", "dumpsys", "input_method")
-        if "mInputShown=true" not in state and "mIsInputViewShown=true" not in state:
-            return
-        adb("shell", "input", "keyevent", "4")
-        time.sleep(0.5)
-    raise AssertionError("Soft keyboard did not close")
+def keyboards(enable):
+    """The soft keyboard covers lower fields and is missing from the app's hierarchy dump, so
+    taps meant for a field type keys instead. `input text` sends hardware key events, which
+    Compose fields accept without a keyboard app, so the keyboard apps are disabled meanwhile."""
+    global KEYBOARD_PACKAGES
+    if not enable:
+        KEYBOARD_PACKAGES = sorted({i.split("/")[0] for i in adb("shell", "ime", "list", "-s").split()})
+    for package in KEYBOARD_PACKAGES:
+        adb("shell", "pm", "enable" if enable else "disable-user", "--user", "0", package)
+    time.sleep(1)
+
+
+KEYBOARD_PACKAGES = []
 
 
 def field_texts():
@@ -148,7 +151,6 @@ def field_texts():
 def fill(label, value, current=None):
     """Types into the dialog field found by label, hint or current value, scrolling if needed."""
     for _ in range(6):
-        hide_keyboard()
         tree = hierarchy()
         found = nodes(label, tree) or [
             n for n in tree.iter("node")
@@ -184,13 +186,13 @@ def verify_network_resume():
     wait("Categorías")
     drawer("Red, nube y USB")
     tap("Agregar")
+    keyboards(enable=False)
     fill("Nombre de la conexión", "SFTP prueba")
     fill("Servidor", "10.0.2.2")
     fill("Puerto", os.environ["OI_REMOTE_TEST_SFTP_PORT"], current="22")
     fill("Usuario", "oi")
     fill("Contraseña", os.environ["OI_REMOTE_TEST_PASSWORD"])
     fill("Huella del servidor SHA256:…", os.environ["OI_REMOTE_TEST_SFTP_FINGERPRINT"])
-    hide_keyboard()
     texts = field_texts()
     for expected_text in (
         "SFTP prueba",
@@ -205,6 +207,7 @@ def verify_network_resume():
     while nodes("Nueva conexión", hierarchy()):
         assert time.monotonic() < deadline, "Connection dialog did not close after saving"
         time.sleep(0.5)
+    keyboards(enable=True)
     tap("SFTP prueba")
     node, _ = wait("reanudar.bin")
     x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds")))
