@@ -238,6 +238,8 @@ def verify_remote_recovery():
         x, y = str((x1 + x2) // 2), str((y1 + y2) // 2)
         adb("shell", "input", "swipe", x, y, x, y, "1000")
         tap("Descargar")
+        # Each operation opens a progress dialog; expose the Transfers controls.
+        tap("Continuar navegando")
         deadline = time.monotonic() + 30
         while True:
             parts = adb("shell", "find", shlex.quote(destination), "-maxdepth", "1",
@@ -253,12 +255,14 @@ def verify_remote_recovery():
         drawer("Transferencias")
         checkpoint("16-remote-journal-restored", "Reanudar")
         tap("Reanudar")
+        tap("Continuar navegando")
         wait("Pausar transferencia")
         # Force-stop without cancelling: the onDestroy callback will not save state.
         launch()
         drawer("Transferencias")
         checkpoint("17-remote-process-killed", "Reanudar")
         tap("Reanudar")
+        tap("Continuar navegando")
         deadline = time.monotonic() + 90
         while adb("shell", "stat", "-c", "%s", shlex.quote(target), check=False).strip() != str(size):
             assert time.monotonic() < deadline, "Resumed download did not commit"
