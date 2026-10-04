@@ -18,6 +18,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
@@ -95,13 +98,13 @@ class MainActivity : ComponentActivity() {
                 if (vm.largeLayout.value) Density(density.density * 1.2f, density.fontScale) else density
             // Imagen de fondo: se dibuja debajo de todo y el color de fondo se vuelve translúcido.
             val context = LocalContext.current
-            val image by
-                produceState<ImageBitmap?>(null, vm.backgroundImage.value, vm.backgroundVersion) {
-                    value =
-                        if (vm.backgroundImage.value)
-                            withContext(Dispatchers.IO) { BackgroundImage.load(context)?.asImageBitmap() }
-                        else null
-                }
+            var image by remember { mutableStateOf<ImageBitmap?>(null) }
+            LaunchedEffect(vm.backgroundImage.value, vm.backgroundVersion) {
+                image =
+                    if (vm.backgroundImage.value)
+                        withContext(Dispatchers.IO) { BackgroundImage.load(context)?.asImageBitmap() }
+                    else null
+            }
             val overlay =
                 if (image != null) BackgroundImage.overlayAlpha(vm.backgroundStrength.value) else 1f
             CompositionLocalProvider(LocalDensity provides scaled) {
