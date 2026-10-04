@@ -371,7 +371,17 @@ def main():
     adb("shell", "input", "keyevent", "4")
     # Verify leaving/re-entering the Activity keeps normal file browsing usable.
     adb("shell", "input", "keyevent", "3")
-    adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity")
+    # Starting while Home is still animating is "delivered to top" and leaves the launcher
+    # in front, so wait until the app has really left the foreground first.
+    focused = lambda: PACKAGE in adb("shell", "dumpsys", "window", "displays", check=False).split("mCurrentFocus", 1)[-1][:200]
+    deadline = time.monotonic() + 15
+    while focused() and time.monotonic() < deadline:
+        time.sleep(0.5)
+    for _ in range(3):
+        adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity")
+        time.sleep(1)
+        if focused():
+            break
     checkpoint("14-resume", "smoke.txt")
     verify_network_resume()
     crash = adb("logcat", "-d", "-b", "crash")
