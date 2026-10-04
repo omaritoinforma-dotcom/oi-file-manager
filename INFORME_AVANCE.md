@@ -13,11 +13,11 @@ La matriz completa está en [COMPARACION_ES.md](COMPARACION_ES.md). Se hizo a pa
 | Estado | Filas | Qué significa |
 | --- | ---: | --- |
 | ✅ | 40 | Implementado y comprobado en el emulador Android 15 del CI o contra un servidor real |
-| 🟡 | 34 | Implementado y conectado a la interfaz; su comprobación en el emulador ya está escrita y espera su pasada |
+| 🟡 | 35 | Implementado y conectado a la interfaz; su comprobación en el emulador ya está escrita y espera su pasada |
 | 🟠 | 2 | Parcial: Chromecast y envío entre teléfonos por punto de acceso Wi-Fi |
-| ❌ | 9 | Falta: idioma dentro de la app, funciones que exigen root (desinstalar apps del sistema, montar /system, editar hosts), Android TV por ADB, servidor OBEX, expulsar USB, punto de acceso propio y las nubes minoritarias |
+| ❌ | 8 | Falta: funciones que exigen root (desinstalar apps del sistema, montar /system, editar hosts), Android TV por ADB, servidor OBEX, expulsar USB, punto de acceso propio y las nubes minoritarias |
 
-Lo que falta en ❌ y en 🟠 necesita casi siempre hardware, root o cuentas que el CI no tiene. La excepción es el idioma: hay que sacar a recursos los textos de la interfaz, que hoy están escritos en español dentro del código.
+Lo que falta en ❌ y en 🟠 necesita hardware, root o cuentas que el CI no tiene.
 
 ## Cómo se comprueba
 
@@ -39,7 +39,7 @@ Además, el servidor FTP del propio teléfono se prueba con el cliente FTP de co
 El trabajo `smoke` arranca la app en un emulador Android 15 y ejecuta dos scripts:
 
 - `scripts/smoke_android.py` recorre la app de punta a punta. Incluye una descarga SFTP de 24 MiB que se reanuda tras matar el proceso y se compara por SHA-256.
-- `scripts/android_features.py` hace **82 comprobaciones**, una por función. Cada una guarda su captura, su jerarquía de pantalla y el resultado en `results.json`.
+- `scripts/android_features.py` hace **83 comprobaciones**, una por función. Cada una guarda su captura, su jerarquía de pantalla y el resultado en `results.json`.
 
 Desde ahora las comprobaciones se reparten en **tres emuladores nuevos en paralelo** (`OI_SHARD=k/3`). Así una sesión no pasa de unos 40 minutos.
 
@@ -62,11 +62,11 @@ Los 10 fallos eran de la prueba y están corregidos en `df93f9f`:
 - se leía un archivo del servidor justo mientras la app lo sustituía;
 - `am start -W` superó 30 s.
 
-Las 25 comprobaciones nuevas de este punto de control esperan su primera pasada.
+Las 26 comprobaciones nuevas de este punto de control esperan su primera pasada.
 
 ### Pruebas JVM
 
-Hay 218 pruebas en 43 archivos. En local pasan todas menos 9, que necesitan rclone y 7-Zip; en el CI pasan también.
+Hay 229 pruebas en 45 archivos. En local pasan todas menos 9, que necesitan rclone y 7-Zip; en el CI pasan también.
 
 ## Errores reales que encontraron las pruebas
 
@@ -109,12 +109,13 @@ Hay 218 pruebas en 43 archivos. En local pasan todas menos 9, que necesitan rclo
 
   Todos van en la copia de ajustes y se validan al restaurar, salvo los que son del dispositivo: la contraseña FTP y la imagen de fondo.
 - **Envío entre teléfonos:** se puede enviar leyendo un código QR.
+- **Idioma:** la app se puede usar en español o en inglés, o seguir el idioma del teléfono (Ajustes → Pantalla). Los textos siguen escritos en español en el código y `tr("…")` los traduce con el catálogo `assets/i18n/en.tsv`; una prueba JVM recorre el código y exige que cada texto tenga su traducción.
 - **Apps:** al desinstalar una app desde OI Archivos, propone mover a la papelera las carpetas con su nombre que dejó en la raíz del almacenamiento (como «Clean associated folders» de ES, pero solo por nombre exacto y con confirmación).
 
 ## Trabajo que falta
 
-1. **Pasada del emulador** de las 34 filas en 🟡, ya escritas: corregir lo que falle y pasar a ✅ lo que apruebe.
-2. **Idioma dentro de la app:** sacar los textos a `strings.xml` y añadir al menos inglés.
+1. **Pasada del emulador** de las 35 filas en 🟡, ya escritas: corregir lo que falle y pasar a ✅ lo que apruebe.
+2. **Más idiomas:** el catálogo admite cualquier idioma; hoy hay español e inglés.
 3. **Nubes:** registrar el acceso OAuth de la aplicación y comprobar cada operación con cuentas reales (Drive, Dropbox, OneDrive, Box, Yandex, S3, Baidu, SugarSync).
 4. **Hardware y root, imposibles en el CI:** Chromecast, punto de acceso Wi-Fi, Android TV por ADB, Bluetooth OBEX (cliente con un dispositivo real; servidor por hacer), USB OTG, tarjeta SD y funciones root.
 5. **Revisión estática:** `lintDebug` no tiene errores. Quedan 27 advertencias, sobre todo versiones nuevas de dependencias y la API objetivo 34; las dos de «TrustAllX509TrustManager» son de clases de commons-net que la app no usa.

@@ -38,14 +38,14 @@ fun ArchiveScreen(vm: MainViewModel, path: String) {
             OutlinedTextField(
                 password,
                 { password = it },
-                label = { Text("Contraseña (si corresponde)") },
+                label = { Text(tr("Contraseña (si corresponde)")) },
                 visualTransformation =
                     androidx.compose.ui.text.input.PasswordVisualTransformation(),
                 modifier = Modifier.fillMaxWidth().padding(12.dp))
             Row {
-                TextButton(onClick = { entered = password }) { Text("Abrir") }
+                TextButton(onClick = { entered = password }) { Text(tr("Abrir")) }
                 TextButton(onClick = { vm.extract(file.toItem(), password) }) {
-                    Text("Extraer en carpeta nueva")
+                    Text(tr("Extraer en carpeta nueva"))
                 }
                 if (prefix.isNotEmpty())
                     TextButton(
@@ -55,10 +55,10 @@ fun ArchiveScreen(vm: MainViewModel, path: String) {
                                     if (it.isEmpty()) "" else "$it/"
                                 }
                         }) {
-                            Text("Subir")
+                            Text(tr("Subir"))
                         }
             }
-            Text(prefix.ifEmpty { "Contenido del comprimido" }, Modifier.padding(12.dp))
+            Text(prefix.ifEmpty { tr("Contenido del comprimido") }, Modifier.padding(12.dp))
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (error != null)
                 Text(error!!, Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error)
@@ -83,8 +83,8 @@ fun ArchiveScreen(vm: MainViewModel, path: String) {
                         headlineContent = { Text(entry.name.removePrefix(prefix).trimEnd('/')) },
                         supportingContent = {
                             Text(
-                                if (entry.directory) "Carpeta"
-                                else if (entry.size < 0) "Tamaño desconocido"
+                                if (entry.directory) tr("Carpeta")
+                                else if (entry.size < 0) tr("Tamaño desconocido")
                                 else formatSize(entry.size))
                         },
                         modifier =
@@ -92,10 +92,10 @@ fun ArchiveScreen(vm: MainViewModel, path: String) {
                                 if (entry.directory) prefix = entry.name
                                 else if (file.extension.lowercase() in
                                     setOf("zip", "jar", "apks")) {
-                                    vm.runTask("Abriendo archivo del ZIP") { report ->
+                                    vm.runTask(tr("Abriendo archivo del ZIP")) { report ->
                                         if (entry.size > 64L * 1024 * 1024)
                                             throw java.io.IOException(
-                                                "Extrae primero los archivos de más de 64 MB")
+                                                tr("Extrae primero los archivos de más de 64 MB"))
                                         val dir =
                                             File(
                                                     vm.getApplication<android.app.Application>()
@@ -116,7 +116,7 @@ fun ArchiveScreen(vm: MainViewModel, path: String) {
                                                 val h =
                                                     zip.getFileHeader(entry.name)
                                                         ?: throw java.io.IOException(
-                                                            "No existe la entrada")
+                                                            tr("No existe la entrada"))
                                                 SafeFiles.writeAtomic(target) { temp ->
                                                     zip.getInputStream(h).use { input ->
                                                         temp.outputStream().use { out ->
@@ -129,11 +129,11 @@ fun ArchiveScreen(vm: MainViewModel, path: String) {
                                                                 done += n
                                                                 if (done > 64L * 1024 * 1024)
                                                                     throw java.io.IOException(
-                                                                        "Vista previa demasiado grande")
+                                                                        tr("Vista previa demasiado grande"))
                                                                 out.write(buf, 0, n)
                                                                 report(
                                                                     OpProgress(
-                                                                        "Abriendo",
+                                                                        tr("Abriendo"),
                                                                         target.name,
                                                                         done,
                                                                         entry.size))
@@ -147,7 +147,7 @@ fun ArchiveScreen(vm: MainViewModel, path: String) {
                                     }
                                 } else
                                     vm.toast(
-                                        "Usa «Extraer en carpeta nueva» para abrir este archivo")
+                                        tr("Usa «Extraer en carpeta nueva» para abrir este archivo"))
                             })
                 }
             }

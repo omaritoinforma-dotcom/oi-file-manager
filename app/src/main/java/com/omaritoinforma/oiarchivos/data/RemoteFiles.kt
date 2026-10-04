@@ -43,27 +43,30 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.w3c.dom.Element
 
-enum class Protocol(val label: String) {
-    FTP("FTP"),
+enum class Protocol(private val labelEs: String) {
+    FTP(trKey("FTP")),
     /** FTPS con TLS explícito: se conecta en claro y pasa a TLS con AUTH TLS (puerto 21). */
-    FTPS("FTPS"),
+    FTPS(trKey("FTPS")),
     /** FTPS implícito: TLS desde el primer byte (puerto 990), como los servidores que lo exigen. */
-    FTPS_IMPLICIT("FTPS implícito"),
-    SFTP("SFTP"),
-    SMB("Windows / SMB"),
+    FTPS_IMPLICIT(trKey("FTPS implícito")),
+    SFTP(trKey("SFTP")),
+    SMB(trKey("Windows / SMB")),
     /** NFS versión 3: el servidor exporta una carpeta y se entra con usuario y grupo numéricos (uid:gid). */
-    NFS("NFS"),
-    WEBDAV("WebDAV"),
-    DRIVE("Google Drive"),
-    DROPBOX("Dropbox"),
-    ONEDRIVE("OneDrive"),
-    BOX("Box"),
-    YANDEX("Yandex Disk"),
-    S3("Amazon S3"),
-    BAIDU("Baidu Netdisk"),
-    SUGARSYNC("SugarSync"),
-    BLUETOOTH("Bluetooth"),
-    ROOT("Root / Magisk")
+    NFS(trKey("NFS")),
+    WEBDAV(trKey("WebDAV")),
+    DRIVE(trKey("Google Drive")),
+    DROPBOX(trKey("Dropbox")),
+    ONEDRIVE(trKey("OneDrive")),
+    BOX(trKey("Box")),
+    YANDEX(trKey("Yandex Disk")),
+    S3(trKey("Amazon S3")),
+    BAIDU(trKey("Baidu Netdisk")),
+    SUGARSYNC(trKey("SugarSync")),
+    BLUETOOTH(trKey("Bluetooth")),
+    ROOT(trKey("Root / Magisk"));
+
+    val label: String
+        get() = tr(labelEs)
 }
 
 data class Connection(
@@ -261,10 +264,10 @@ object RemoteFiles {
             if (file.isDirectory) {
                 val child = fs.mkdir(dir, name)
                 for (f in
-                    file.listFiles() ?: throw IOException("No se puede leer ${file.name}")) one(
+                    file.listFiles() ?: throw IOException(tr("No se puede leer {0}", file.name))) one(
                     f, child)
             } else {
-                report(OpProgress("Subiendo", file.name, totalBytes = file.length()))
+                report(OpProgress(tr("Subiendo"), file.name, totalBytes = file.length()))
                 val context = currentCoroutineContext()
                 var done = 0L
                 file.inputStream().use { raw ->
@@ -275,7 +278,7 @@ object RemoteFiles {
                                 val n = super.read(b, off, len)
                                 if (n > 0) {
                                     done += n
-                                    report(OpProgress("Subiendo", file.name, done, file.length()))
+                                    report(OpProgress(tr("Subiendo"), file.name, done, file.length()))
                                 }
                                 return n
                             }
@@ -305,11 +308,11 @@ object RemoteFiles {
     ): File {
         currentCoroutineContext().ensureActive()
         SafeFiles.requireName(entry.name)
-        if (depth > 128) throw IOException("La carpeta remota supera el límite de profundidad")
-        if (!dir.isDirectory && !dir.mkdirs()) throw IOException("No se pudo crear el destino")
+        if (depth > 128) throw IOException(tr("La carpeta remota supera el límite de profundidad"))
+        if (!dir.isDirectory && !dir.mkdirs()) throw IOException(tr("No se pudo crear el destino"))
         val target = FileOps.uniqueName(dir, entry.name)
         if (entry.directory) {
-            if (!target.mkdir()) throw IOException("No se pudo crear el destino")
+            if (!target.mkdir()) throw IOException(tr("No se pudo crear el destino"))
             for (child in fs.list(entry.path)) download(fs, child, target, report, depth + 1)
         } else {
             val temp = File.createTempFile(".oi-remote-", ".tmp", dir)
@@ -324,11 +327,11 @@ object RemoteFiles {
                             if (n < 0) break
                             out.write(buffer, 0, n)
                             done += n
-                            report(OpProgress("Descargando", entry.name, done, entry.size))
+                            report(OpProgress(tr("Descargando"), entry.name, done, entry.size))
                         }
                     }
                 }
-                if (entry.size >= 0 && done != entry.size) throw IOException("Descarga incompleta")
+                if (entry.size >= 0 && done != entry.size) throw IOException(tr("Descarga incompleta"))
                 SafeFiles.commit(temp, target, replace = false)
             } finally {
                 temp.delete()
@@ -361,7 +364,7 @@ private class FtpFs(c: Connection) : RemoteFs {
             client.controlEncoding = "UTF-8"
             client.connect(c.host, c.port)
             if (!client.login(c.user.ifBlank { "anonymous" }, c.secret))
-                throw IOException("El servidor rechazó las credenciales")
+                throw IOException(tr("El servidor rechazó las credenciales"))
             runCatching { client.sendCommand("OPTS UTF8 ON") }
             if (client is FTPSClient) {
                 client.execPBSZ(0)
@@ -390,11 +393,11 @@ private class FtpFs(c: Connection) : RemoteFs {
 
     private fun stream(path: String, offset: Long): InputStream {
         client.restartOffset = offset
-        val raw = client.retrieveFileStream(path) ?: throw IOException("No se pudo descargar")
+        val raw = client.retrieveFileStream(path) ?: throw IOException(tr("No se pudo descargar"))
         return object : FilterInputStream(raw) {
             override fun close() {
                 super.close()
-                if (!client.completePendingCommand()) throw IOException("Descarga incompleta")
+                if (!client.completePendingCommand()) throw IOException(tr("Descarga incompleta"))
             }
         }
     }
@@ -410,20 +413,20 @@ private class FtpFs(c: Connection) : RemoteFs {
                     try {
                         super.read(b, off, len)
                     } catch (e: RuntimeException) {
-                        throw IOException("Transferencia interrumpida", e)
+                        throw IOException(tr("Transferencia interrumpida"), e)
                     }
 
                 override fun read(): Int =
                     try {
                         super.read()
                     } catch (e: RuntimeException) {
-                        throw IOException("Transferencia interrumpida", e)
+                        throw IOException(tr("Transferencia interrumpida"), e)
                     }
             }
         var stored = false
         try {
             if (!client.storeFile(temp, guarded) || !client.rename(temp, target))
-                throw IOException("No se pudo subir el archivo")
+                throw IOException(tr("No se pudo subir el archivo"))
             stored = true
         } finally {
             if (!stored) runCatching { client.deleteFile(temp) }
@@ -433,20 +436,20 @@ private class FtpFs(c: Connection) : RemoteFs {
 
     override fun mkdir(parent: String, name: String): String =
         RemoteFiles.join(parent, name).also {
-            if (!client.makeDirectory(it)) throw IOException("No se pudo crear la carpeta")
+            if (!client.makeDirectory(it)) throw IOException(tr("No se pudo crear la carpeta"))
         }
 
     override fun rename(entry: RemoteEntry, name: String) {
         val target = RemoteFiles.join(entry.path.substringBeforeLast('/'), name)
-        if (!client.rename(entry.path, target)) throw IOException("No se pudo renombrar")
+        if (!client.rename(entry.path, target)) throw IOException(tr("No se pudo renombrar"))
     }
 
     override fun delete(entry: RemoteEntry) {
         if (entry.directory) {
             list(entry.path).forEach { delete(it) }
             if (!client.removeDirectory(entry.path))
-                throw IOException("No se pudo borrar la carpeta")
-        } else if (!client.deleteFile(entry.path)) throw IOException("No se pudo borrar el archivo")
+                throw IOException(tr("No se pudo borrar la carpeta"))
+        } else if (!client.deleteFile(entry.path)) throw IOException(tr("No se pudo borrar el archivo"))
     }
 
     override fun close() {
@@ -461,7 +464,7 @@ private class SftpFs(c: Connection) : RemoteFs {
 
     init {
         if (c.fingerprint.isBlank())
-            throw IOException("SFTP requiere la huella SHA256 del servidor")
+            throw IOException(tr("SFTP requiere la huella SHA256 del servidor"))
         val jsch = JSch()
         jsch.hostKeyRepository =
             object : HostKeyRepository {
@@ -473,7 +476,7 @@ private class SftpFs(c: Connection) : RemoteFs {
                                 .encodeToString(
                                     MessageDigest.getInstance("SHA-256").digest(key ?: byteArrayOf()))
                     if (actual != c.fingerprint.trim())
-                        throw IOException("La huella SFTP no coincide. Huella recibida: $actual")
+                        throw IOException(tr("La huella SFTP no coincide. Huella recibida: {0}", actual))
                     return HostKeyRepository.OK
                 }
 
@@ -675,7 +678,7 @@ internal class NfsFs(c: Connection) : RemoteFs {
             temp.create(com.emc.ecs.nfsclient.nfs.NfsCreateMode.UNCHECKED, attributes(FILE_MODE), null)
             com.emc.ecs.nfsclient.nfs.io.NfsFileOutputStream(temp).use { input.copyTo(it) }
             // El renombrado de NFS sustituye lo que hubiera en el destino de una sola vez.
-            if (!temp.renameTo(file(target))) throw IOException("El servidor NFS no renombró el archivo")
+            if (!temp.renameTo(file(target))) throw IOException(tr("El servidor NFS no renombró el archivo"))
             renamed = true
         } finally {
             // Con el archivo ya renombrado no se toca nada: la biblioteca guarda el manejador viejo y un
@@ -691,7 +694,7 @@ internal class NfsFs(c: Connection) : RemoteFs {
     override fun rename(entry: RemoteEntry, name: String) {
         val moved =
             file(entry.path).renameTo(file(RemoteFiles.join(entry.path.substringBeforeLast('/'), name)))
-        if (!moved) throw IOException("El servidor NFS no cambió el nombre")
+        if (!moved) throw IOException(tr("El servidor NFS no cambió el nombre"))
     }
 
     override fun delete(entry: RemoteEntry) {
@@ -724,7 +727,7 @@ internal class Http(private val auth: String) {
         size: Long? = null
     ): HttpURLConnection {
         val parsed = URL(url)
-        if (parsed.protocol !in setOf("http", "https")) throw IOException("Solo HTTP o HTTPS")
+        if (parsed.protocol !in setOf("http", "https")) throw IOException(tr("Solo HTTP o HTTPS"))
         return (parsed.openConnection() as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = 15000
@@ -748,11 +751,11 @@ internal class Http(private val auth: String) {
             throw IOException(
                 when (code) {
                     401,
-                    403 -> "Acceso rechazado; revisa credenciales o token"
-                    404 -> "No existe el archivo"
+                    403 -> tr("Acceso rechazado; revisa credenciales o token")
+                    404 -> tr("No existe el archivo")
                     409,
-                    412 -> "El destino ya existe"
-                    else -> "Respuesta HTTP $code"
+                    412 -> tr("El destino ya existe")
+                    else -> tr("Respuesta HTTP {0}", code)
                 })
         }
         return object : FilterInputStream(connection.inputStream) {
@@ -782,7 +785,7 @@ internal class Http(private val auth: String) {
                     .readTimeout(30, TimeUnit.SECONDS)
                     .build()
             client.newCall(request.build()).execute().use { response ->
-                if (!response.isSuccessful) throw IOException("Respuesta HTTP ${response.code}")
+                if (!response.isSuccessful) throw IOException(tr("Respuesta HTTP {0}", response.code))
                 return response.body?.string().orEmpty()
             }
         }
@@ -806,7 +809,7 @@ private class DavFs(c: Connection) : RemoteFs {
 
     init {
         if (!base.startsWith("https://") && !base.startsWith("http://"))
-            throw IOException("Escribe la dirección completa, http:// o https://")
+            throw IOException(tr("Escribe la dirección completa, http:// o https://"))
     }
 
     private fun url(path: String) =
@@ -820,7 +823,7 @@ private class DavFs(c: Connection) : RemoteFs {
                 "<?xml version=\"1.0\"?><d:propfind xmlns:d=\"DAV:\"><d:prop><d:resourcetype/><d:getcontentlength/></d:prop></d:propfind>",
                 mapOf("Depth" to "1", "Content-Type" to "application/xml"))
         if (Regex("<!\\s*(DOCTYPE|ENTITY)", RegexOption.IGNORE_CASE).containsMatchIn(xml))
-            throw IOException("Declaración XML no permitida")
+            throw IOException(tr("Declaración XML no permitida"))
         val factory =
             DocumentBuilderFactory.newInstance().apply {
                 isNamespaceAware = true

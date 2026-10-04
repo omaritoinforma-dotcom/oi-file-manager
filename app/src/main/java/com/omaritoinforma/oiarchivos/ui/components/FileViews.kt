@@ -65,6 +65,7 @@ import com.omaritoinforma.oiarchivos.util.formatDate
 import com.omaritoinforma.oiarchivos.util.formatSize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.omaritoinforma.oiarchivos.data.tr
 
 /** «Miniaturas» de Ajustes → Pantalla: si es falso se muestran iconos en vez de vistas previas. */
 val LocalThumbnails = compositionLocalOf { true }
@@ -76,7 +77,7 @@ val LocalFolderStyle = compositionLocalOf { FolderStyle.CLASSIC }
 val LocalPinned = compositionLocalOf<Set<String>> { emptySet() }
 
 fun subtitle(item: FileItem): String =
-    if (item.isDirectory) "${formatDate(item.lastModified)} · ${item.childCount} elementos"
+    if (item.isDirectory) tr("{0} · {1} elementos", formatDate(item.lastModified), item.childCount)
     else "${formatDate(item.lastModified)} · ${formatSize(item.size)}"
 
 @Composable
@@ -131,7 +132,7 @@ fun FileRow(
             Spacer(Modifier.width(8.dp))
             Icon(
                 Icons.Filled.PushPin,
-                contentDescription = "Fijado",
+                contentDescription = tr("Fijado"),
                 modifier = Modifier.size(18.dp),
                 tint = MaterialTheme.colorScheme.primary)
         }
@@ -163,7 +164,7 @@ fun GridCell(item: FileItem, selected: Boolean, onClick: () -> Unit, onLongClick
         if (item.path in LocalPinned.current)
             Icon(
                 Icons.Filled.PushPin,
-                contentDescription = "Fijado",
+                contentDescription = tr("Fijado"),
                 modifier = Modifier.size(16.dp),
                 tint = MaterialTheme.colorScheme.primary)
         Text(
@@ -191,7 +192,7 @@ fun FileThumb(item: FileItem, size: Dp, selected: Boolean) {
                 ) {
                     Icon(
                         Icons.Filled.Check,
-                        contentDescription = "Seleccionado",
+                        contentDescription = tr("Seleccionado"),
                         tint = MaterialTheme.colorScheme.onPrimary)
                 }
             previews && (kind == FileKind.IMAGE || kind == FileKind.VIDEO) -> {

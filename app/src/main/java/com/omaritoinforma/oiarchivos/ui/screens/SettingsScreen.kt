@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.omaritoinforma.oiarchivos.BuildConfig
 import com.omaritoinforma.oiarchivos.data.AccentColor
+import com.omaritoinforma.oiarchivos.data.AppLanguage
 import com.omaritoinforma.oiarchivos.data.BackgroundImage
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -91,6 +92,8 @@ import com.omaritoinforma.oiarchivos.data.SettingsBackup
 import com.omaritoinforma.oiarchivos.data.StartWindow
 import com.omaritoinforma.oiarchivos.data.StorageWatch
 import com.omaritoinforma.oiarchivos.data.ThemeMode
+import com.omaritoinforma.oiarchivos.data.tr
+import com.omaritoinforma.oiarchivos.data.trKey
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
 import com.omaritoinforma.oiarchivos.ui.PrefState
 import com.omaritoinforma.oiarchivos.ui.components.FolderPickerDialog
@@ -103,25 +106,34 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /** Secciones de Ajustes, con el mismo orden y agrupación que la configuración de ES. */
-private enum class Section(val group: String, val title: String, val summary: String) {
-    DISPLAY("General", "Pantalla", "Archivos ocultos, miniaturas, historial, tamaño y tema"),
-    CLEANUP("General", "Limpieza", "Borrar el historial y la caché"),
-    FOLDERS("General", "Carpetas", "Carpeta de inicio y carpeta de descargas"),
-    START("General", "Ventana inicial", "Qué se abre al iniciar la app"),
-    HOME("General", "Pantalla de inicio", "Ocultar y ordenar las secciones y los iconos de Inicio"),
-    TOOLBAR("General", "Barra de herramientas", "Elegir y ordenar los botones de la barra al seleccionar"),
-    DRAWER("General", "Barra lateral", "Ocultar y ordenar las opciones del menú lateral"),
-    NOTIFICATIONS("General", "Notificaciones", "Aviso al terminar, espacio bajo y archivos nuevos"),
-    REMOTE("Red y nube", "Archivos remotos", "Subir lo que edites en otra app"),
-    AUTO_BACKUP("Red y nube", "Copia automática", "Subir fotos, vídeos, música y carpetas a una conexión"),
-    PASSWORD("Seguridad", "Contraseña", "Proteger la app, las conexiones y los archivos ocultos"),
-    BACKUP("Seguridad", "Copia de ajustes", "Guardar y restaurar los ajustes"),
-    APPS("Herramientas", "Aplicaciones", "Copia del APK y carpeta de copias"),
-    EDITOR("Herramientas", "Editor de texto", "Letra, líneas, sangría, tabulador, símbolos y guardado"),
-    DOCUMENTS("Herramientas", "Documentos", "Qué tipos de archivo entran en la categoría Documentos"),
-    TRASH("Herramientas", "Papelera", "Usar la papelera al eliminar"),
-    GESTURES("Herramientas", "Gestos", "Deslizar en el explorador"),
-    ABOUT("Sistema", "Acerca de", "Versión de OI Archivos")
+private enum class Section(private val groupEs: String, private val titleEs: String, private val summaryEs: String) {
+    DISPLAY(trKey("General"), trKey("Pantalla"), trKey("Archivos ocultos, miniaturas, historial, tamaño y tema")),
+    CLEANUP(trKey("General"), trKey("Limpieza"), trKey("Borrar el historial y la caché")),
+    FOLDERS(trKey("General"), trKey("Carpetas"), trKey("Carpeta de inicio y carpeta de descargas")),
+    START(trKey("General"), trKey("Ventana inicial"), trKey("Qué se abre al iniciar la app")),
+    HOME(trKey("General"), trKey("Pantalla de inicio"), trKey("Ocultar y ordenar las secciones y los iconos de Inicio")),
+    TOOLBAR(trKey("General"), trKey("Barra de herramientas"), trKey("Elegir y ordenar los botones de la barra al seleccionar")),
+    DRAWER(trKey("General"), trKey("Barra lateral"), trKey("Ocultar y ordenar las opciones del menú lateral")),
+    NOTIFICATIONS(trKey("General"), trKey("Notificaciones"), trKey("Aviso al terminar, espacio bajo y archivos nuevos")),
+    REMOTE(trKey("Red y nube"), trKey("Archivos remotos"), trKey("Subir lo que edites en otra app")),
+    AUTO_BACKUP(trKey("Red y nube"), trKey("Copia automática"), trKey("Subir fotos, vídeos, música y carpetas a una conexión")),
+    PASSWORD(trKey("Seguridad"), trKey("Contraseña"), trKey("Proteger la app, las conexiones y los archivos ocultos")),
+    BACKUP(trKey("Seguridad"), trKey("Copia de ajustes"), trKey("Guardar y restaurar los ajustes")),
+    APPS(trKey("Herramientas"), trKey("Aplicaciones"), trKey("Copia del APK y carpeta de copias")),
+    EDITOR(trKey("Herramientas"), trKey("Editor de texto"), trKey("Letra, líneas, sangría, tabulador, símbolos y guardado")),
+    DOCUMENTS(trKey("Herramientas"), trKey("Documentos"), trKey("Qué tipos de archivo entran en la categoría Documentos")),
+    TRASH(trKey("Herramientas"), trKey("Papelera"), trKey("Usar la papelera al eliminar")),
+    GESTURES(trKey("Herramientas"), trKey("Gestos"), trKey("Deslizar en el explorador")),
+    ABOUT(trKey("Sistema"), trKey("Acerca de"), trKey("Versión de OI Archivos"));
+
+    val group: String
+        get() = tr(groupEs)
+
+    val title: String
+        get() = tr(titleEs)
+
+    val summary: String
+        get() = tr(summaryEs)
 }
 
 /** Dónde se guarda la copia de ajustes. */
@@ -136,10 +148,10 @@ fun SettingsScreen(vm: MainViewModel) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(section?.title ?: "Ajustes") },
+                title = { Text(section?.title ?: tr("Ajustes")) },
                 navigationIcon = {
                     IconButton(onClick = { if (section != null) open = null else vm.back() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, tr("Atrás"))
                     }
                 },
             )
@@ -160,8 +172,8 @@ fun SettingsScreen(vm: MainViewModel) {
                     item {
                         Column {
                             SwitchRow(
-                                "Subir los cambios automáticamente",
-                                "Al abrir un archivo de un servidor con otra app y editarlo, los cambios se suben solos al volver a OI Archivos. Si el archivo cambió en el servidor, se pregunta antes de sustituirlo.",
+                                tr("Subir los cambios automáticamente"),
+                                tr("Al abrir un archivo de un servidor con otra app y editarlo, los cambios se suben solos al volver a OI Archivos. Si el archivo cambió en el servidor, se pregunta antes de sustituirlo."),
                                 vm.remoteSync)
                         }
                     }
@@ -173,8 +185,8 @@ fun SettingsScreen(vm: MainViewModel) {
                 Section.DOCUMENTS -> item { DocumentSettings(vm) }
                 Section.TRASH -> item {
                     SwitchRow(
-                        "Usar la papelera",
-                        "Al eliminar, mover a la papelera para poder restaurar",
+                        tr("Usar la papelera"),
+                        tr("Al eliminar, mover a la papelera para poder restaurar"),
                         vm.useTrash) {
                             vm.updateUseTrash(it)
                         }
@@ -204,9 +216,22 @@ private fun LazyListScope.sectionList(onOpen: (Section) -> Unit) {
 @Composable
 private fun DisplaySettings(vm: MainViewModel) {
     Column {
+        // El idioma, lo primero: así se encuentra aunque no se entienda el resto.
+        Text(
+            tr("Idioma:"),
+            Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ChipRow {
+            AppLanguage.entries.forEach { l ->
+                FilterChip(
+                    vm.appLanguage.value == l,
+                    onClick = { vm.appLanguage.value = l },
+                    label = { Text(l.label) })
+            }
+        }
         // Arriba del todo: así se puede deshacer aunque la pantalla esté en horizontal.
         Text(
-            "Orientación de la pantalla:",
+            tr("Orientación de la pantalla:"),
             Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         ChipRow {
@@ -218,44 +243,44 @@ private fun DisplaySettings(vm: MainViewModel) {
             }
         }
         SwitchRow(
-            "Mostrar el nombre en la barra de herramientas",
-            "El título de la carpeta o categoría que se ve arriba",
+            tr("Mostrar el nombre en la barra de herramientas"),
+            tr("El título de la carpeta o categoría que se ve arriba"),
             vm.toolbarShowName)
         SwitchRow(
-            "Mostrar el botón de pestañas",
-            "Un botón con el número de pestañas abiertas, para cambiar de una a otra o abrir otra",
+            tr("Mostrar el botón de pestañas"),
+            tr("Un botón con el número de pestañas abiertas, para cambiar de una a otra o abrir otra"),
             vm.showWindowsButton)
         SwitchRow(
-            "Mostrar botón de selección",
-            "Un botón en la barra para empezar a marcar archivos sin mantener pulsado",
+            tr("Mostrar botón de selección"),
+            tr("Un botón en la barra para empezar a marcar archivos sin mantener pulsado"),
             vm.showSelectButton)
         SwitchRow(
-            "Diseño grande",
-            "Textos y controles un 20 % más grandes",
+            tr("Diseño grande"),
+            tr("Textos y controles un 20 % más grandes"),
             vm.largeLayout)
         SwitchRow(
-            "Mostrar archivos ocultos",
-            "Archivos y carpetas que empiezan con punto",
+            tr("Mostrar archivos ocultos"),
+            tr("Archivos y carpetas que empiezan con punto"),
             vm.showHidden) {
                 vm.toggleHidden()
             }
         SwitchRow(
-            "Miniaturas",
-            "Vista previa de imágenes, videos y APK en lugar de iconos",
+            tr("Miniaturas"),
+            tr("Vista previa de imágenes, videos y APK en lugar de iconos"),
             vm.thumbnails)
         SwitchRow(
-            "Solo carpetas en el historial",
-            "No mostrar en el historial los archivos abiertos",
+            tr("Solo carpetas en el historial"),
+            tr("No mostrar en el historial los archivos abiertos"),
             vm.historyFoldersOnly)
         Column(Modifier.padding(16.dp)) {
-            Text("Tamaño de las celdas: ${vm.gridSize}")
+            Text(tr("Tamaño de las celdas: {0}", vm.gridSize))
             Slider(
                 value = vm.gridSize.toFloat(),
                 onValueChange = { vm.updateGridSize(it.toInt()) },
                 valueRange = 72f..160f,
                 steps = 10)
         }
-        SectionTitle("Tema", Modifier.padding(start = 16.dp, top = 8.dp))
+        SectionTitle(tr("Tema"), Modifier.padding(start = 16.dp, top = 8.dp))
         ThemeMode.entries.forEach { m ->
             ListItem(
                 headlineContent = { Text(m.label) },
@@ -266,12 +291,12 @@ private fun DisplaySettings(vm: MainViewModel) {
             )
         }
         SwitchRow(
-            "Fondo negro puro",
-            "Con el tema oscuro, fondo totalmente negro (ahorra batería en pantallas OLED)",
+            tr("Fondo negro puro"),
+            tr("Con el tema oscuro, fondo totalmente negro (ahorra batería en pantallas OLED)"),
             vm.pureBlack)
         BackgroundSettings(vm)
         Text(
-            "Estilo de las carpetas:",
+            tr("Estilo de las carpetas:"),
             Modifier.padding(horizontal = 16.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         ChipRow {
@@ -283,7 +308,7 @@ private fun DisplaySettings(vm: MainViewModel) {
             }
         }
         Text(
-            "Color de la app:",
+            tr("Color de la app:"),
             Modifier.padding(horizontal = 16.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         ChipRow {
@@ -315,28 +340,28 @@ private fun CleanupSettings(vm: MainViewModel) {
     LaunchedEffect(reload) { size = withContext(Dispatchers.IO) { vm.cacheSize() } }
     Column {
         SwitchRow(
-            "Borrar el historial al salir",
-            "Al tocar «Salir» en el menú lateral se borra el historial",
+            tr("Borrar el historial al salir"),
+            tr("Al tocar «Salir» en el menú lateral se borra el historial"),
             vm.clearHistoryOnExit)
         SwitchRow(
-            "Borrar la caché al salir",
-            "Al tocar «Salir» se borran las miniaturas y vistas previas guardadas",
+            tr("Borrar la caché al salir"),
+            tr("Al tocar «Salir» se borran las miniaturas y vistas previas guardadas"),
             vm.clearCacheOnExit)
         ListItem(
-            headlineContent = { Text("Borrar la caché ahora") },
+            headlineContent = { Text(tr("Borrar la caché ahora")) },
             supportingContent = {
                 Text(
-                    if (size < 0) "Calculando…"
-                    else "Miniaturas y vistas previas guardadas: ${formatSize(size)}")
+                    if (size < 0) tr("Calculando…")
+                    else tr("Miniaturas y vistas previas guardadas: {0}", formatSize(size)))
             },
             modifier = Modifier.clickable { vm.clearCache { reload++ } })
         ListItem(
-            headlineContent = { Text("Borrar el historial ahora") },
-            supportingContent = { Text("Carpetas y archivos abiertos") },
+            headlineContent = { Text(tr("Borrar el historial ahora")) },
+            supportingContent = { Text(tr("Carpetas y archivos abiertos")) },
             modifier =
                 Modifier.clickable {
                     vm.clearHistory()
-                    vm.toast("Historial borrado")
+                    vm.toast(tr("Historial borrado"))
                 })
     }
 }
@@ -346,18 +371,17 @@ private fun FolderSettings(vm: MainViewModel) {
     var picking by remember { mutableStateOf<PrefState<String>?>(null) }
     Column {
         ListItem(
-            headlineContent = { Text("Carpeta de inicio") },
+            headlineContent = { Text(tr("Carpeta de inicio")) },
             supportingContent = {
-                Text("${vm.homeFolder.value}\nSe abre con la ventana inicial «Carpeta de inicio»")
+                Text(tr("{0}\nSe abre con la ventana inicial «Carpeta de inicio»", vm.homeFolder.value))
             },
             trailingContent = { ResetButton(vm.homeFolder, PathUtil.internalRoot) },
             modifier = Modifier.clickable { picking = vm.homeFolder })
         ListItem(
-            headlineContent = { Text("Carpeta de descargas") },
+            headlineContent = { Text(tr("Carpeta de descargas")) },
             supportingContent = {
                 Text(
-                    "${vm.downloadFolder.value}\nDescargas de red y nube, lo recibido de otro " +
-                        "teléfono y lo copiado desde USB")
+                    tr("{0}\nDescargas de red y nube, lo recibido de otro teléfono y lo copiado desde USB", vm.downloadFolder.value))
             },
             trailingContent = { ResetButton(vm.downloadFolder, Prefs.defaultDownloadFolder) },
             modifier = Modifier.clickable { picking = vm.downloadFolder })
@@ -365,7 +389,7 @@ private fun FolderSettings(vm: MainViewModel) {
     picking?.let { setting ->
         FolderPickerDialog(
             title =
-                if (setting === vm.homeFolder) "Carpeta de inicio" else "Carpeta de descargas",
+                if (setting === vm.homeFolder) tr("Carpeta de inicio") else tr("Carpeta de descargas"),
             start = setting.value,
             onDismiss = { picking = null },
             onPick = {
@@ -380,8 +404,7 @@ private fun DrawerSettings(vm: MainViewModel) {
     val order = DrawerLayout.order(vm.drawerOrder.value)
     Column {
         Text(
-            "Elige qué opciones salen en el menú lateral y en qué orden. «Inicio», «Ajustes» y " +
-                "«Salir» siempre se ven.",
+            tr("Elige qué opciones salen en el menú lateral y en qué orden. «Inicio», «Ajustes» y «Salir» siempre se ven."),
             Modifier.padding(16.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         order.forEachIndexed { index, entry ->
@@ -411,7 +434,7 @@ private fun DrawerSettings(vm: MainViewModel) {
                                     DrawerLayout.move(vm.drawerOrder.value, entry, -1)
                             },
                             enabled = index > 0) {
-                                Icon(Icons.Filled.ArrowUpward, "Subir ${entry.label}")
+                                Icon(Icons.Filled.ArrowUpward, tr("Subir {0}", entry.label))
                             }
                         IconButton(
                             onClick = {
@@ -419,7 +442,7 @@ private fun DrawerSettings(vm: MainViewModel) {
                                     DrawerLayout.move(vm.drawerOrder.value, entry, 1)
                             },
                             enabled = index < order.lastIndex) {
-                                Icon(Icons.Filled.ArrowDownward, "Bajar ${entry.label}")
+                                Icon(Icons.Filled.ArrowDownward, tr("Bajar {0}", entry.label))
                             }
                     }
                 })
@@ -431,7 +454,7 @@ private fun DrawerSettings(vm: MainViewModel) {
                     vm.drawerHidden.value = emptySet()
                 },
                 modifier = Modifier.padding(horizontal = 8.dp)) {
-                    Text("Restablecer")
+                    Text(tr("Restablecer"))
                 }
     }
 }
@@ -441,8 +464,7 @@ private fun HomeSettings(vm: MainViewModel) {
     val order = HomeLayout.order(vm.homeOrder.value)
     Column {
         Text(
-            "Elige qué secciones salen en Inicio y en qué orden, y qué iconos se ven dentro de " +
-                "«Categorías» y «Accesos rápidos». El botón de Ajustes de arriba siempre está.",
+            tr("Elige qué secciones salen en Inicio y en qué orden, y qué iconos se ven dentro de «Categorías» y «Accesos rápidos». El botón de Ajustes de arriba siempre está."),
             Modifier.padding(16.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         order.forEachIndexed { index, section ->
@@ -470,27 +492,27 @@ private fun HomeSettings(vm: MainViewModel) {
                                 vm.homeOrder.value = HomeLayout.move(vm.homeOrder.value, section, -1)
                             },
                             enabled = index > 0) {
-                                Icon(Icons.Filled.ArrowUpward, "Subir ${section.label}")
+                                Icon(Icons.Filled.ArrowUpward, tr("Subir {0}", section.label))
                             }
                         IconButton(
                             onClick = {
                                 vm.homeOrder.value = HomeLayout.move(vm.homeOrder.value, section, 1)
                             },
                             enabled = index < order.lastIndex) {
-                                Icon(Icons.Filled.ArrowDownward, "Bajar ${section.label}")
+                                Icon(Icons.Filled.ArrowDownward, tr("Bajar {0}", section.label))
                             }
                     }
                 })
         }
         SwitchRow(
-            "Mostrar el buscador en Inicio",
-            "Una barra para buscar por nombre en todo el almacenamiento",
+            tr("Mostrar el buscador en Inicio"),
+            tr("Una barra para buscar por nombre en todo el almacenamiento"),
             vm.homeSearch)
-        SectionTitle("Iconos de «Categorías»", Modifier.padding(start = 16.dp, top = 8.dp))
+        SectionTitle(tr("Iconos de «Categorías»"), Modifier.padding(start = 16.dp, top = 8.dp))
         FileCategory.entries.forEach { category ->
             TileSwitch(category.label, HomeLayout.categoryKey(category), vm)
         }
-        SectionTitle("Iconos de «Accesos rápidos»", Modifier.padding(start = 16.dp, top = 8.dp))
+        SectionTitle(tr("Iconos de «Accesos rápidos»"), Modifier.padding(start = 16.dp, top = 8.dp))
         QuickTile.entries.forEach { tile -> TileSwitch(tile.label, HomeLayout.quickKey(tile), vm) }
         if (vm.homeOrder.value.isNotEmpty() ||
             vm.homeHidden.value.isNotEmpty() ||
@@ -502,7 +524,7 @@ private fun HomeSettings(vm: MainViewModel) {
                     vm.homeHiddenTiles.value = emptySet()
                 },
                 modifier = Modifier.padding(horizontal = 8.dp)) {
-                    Text("Restablecer Inicio")
+                    Text(tr("Restablecer Inicio"))
                 }
     }
 }
@@ -520,35 +542,35 @@ private fun BackgroundSettings(vm: MainViewModel) {
                         val temp = File(ctx.cacheDir, "fondo-elegido")
                         ctx.contentResolver.openInputStream(uri)?.use { input ->
                             temp.outputStream().use { input.copyTo(it) }
-                        } ?: error("No se pudo leer la imagen")
+                        } ?: error(tr("No se pudo leer la imagen"))
                         vm.setBackground(temp)
                     }
-                    .onFailure { vm.toast(it.message ?: "No se pudo leer la imagen") }
+                    .onFailure { vm.toast(it.message ?: tr("No se pudo leer la imagen")) }
             }
         }
     Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text("Fondo de la app:", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(tr("Fondo de la app:"), color = MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedTextField(
             path,
             { path = it },
-            label = { Text("Ruta de la imagen (JPG, PNG…)") },
+            label = { Text(tr("Ruta de la imagen (JPG, PNG…)")) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth())
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(
                 onClick = { vm.setBackground(File(path.trim())) },
                 enabled = path.isNotBlank()) {
-                    Text("Usar como fondo")
+                    Text(tr("Usar como fondo"))
                 }
-            OutlinedButton(onClick = { picker.launch("image/*") }) { Text("Elegir imagen…") }
+            OutlinedButton(onClick = { picker.launch("image/*") }) { Text(tr("Elegir imagen…")) }
         }
         if (vm.backgroundImage.value) {
-            Text("Visibilidad de la imagen: ${vm.backgroundStrength.value} %")
+            Text(tr("Visibilidad de la imagen: {0} %", vm.backgroundStrength.value))
             Slider(
                 value = vm.backgroundStrength.value.toFloat(),
                 onValueChange = { vm.backgroundStrength.value = it.toInt() },
                 valueRange = BackgroundImage.strengths.first.toFloat()..BackgroundImage.strengths.last.toFloat())
-            TextButton(onClick = { vm.clearBackground() }) { Text("Quitar el fondo") }
+            TextButton(onClick = { vm.clearBackground() }) { Text(tr("Quitar el fondo")) }
         }
     }
 }
@@ -558,7 +580,7 @@ private fun DocumentSettings(vm: MainViewModel) {
     val chosen = vm.documentTypeSet()
     Column {
         Text(
-            "Elige qué tipos de archivo salen en la categoría «Documentos». Tiene que quedar al menos uno.",
+            tr("Elige qué tipos de archivo salen en la categoría «Documentos». Tiene que quedar al menos uno."),
             Modifier.padding(16.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         DocumentType.entries.forEach { type ->
@@ -590,8 +612,7 @@ private fun ToolbarSettings(vm: MainViewModel) {
     val rest = ToolbarAction.entries.filter { it !in chosen }
     Column {
         Text(
-            "Elige qué botones salen en la barra de abajo al seleccionar archivos (hasta " +
-                "${ToolbarLayout.MAX}) y en qué orden. Lo demás sigue en «Más».",
+            tr("Elige qué botones salen en la barra de abajo al seleccionar archivos (hasta {0}) y en qué orden. Lo demás sigue en «Más».", ToolbarLayout.MAX),
             Modifier.padding(16.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         chosen.forEachIndexed { index, action ->
@@ -616,7 +637,7 @@ private fun ToolbarSettings(vm: MainViewModel) {
                                     ToolbarLayout.move(vm.toolbarActions.value, action, -1)
                             },
                             enabled = index > 0) {
-                                Icon(Icons.Filled.ArrowUpward, "Subir ${action.label}")
+                                Icon(Icons.Filled.ArrowUpward, tr("Subir {0}", action.label))
                             }
                         IconButton(
                             onClick = {
@@ -624,7 +645,7 @@ private fun ToolbarSettings(vm: MainViewModel) {
                                     ToolbarLayout.move(vm.toolbarActions.value, action, 1)
                             },
                             enabled = index < chosen.lastIndex) {
-                                Icon(Icons.Filled.ArrowDownward, "Bajar ${action.label}")
+                                Icon(Icons.Filled.ArrowDownward, tr("Bajar {0}", action.label))
                             }
                     }
                 })
@@ -633,7 +654,7 @@ private fun ToolbarSettings(vm: MainViewModel) {
             ListItem(
                 headlineContent = { Text(action.label) },
                 supportingContent = {
-                    if (chosen.size >= ToolbarLayout.MAX) Text("Quita otro botón para poder añadir este")
+                    if (chosen.size >= ToolbarLayout.MAX) Text(tr("Quita otro botón para poder añadir este"))
                 },
                 leadingContent = {
                     Switch(
@@ -652,7 +673,7 @@ private fun ToolbarSettings(vm: MainViewModel) {
             TextButton(
                 onClick = { vm.toolbarActions.value = ToolbarLayout.defaultNames },
                 modifier = Modifier.padding(horizontal = 8.dp)) {
-                    Text("Restablecer barra")
+                    Text(tr("Restablecer barra"))
                 }
     }
 }
@@ -681,7 +702,7 @@ private fun TileSwitch(label: String, key: String, vm: MainViewModel) {
 private fun StartSettings(vm: MainViewModel) {
     Column {
         Text(
-            "Qué se muestra al abrir OI Archivos:",
+            tr("Qué se muestra al abrir OI Archivos:"),
             Modifier.padding(16.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         StartWindow.entries.forEach { w ->
@@ -689,9 +710,9 @@ private fun StartSettings(vm: MainViewModel) {
                 headlineContent = { Text(w.label) },
                 supportingContent = {
                     when (w) {
-                        StartWindow.HOME -> Text("Categorías, almacenamiento y accesos")
+                        StartWindow.HOME -> Text(tr("Categorías, almacenamiento y accesos"))
                         StartWindow.HOME_FOLDER -> Text(vm.homeFolder.value)
-                        StartWindow.LAST_FOLDER -> Text("La carpeta que estaba abierta al salir")
+                        StartWindow.LAST_FOLDER -> Text(tr("La carpeta que estaba abierta al salir"))
                     }
                 },
                 leadingContent = {
@@ -715,25 +736,25 @@ private fun AutoBackupSettings(vm: MainViewModel) {
     LaunchedEffect(Unit) { vm.autoBackupLast.reload() }
     Column {
         SwitchRow(
-            "Copiar automáticamente",
-            "Sube lo nuevo a una conexión guardada en cuanto aparece y, además, cada 6 horas",
+            tr("Copiar automáticamente"),
+            tr("Sube lo nuevo a una conexión guardada en cuanto aparece y, además, cada 6 horas"),
             vm.autoBackup)
         ListItem(
-            headlineContent = { Text("Destino") },
+            headlineContent = { Text(tr("Destino")) },
             supportingContent = {
                 Text(
                     current?.let { "${it.label} (${it.protocol.label})" }
                         ?: if (destinations.isEmpty())
-                            "No hay conexiones: crea una en «Red, nube y USB»"
-                        else "Sin elegir")
+                            tr("No hay conexiones: crea una en «Red, nube y USB»")
+                        else tr("Sin elegir"))
             },
             modifier = Modifier.clickable(enabled = destinations.isNotEmpty()) { choosing = true })
         ListItem(
-            headlineContent = { Text("Carpeta en el destino") },
+            headlineContent = { Text(tr("Carpeta en el destino")) },
             supportingContent = { Text(vm.autoBackupFolder.value) },
             modifier = Modifier.clickable { editingFolder = true })
         Text(
-            "Qué copiar:",
+            tr("Qué copiar:"),
             Modifier.padding(horizontal = 16.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         ChipRow {
@@ -749,7 +770,7 @@ private fun AutoBackupSettings(vm: MainViewModel) {
             }
         }
         Text(
-            "Otras carpetas del teléfono (se copian enteras):",
+            tr("Otras carpetas del teléfono (se copian enteras):"),
             Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         vm.autoBackupFolders.value.forEach { folder ->
@@ -759,30 +780,30 @@ private fun AutoBackupSettings(vm: MainViewModel) {
                 trailingContent = {
                     IconButton(
                         onClick = { vm.autoBackupFolders.value = vm.autoBackupFolders.value - folder }) {
-                            Icon(Icons.Filled.Close, "Quitar ${File(folder).name}")
+                            Icon(Icons.Filled.Close, tr("Quitar {0}", File(folder).name))
                         }
                 })
         }
         TextButton(onClick = { addingFolder = true }, Modifier.padding(horizontal = 8.dp)) {
-            Text("Añadir carpeta")
+            Text(tr("Añadir carpeta"))
         }
-        SwitchRow("Solo con Wi-Fi", "No gastar datos móviles", vm.autoBackupWifiOnly)
+        SwitchRow(tr("Solo con Wi-Fi"), tr("No gastar datos móviles"), vm.autoBackupWifiOnly)
         Button(
             onClick = { vm.backupNow() },
             enabled = current != null,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Text("Copiar ahora")
+                Text(tr("Copiar ahora"))
             }
         if (vm.autoBackupLast.value.isNotEmpty())
             Text(
-                "Última copia: ${vm.autoBackupLast.value}",
+                tr("Última copia: {0}", vm.autoBackupLast.value),
                 Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     if (choosing)
         AlertDialog(
             onDismissRequest = { choosing = false },
-            title = { Text("Destino de la copia") },
+            title = { Text(tr("Destino de la copia")) },
             text = {
                 Column {
                     destinations.forEach { c ->
@@ -805,23 +826,23 @@ private fun AutoBackupSettings(vm: MainViewModel) {
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { choosing = false }) { Text("Cancelar") } })
+            confirmButton = { TextButton(onClick = { choosing = false }) { Text(tr("Cancelar")) } })
     if (editingFolder) {
         var text by remember { mutableStateOf(vm.autoBackupFolder.value) }
         val problem = runCatching { AutoBackup.checkFolder(text) }.exceptionOrNull()?.message
         AlertDialog(
             onDismissRequest = { editingFolder = false },
-            title = { Text("Carpeta en el destino") },
+            title = { Text(tr("Carpeta en el destino")) },
             text = {
                 Column {
                     OutlinedTextField(
                         text,
                         { text = it },
-                        label = { Text("Carpeta") },
+                        label = { Text(tr("Carpeta")) },
                         singleLine = true,
                         isError = problem != null)
                     Text(
-                        problem ?: "Dentro de la carpeta inicial de la conexión; puede tener subcarpetas (a/b)",
+                        problem ?: tr("Dentro de la carpeta inicial de la conexión; puede tener subcarpetas (a/b)"),
                         style = MaterialTheme.typography.bodySmall,
                         color =
                             if (problem != null) MaterialTheme.colorScheme.error
@@ -835,14 +856,14 @@ private fun AutoBackupSettings(vm: MainViewModel) {
                         editingFolder = false
                     },
                     enabled = problem == null) {
-                        Text("Aceptar")
+                        Text(tr("Aceptar"))
                     }
             },
-            dismissButton = { TextButton(onClick = { editingFolder = false }) { Text("Cancelar") } })
+            dismissButton = { TextButton(onClick = { editingFolder = false }) { Text(tr("Cancelar")) } })
     }
     if (addingFolder)
         FolderPickerDialog(
-            title = "Carpeta para copiar",
+            title = tr("Carpeta para copiar"),
             start = PathUtil.internalRoot,
             onDismiss = { addingFolder = false },
             onPick = {
@@ -857,16 +878,16 @@ private fun NotificationSettings(vm: MainViewModel) {
     val ctx = LocalContext.current
     Column {
         SwitchRow(
-            "Cerrar la notificación al terminar",
-            "Si está desactivado, al terminar una copia, descarga u otra tarea queda un aviso con el resultado",
+            tr("Cerrar la notificación al terminar"),
+            tr("Si está desactivado, al terminar una copia, descarga u otra tarea queda un aviso con el resultado"),
             vm.closeNotificationWhenDone)
         SwitchRow(
-            "Advertencia de espacio bajo",
-            "Avisar cuando quede poco espacio libre en el teléfono (se revisa cada hora)",
+            tr("Advertencia de espacio bajo"),
+            tr("Avisar cuando quede poco espacio libre en el teléfono (se revisa cada hora)"),
             vm.lowSpaceWarning)
         if (vm.lowSpaceWarning.value) {
             Text(
-                "Avisar con menos de:",
+                tr("Avisar con menos de:"),
                 Modifier.padding(horizontal = 16.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             ChipRow {
@@ -879,16 +900,16 @@ private fun NotificationSettings(vm: MainViewModel) {
             }
         }
         SwitchRow(
-            "Mostrar el uso del almacenamiento",
-            "Una notificación fija con el espacio libre del teléfono y de la tarjeta SD (se actualiza cada hora)",
+            tr("Mostrar el uso del almacenamiento"),
+            tr("Una notificación fija con el espacio libre del teléfono y de la tarjeta SD (se actualiza cada hora)"),
             vm.storageNotification)
         SwitchRow(
-            "Avisar de archivos nuevos",
-            "Como el Registrador de ES: una notificación cuando aparecen fotos, vídeos, música, documentos o APK nuevos",
+            tr("Avisar de archivos nuevos"),
+            tr("Como el Registrador de ES: una notificación cuando aparecen fotos, vídeos, música, documentos o APK nuevos"),
             vm.newFilesNotify)
         if (vm.newFilesNotify.value) {
             Text(
-                "Tipos de archivo:",
+                tr("Tipos de archivo:"),
                 Modifier.padding(horizontal = 16.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             ChipRow {
@@ -906,23 +927,23 @@ private fun NotificationSettings(vm: MainViewModel) {
             }
         }
         SwitchRow(
-            "Informe diario de archivos nuevos",
-            "Una vez al día, un resumen de cuántos archivos aparecieron y de qué tipo",
+            tr("Informe diario de archivos nuevos"),
+            tr("Una vez al día, un resumen de cuántos archivos aparecieron y de qué tipo"),
             vm.dailyReport)
         if (vm.dailyReport.value)
             TextButton(onClick = { vm.reportNow() }, modifier = Modifier.padding(horizontal = 8.dp)) {
-                Text("Ver el informe ahora")
+                Text(tr("Ver el informe ahora"))
             }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted =
                 ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) ==
                     PackageManager.PERMISSION_GRANTED
             ListItem(
-                headlineContent = { Text("Permiso de notificaciones") },
+                headlineContent = { Text(tr("Permiso de notificaciones")) },
                 supportingContent = {
                     Text(
-                        if (granted) "Permitidas"
-                        else "Bloqueadas: no se verá el progreso ni el aviso al terminar. Toca para permitirlas")
+                        if (granted) tr("Permitidas")
+                        else tr("Bloqueadas: no se verá el progreso ni el aviso al terminar. Toca para permitirlas"))
                 },
                 modifier =
                     Modifier.clickable {
@@ -955,38 +976,36 @@ private fun PasswordSettings(vm: MainViewModel) {
     }
     Column {
         SwitchRow(
-            "Proteger al abrir la app",
-            "Pedir la contraseña para entrar en OI Archivos",
+            tr("Proteger al abrir la app"),
+            tr("Pedir la contraseña para entrar en OI Archivos"),
             vm.lockStart.value) {
                 toggle(vm.lockStart, it)
             }
         SwitchRow(
-            "Proteger las conexiones de red",
-            "Pedir la contraseña para abrir servidores, nubes y Bluetooth",
+            tr("Proteger las conexiones de red"),
+            tr("Pedir la contraseña para abrir servidores, nubes y Bluetooth"),
             vm.lockNetwork.value) {
                 toggle(vm.lockNetwork, it)
             }
         SwitchRow(
-            "Proteger los archivos ocultos",
-            "Pedir la contraseña para mostrar los archivos ocultos",
+            tr("Proteger los archivos ocultos"),
+            tr("Pedir la contraseña para mostrar los archivos ocultos"),
             vm.lockHidden.value) {
                 toggle(vm.lockHidden, it)
             }
         ListItem(
-            headlineContent = { Text("Cambiar la contraseña") },
+            headlineContent = { Text(tr("Cambiar la contraseña")) },
             supportingContent = {
                 Text(
-                    if (vm.hasPassword) "Déjala vacía para quitar la contraseña y las protecciones"
-                    else "Aún no hay contraseña")
+                    if (vm.hasPassword) tr("Déjala vacía para quitar la contraseña y las protecciones")
+                    else tr("Aún no hay contraseña"))
             },
             modifier =
                 Modifier.clickable(enabled = vm.hasPassword) {
                     dialog = PasswordDialog.CHANGE to null
                 })
         Text(
-            "Basta con escribirla una vez mientras uses la app; se vuelve a pedir tras cinco " +
-                "minutos fuera de ella o al tocar «Salir». Si la olvidas, solo se puede quitar " +
-                "borrando los datos de OI Archivos en los ajustes de Android.",
+            tr("Basta con escribirla una vez mientras uses la app; se vuelve a pedir tras cinco minutos fuera de ella o al tocar «Salir». Si la olvidas, solo se puede quitar borrando los datos de OI Archivos en los ajustes de Android."),
             Modifier.padding(16.dp),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -998,7 +1017,7 @@ private fun PasswordSettings(vm: MainViewModel) {
             onSubmit = { old, new, confirm ->
                 when (kind) {
                     PasswordDialog.CREATE ->
-                        if (new != confirm) "Las contraseñas no coinciden"
+                        if (new != confirm) tr("Las contraseñas no coinciden")
                         else vm.enableLock(option!!, new)
                     PasswordDialog.CHECK -> vm.disableLock(option!!, old)
                     PasswordDialog.CHANGE -> vm.changePassword(old, new, confirm)
@@ -1036,17 +1055,17 @@ private fun PasswordFormDialog(
         title = {
             Text(
                 when (kind) {
-                    PasswordDialog.CREATE -> "Crear contraseña"
-                    PasswordDialog.CHECK -> "Quitar protección"
-                    PasswordDialog.CHANGE -> "Cambiar la contraseña"
+                    PasswordDialog.CREATE -> tr("Crear contraseña")
+                    PasswordDialog.CHECK -> tr("Quitar protección")
+                    PasswordDialog.CHANGE -> tr("Cambiar la contraseña")
                 })
         },
         text = {
             Column {
-                if (kind != PasswordDialog.CREATE) field("Contraseña actual", old) { old = it }
+                if (kind != PasswordDialog.CREATE) field(tr("Contraseña actual"), old) { old = it }
                 if (kind != PasswordDialog.CHECK) {
-                    field("Contraseña nueva", new) { new = it }
-                    field("Repetir contraseña", confirm) { confirm = it }
+                    field(tr("Contraseña nueva"), new) { new = it }
+                    field(tr("Repetir contraseña"), confirm) { confirm = it }
                 }
                 error?.let {
                     Spacer(Modifier.height(8.dp))
@@ -1063,10 +1082,10 @@ private fun PasswordFormDialog(
                         PasswordDialog.CHECK -> old.isNotEmpty()
                         PasswordDialog.CHANGE -> old.isNotEmpty()
                     }) {
-                    Text("Aceptar")
+                    Text(tr("Aceptar"))
                 }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } })
 }
 
 @Composable
@@ -1077,24 +1096,23 @@ private fun BackupSettings(vm: MainViewModel) {
     LaunchedEffect(Unit) { modified = withContext(Dispatchers.IO) { file.lastModified() } }
     Column {
         ListItem(
-            headlineContent = { Text("Guardar copia de los ajustes") },
-            supportingContent = { Text("En ${file.absolutePath}") },
+            headlineContent = { Text(tr("Guardar copia de los ajustes")) },
+            supportingContent = { Text(tr("En {0}", file.absolutePath)) },
             modifier =
                 Modifier.clickable {
                     vm.exportSettings(settingsBackupFolder)
                     modified = System.currentTimeMillis()
                 })
         ListItem(
-            headlineContent = { Text("Restaurar los ajustes") },
+            headlineContent = { Text(tr("Restaurar los ajustes")) },
             supportingContent = {
                 Text(
-                    if (modified > 0) "Copia del ${formatDate(modified)}"
-                    else "No hay ninguna copia guardada")
+                    if (modified > 0) tr("Copia del {0}", formatDate(modified))
+                    else tr("No hay ninguna copia guardada"))
             },
             modifier = Modifier.clickable(enabled = modified > 0) { confirm = true })
         Text(
-            "La copia no incluye la contraseña ni las conexiones de red y nube, que llevan " +
-                "credenciales.",
+            tr("La copia no incluye la contraseña ni las conexiones de red y nube, que llevan credenciales."),
             Modifier.padding(16.dp),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -1102,18 +1120,18 @@ private fun BackupSettings(vm: MainViewModel) {
     if (confirm)
         AlertDialog(
             onDismissRequest = { confirm = false },
-            title = { Text("Restaurar los ajustes") },
-            text = { Text("Los ajustes actuales se sustituirán por los de la copia.") },
+            title = { Text(tr("Restaurar los ajustes")) },
+            text = { Text(tr("Los ajustes actuales se sustituirán por los de la copia.")) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         confirm = false
                         vm.importSettings(file)
                     }) {
-                        Text("Restaurar")
+                        Text(tr("Restaurar"))
                     }
             },
-            dismissButton = { TextButton(onClick = { confirm = false }) { Text("Cancelar") } })
+            dismissButton = { TextButton(onClick = { confirm = false }) { Text(tr("Cancelar")) } })
 }
 
 @Composable
@@ -1121,22 +1139,22 @@ private fun AppSettings(vm: MainViewModel) {
     var picking by remember { mutableStateOf(false) }
     Column {
         SwitchRow(
-            "Copia antes de desinstalar",
-            "Guardar el APK de una app antes de desinstalarla",
+            tr("Copia antes de desinstalar"),
+            tr("Guardar el APK de una app antes de desinstalarla"),
             vm.backupBeforeUninstall)
         SwitchRow(
-            "Limpiar carpetas al desinstalar",
-            "Tras desinstalar una app desde OI Archivos, proponer mover a la papelera las carpetas con su nombre que dejó en el almacenamiento",
+            tr("Limpiar carpetas al desinstalar"),
+            tr("Tras desinstalar una app desde OI Archivos, proponer mover a la papelera las carpetas con su nombre que dejó en el almacenamiento"),
             vm.cleanAssociatedFolders)
         SwitchRow(
-            "Avisar de los permisos al instalar",
-            "Al instalar una app desde OI Archivos, una notificación dice qué permisos delicados pide",
+            tr("Avisar de los permisos al instalar"),
+            tr("Al instalar una app desde OI Archivos, una notificación dice qué permisos delicados pide"),
             vm.appPermissionNotify)
         val ctx = LocalContext.current
         ListItem(
-            headlineContent = { Text("Apps predeterminadas") },
+            headlineContent = { Text(tr("Apps predeterminadas")) },
             supportingContent = {
-                Text("Cambiar con qué app se abre cada tipo de archivo (ajustes de Android)")
+                Text(tr("Cambiar con qué app se abre cada tipo de archivo (ajustes de Android)"))
             },
             modifier =
                 Modifier.clickable {
@@ -1147,14 +1165,14 @@ private fun AppSettings(vm: MainViewModel) {
                     }
                 })
         ListItem(
-            headlineContent = { Text("Carpeta de copias de apps") },
+            headlineContent = { Text(tr("Carpeta de copias de apps")) },
             supportingContent = { Text(vm.appBackupFolder.value) },
             trailingContent = { ResetButton(vm.appBackupFolder, Prefs.defaultAppBackupFolder) },
             modifier = Modifier.clickable { picking = true })
     }
     if (picking)
         FolderPickerDialog(
-            title = "Carpeta de copias de apps",
+            title = tr("Carpeta de copias de apps"),
             start = vm.appBackupFolder.value,
             onDismiss = { picking = false },
             onPick = {
@@ -1170,12 +1188,12 @@ private fun EditorSettings(vm: MainViewModel) {
         var text by remember { mutableStateOf(vm.editorSymbols.value) }
         AlertDialog(
             onDismissRequest = { editingSymbols = false },
-            title = { Text("Lista de símbolos") },
+            title = { Text(tr("Lista de símbolos")) },
             text = {
                 Column {
-                    OutlinedTextField(text, { text = it.replace("\n", " ").take(300) }, label = { Text("Símbolos") })
+                    OutlinedTextField(text, { text = it.replace("\n", " ").take(300) }, label = { Text(tr("Símbolos")) })
                     Text(
-                        "Separados por espacios. Cada uno es un botón encima del teclado.",
+                        tr("Separados por espacios. Cada uno es un botón encima del teclado."),
                         style = MaterialTheme.typography.bodySmall)
                 }
             },
@@ -1185,7 +1203,7 @@ private fun EditorSettings(vm: MainViewModel) {
                         vm.editorSymbols.value = com.omaritoinforma.oiarchivos.data.EditorText.symbols(text).joinToString(" ")
                         editingSymbols = false
                     }) {
-                        Text("Aceptar")
+                        Text(tr("Aceptar"))
                     }
             },
             dismissButton = {
@@ -1193,34 +1211,34 @@ private fun EditorSettings(vm: MainViewModel) {
                     onClick = {
                         text = com.omaritoinforma.oiarchivos.data.EditorText.DEFAULT_SYMBOLS
                     }) {
-                        Text("Restablecer")
+                        Text(tr("Restablecer"))
                     }
             })
     }
     Column {
         Column(Modifier.padding(16.dp)) {
-            Text("Tamaño de la letra: ${vm.editorFont.value}")
+            Text(tr("Tamaño de la letra: {0}", vm.editorFont.value))
             Slider(
                 value = vm.editorFont.value.toFloat(),
                 onValueChange = { vm.editorFont.value = it.toInt() },
                 valueRange = 10f..28f,
                 steps = 17)
         }
-        SwitchRow("Números de línea", "Mostrar el número de cada línea", vm.editorLineNumbers)
+        SwitchRow(tr("Números de línea"), tr("Mostrar el número de cada línea"), vm.editorLineNumbers)
         SwitchRow(
-            "Saltos de línea automáticos",
-            "Partir las líneas largas en vez de desplazar a los lados",
+            tr("Saltos de línea automáticos"),
+            tr("Partir las líneas largas en vez de desplazar a los lados"),
             vm.editorWrap)
         SwitchRow(
-            "Sangría automática",
-            "Al pulsar Intro, la línea nueva empieza con la sangría de la anterior",
+            tr("Sangría automática"),
+            tr("Al pulsar Intro, la línea nueva empieza con la sangría de la anterior"),
             vm.editorAutoIndent)
         SwitchRow(
-            "Resaltado de sintaxis",
-            "Colorear el código (solo en archivos de hasta ${vm.editorHighlightLimit.value} KB)",
+            tr("Resaltado de sintaxis"),
+            tr("Colorear el código (solo en archivos de hasta {0} KB)", vm.editorHighlightLimit.value),
             vm.editorHighlight)
         Text(
-            "Tamaño máximo del archivo resaltado:",
+            tr("Tamaño máximo del archivo resaltado:"),
             Modifier.padding(horizontal = 16.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         ChipRow {
@@ -1232,24 +1250,24 @@ private fun EditorSettings(vm: MainViewModel) {
             }
         }
         SwitchRow(
-            "Guardado automático",
-            "Guardar al salir del editor sin preguntar",
+            tr("Guardado automático"),
+            tr("Guardar al salir del editor sin preguntar"),
             vm.editorAutoSave)
         SwitchRow(
-            "Mostrar espacios en blanco",
-            "Dibujar los espacios como · y los tabuladores como →",
+            tr("Mostrar espacios en blanco"),
+            tr("Dibujar los espacios como · y los tabuladores como →"),
             vm.editorShowWhitespace)
         SwitchRow(
-            "Mayúscula automática de la primera letra",
-            "El teclado empieza cada frase en mayúscula",
+            tr("Mayúscula automática de la primera letra"),
+            tr("El teclado empieza cada frase en mayúscula"),
             vm.editorAutoCapitalize)
-        SwitchRow("Barra de símbolos", "Tab y símbolos encima del teclado", vm.editorSymbolBar)
+        SwitchRow(tr("Barra de símbolos"), tr("Tab y símbolos encima del teclado"), vm.editorSymbolBar)
         SwitchRow(
-            "Usar espacios en lugar de tabuladores",
-            "La tecla Tab de la barra escribe espacios",
+            tr("Usar espacios en lugar de tabuladores"),
+            tr("La tecla Tab de la barra escribe espacios"),
             vm.editorSpacesForTab)
         Text(
-            "Tamaño de tabulación:",
+            tr("Tamaño de tabulación:"),
             Modifier.padding(horizontal = 16.dp),
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         ChipRow {
@@ -1257,11 +1275,11 @@ private fun EditorSettings(vm: MainViewModel) {
                 FilterChip(
                     vm.editorTabSize.value == size,
                     onClick = { vm.editorTabSize.value = size },
-                    label = { Text("$size espacios") })
+                    label = { Text(tr("{0} espacios", size)) })
             }
         }
         ListItem(
-            headlineContent = { Text("Lista de símbolos personalizada") },
+            headlineContent = { Text(tr("Lista de símbolos personalizada")) },
             supportingContent = { Text(vm.editorSymbols.value, maxLines = 2) },
             modifier = Modifier.clickable { editingSymbols = true })
     }
@@ -1271,16 +1289,16 @@ private fun EditorSettings(vm: MainViewModel) {
 @Composable
 private fun ResetButton(setting: PrefState<String>, default: String) {
     if (setting.value != default)
-        TextButton(onClick = { setting.value = default }) { Text("Restablecer") }
+        TextButton(onClick = { setting.value = default }) { Text(tr("Restablecer")) }
 }
 
 @Composable
 private fun GestureSettings(vm: MainViewModel) {
     Column {
-        GestureRow("Deslizar a la izquierda", vm.swipeLeft) { vm.updateGesture(true, it) }
-        GestureRow("Deslizar a la derecha", vm.swipeRight) { vm.updateGesture(false, it) }
+        GestureRow(tr("Deslizar a la izquierda"), vm.swipeLeft) { vm.updateGesture(true, it) }
+        GestureRow(tr("Deslizar a la derecha"), vm.swipeRight) { vm.updateGesture(false, it) }
         Text(
-            "Cuando actives un gesto, abre el menú lateral con su botón.",
+            tr("Cuando actives un gesto, abre el menú lateral con su botón."),
             Modifier.padding(16.dp))
     }
 }
@@ -1288,10 +1306,10 @@ private fun GestureSettings(vm: MainViewModel) {
 @Composable
 private fun About() {
     ListItem(
-        headlineContent = { Text("OI Archivos ${BuildConfig.VERSION_NAME}") },
+        headlineContent = { Text(tr("OI Archivos {0}", BuildConfig.VERSION_NAME)) },
         supportingContent = {
             Text(
-                "Uso personal. Sin anuncios ni rastreo. La red se usa para las conexiones y transferencias que activas.")
+                tr("Uso personal. Sin anuncios ni rastreo. La red se usa para las conexiones y transferencias que activas."))
         },
     )
 }

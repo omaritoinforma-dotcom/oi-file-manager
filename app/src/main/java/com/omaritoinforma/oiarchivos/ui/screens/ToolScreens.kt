@@ -40,7 +40,7 @@ fun ToolPage(
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = vm::back) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, tr("Atrás"))
                     }
                 },
                 actions = actions)
@@ -52,7 +52,7 @@ fun ToolPage(
 fun HistoryScreen(vm: MainViewModel) {
     var history by remember { mutableStateOf(vm.history()) }
     ToolPage(
-        "Historial",
+        tr("Historial"),
         vm,
         actions = {
             TextButton(
@@ -60,12 +60,12 @@ fun HistoryScreen(vm: MainViewModel) {
                     vm.clearHistory()
                     history = emptyList()
                 }) {
-                    Text("Borrar")
+                    Text(tr("Borrar"))
                 }
         }) { pad ->
             LazyColumn(Modifier.fillMaxSize().padding(pad)) {
                 if (history.isEmpty())
-                    item { Text("El historial está vacío.", Modifier.padding(16.dp)) }
+                    item { Text(tr("El historial está vacío."), Modifier.padding(16.dp)) }
                 items(history) { path ->
                     val folder = remember(path) { File(path).isDirectory }
                     ListItem(
@@ -75,7 +75,7 @@ fun HistoryScreen(vm: MainViewModel) {
                             Icon(
                                 if (folder) Icons.Filled.Folder
                                 else Icons.AutoMirrored.Filled.InsertDriveFile,
-                                contentDescription = if (folder) "Carpeta" else "Archivo")
+                                contentDescription = if (folder) tr("Carpeta") else tr("Archivo"))
                         },
                         modifier =
                             Modifier.clickable {
@@ -99,12 +99,12 @@ fun TransfersScreen(vm: MainViewModel) {
         }
     val paused by TransferService.paused.collectAsState()
     val pausable by TransferService.supportsPause.collectAsState()
-    ToolPage("Transferencias", vm) { pad ->
+    ToolPage(tr("Transferencias"), vm) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad)) {
             if (pausable && progress != null)
                 item {
                     TextButton(onClick = { TransferService.pause(ctx, !paused) }) {
-                        Text(if (paused) "Reanudar transferencia" else "Pausar transferencia")
+                        Text(if (paused) tr("Reanudar transferencia") else tr("Pausar transferencia"))
                     }
                 }
             if (progress == null)
@@ -120,17 +120,17 @@ fun TransfersScreen(vm: MainViewModel) {
                                     onClick = {
                                         runCatching { TransferService.submitDurable(ctx, job) }
                                             .onFailure {
-                                                vm.toast(it.message ?: "No se pudo reanudar")
+                                                vm.toast(it.message ?: tr("No se pudo reanudar"))
                                             }
                                     }) {
-                                        Text("Reanudar")
+                                        Text(tr("Reanudar"))
                                     }
                                 TextButton(
                                     onClick = {
                                         runCatching { job.discard() }
                                         refresh++
                                     }) {
-                                        Text("Descartar")
+                                        Text(tr("Descartar"))
                                     }
                             }
                         })
@@ -138,7 +138,7 @@ fun TransfersScreen(vm: MainViewModel) {
             if (records.isEmpty())
                 item {
                     Text(
-                        "Las operaciones y sus resultados aparecerán aquí.",
+                        tr("Las operaciones y sus resultados aparecerán aquí."),
                         Modifier.padding(20.dp))
                 }
             items(records, key = { it.id }) { record ->
@@ -162,14 +162,14 @@ fun AdvancedSearchScreen(vm: MainViewModel, root: String) {
     var hidden by remember { mutableStateOf(vm.showHidden) }
     var subfolders by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    ToolPage("Búsqueda avanzada", vm) { pad ->
+    ToolPage(tr("Búsqueda avanzada"), vm) { pad ->
         LazyColumn(
             Modifier.fillMaxSize().padding(pad),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                item { Text("Buscar en $root") }
+                item { Text(tr("Buscar en {0}", root)) }
                 item {
-                    Text("Tipo (sin elegir, de cualquier tipo)", style = MaterialTheme.typography.labelLarge)
+                    Text(tr("Tipo (sin elegir, de cualquier tipo)"), style = MaterialTheme.typography.labelLarge)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         SearchKind.entries.forEach { kind ->
                             FilterChip(
@@ -183,48 +183,48 @@ fun AdvancedSearchScreen(vm: MainViewModel, root: String) {
                     OutlinedTextField(
                         name,
                         { name = it },
-                        label = { Text("Nombre (opcional)") },
+                        label = { Text(tr("Nombre (opcional)")) },
                         modifier = Modifier.fillMaxWidth())
                 }
                 item {
                     OutlinedTextField(
                         extensions,
                         { extensions = it },
-                        label = { Text("Extensiones: jpg, mp4, pdf…") },
+                        label = { Text(tr("Extensiones: jpg, mp4, pdf…")) },
                         modifier = Modifier.fillMaxWidth())
                 }
                 item {
                     OutlinedTextField(
                         min,
                         { min = it },
-                        label = { Text("Tamaño mínimo en MB") },
+                        label = { Text(tr("Tamaño mínimo en MB")) },
                         modifier = Modifier.fillMaxWidth())
                 }
                 item {
                     OutlinedTextField(
                         max,
                         { max = it },
-                        label = { Text("Tamaño máximo en MB") },
+                        label = { Text(tr("Tamaño máximo en MB")) },
                         modifier = Modifier.fillMaxWidth())
                 }
                 item {
                     OutlinedTextField(
                         days,
                         { days = it },
-                        label = { Text("Modificados en los últimos días") },
+                        label = { Text(tr("Modificados en los últimos días")) },
                         modifier = Modifier.fillMaxWidth())
                 }
                 item {
                     OutlinedTextField(
                         contents,
                         { contents = it },
-                        label = { Text("Texto dentro del archivo") },
-                        supportingText = { Text("Archivos de texto de hasta 8 MB") },
+                        label = { Text(tr("Texto dentro del archivo")) },
+                        supportingText = { Text(tr("Archivos de texto de hasta 8 MB")) },
                         modifier = Modifier.fillMaxWidth())
                 }
-                item { SwitchRow("Buscar en las subcarpetas", subfolders) { subfolders = it } }
+                item { SwitchRow(tr("Buscar en las subcarpetas"), subfolders) { subfolders = it } }
                 item {
-                    SwitchRow("Incluir archivos y carpetas ocultos", hidden) {
+                    SwitchRow(tr("Incluir archivos y carpetas ocultos"), hidden) {
                         if (it) vm.allowHiddenSearch { hidden = true } else hidden = false
                     }
                 }
@@ -242,7 +242,7 @@ fun AdvancedSearchScreen(vm: MainViewModel, root: String) {
                                 hi < lo ||
                                 d < 0 ||
                                 d > 36500) {
-                                error = "Revisa el tamaño y el número de días"
+                                error = tr("Revisa el tamaño y el número de días")
                                 return@Button
                             }
                             val filter =
@@ -260,21 +260,21 @@ fun AdvancedSearchScreen(vm: MainViewModel, root: String) {
                                     types,
                                     hidden,
                                     subfolders)
-                            vm.runTask("Búsqueda avanzada") { report ->
+                            vm.runTask(tr("Búsqueda avanzada")) { report ->
                                 val results = AnalysisTools.search(File(root), filter, report)
                                 withContext(Dispatchers.Main) {
                                     vm.showResults(
                                         results,
                                         root,
-                                        name.ifBlank { "Filtros avanzados" },
+                                        name.ifBlank { tr("Filtros avanzados") },
                                         filter)
                                 }
                                 OperationResult(
-                                    "${results.size} resultados" +
-                                        if (results.size == 5000) " (límite alcanzado)" else "")
+                                    tr("{0} resultados", results.size) +
+                                        if (results.size == 5000) tr(" (límite alcanzado)") else "")
                             }
                         }) {
-                            Text("Buscar")
+                            Text(tr("Buscar"))
                         }
                 }
             }
@@ -298,43 +298,43 @@ fun AnalysisScreen(vm: MainViewModel, root: String) {
     var duplicates by remember { mutableStateOf(true) }
     val selected = remember { mutableStateMapOf<String, File>() }
     var confirm by remember { mutableStateOf(false) }
-    ToolPage("Analizar almacenamiento", vm) { pad ->
+    ToolPage(tr("Analizar almacenamiento"), vm) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(16.dp)) {
             item {
                 Text(root)
                 Row {
                     Checkbox(duplicates, { duplicates = it })
-                    Text("Buscar duplicados por SHA-256", Modifier.padding(top = 12.dp))
+                    Text(tr("Buscar duplicados por SHA-256"), Modifier.padding(top = 12.dp))
                 }
             }
             item {
                 Button(
                     onClick = {
-                        vm.runTask("Analizando almacenamiento") { report ->
+                        vm.runTask(tr("Analizando almacenamiento")) { report ->
                             val analysis = AnalysisTools.analyze(File(root), duplicates, report)
                             withContext(Dispatchers.Main) {
                                 result = analysis
                                 selected.clear()
                             }
-                            OperationResult("Análisis terminado")
+                            OperationResult(tr("Análisis terminado"))
                         }
                     }) {
-                        Text("Analizar")
+                        Text(tr("Analizar"))
                     }
             }
             val r = result
             if (r != null) {
                 item {
                     Text(
-                        "${formatSize(r.bytes)} · ${r.files} archivos",
+                        tr("{0} · {1} archivos", formatSize(r.bytes), r.files),
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(vertical = 14.dp))
                     if (r.limited)
-                        Text("Resultado parcial: se alcanzó el límite de 200.000 archivos")
+                        Text(tr("Resultado parcial: se alcanzó el límite de 200.000 archivos"))
                 }
                 item {
                     Text(
-                        "Carpetas y archivos que más ocupan",
+                        tr("Carpetas y archivos que más ocupan"),
                         style = MaterialTheme.typography.titleMedium)
                 }
                 items(r.folders) { (name, bytes) ->
@@ -342,7 +342,7 @@ fun AnalysisScreen(vm: MainViewModel, root: String) {
                         headlineContent = { Text(name) },
                         trailingContent = { Text(formatSize(bytes)) })
                 }
-                item { Text("Archivos más grandes", style = MaterialTheme.typography.titleMedium) }
+                item { Text(tr("Archivos más grandes"), style = MaterialTheme.typography.titleMedium) }
                 items(r.largest, key = { "large:" + it.path }) { file ->
                     AnalysisRow(
                         file,
@@ -350,11 +350,11 @@ fun AnalysisScreen(vm: MainViewModel, root: String) {
                         { if (it) selected[file.path] = file else selected.remove(file.path) },
                         { vm.openFolder(file.parent ?: root) })
                 }
-                item { Text("Duplicados exactos", style = MaterialTheme.typography.titleMedium) }
+                item { Text(tr("Duplicados exactos"), style = MaterialTheme.typography.titleMedium) }
                 r.duplicates.forEachIndexed { i, group ->
                     item {
                         Text(
-                            "Grupo ${i+1} · ${formatSize(group.first().length())} cada uno",
+                            tr("Grupo {0} · {1} cada uno", i+1, formatSize(group.first().length())),
                             Modifier.padding(top = 12.dp))
                     }
                     items(group, key = { "dupe:$i:" + it.path }) { file ->
@@ -366,9 +366,9 @@ fun AnalysisScreen(vm: MainViewModel, root: String) {
                     }
                 }
                 item {
-                    Text("Candidatos a revisar", style = MaterialTheme.typography.titleMedium)
+                    Text(tr("Candidatos a revisar"), style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Archivos temporales, vacíos y carpetas vacías. Revisa los seleccionados antes de eliminarlos.")
+                        tr("Archivos temporales, vacíos y carpetas vacías. Revisa los seleccionados antes de eliminarlos."))
                 }
                 items(r.candidates, key = { "temp:" + it.path }) { file ->
                     AnalysisRow(
@@ -380,7 +380,7 @@ fun AnalysisScreen(vm: MainViewModel, root: String) {
                 if (selected.isNotEmpty())
                     item {
                         Button(onClick = { confirm = true }) {
-                            Text("Enviar ${selected.size} a la papelera")
+                            Text(tr("Enviar {0} a la papelera", selected.size))
                         }
                     }
             }
@@ -389,7 +389,7 @@ fun AnalysisScreen(vm: MainViewModel, root: String) {
     if (confirm)
         AlertDialog(
             onDismissRequest = { confirm = false },
-            title = { Text("Revisar eliminación") },
+            title = { Text(tr("Revisar eliminación")) },
             text = {
                 Text(
                     selected.values.take(15).joinToString("\n") { it.path } +
@@ -403,10 +403,10 @@ fun AnalysisScreen(vm: MainViewModel, root: String) {
                         selected.clear()
                         result = null
                     }) {
-                        Text("Enviar a la papelera")
+                        Text(tr("Enviar a la papelera"))
                     }
             },
-            dismissButton = { TextButton(onClick = { confirm = false }) { Text("Cancelar") } })
+            dismissButton = { TextButton(onClick = { confirm = false }) { Text(tr("Cancelar")) } })
 }
 
 @Composable

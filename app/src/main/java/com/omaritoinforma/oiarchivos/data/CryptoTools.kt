@@ -26,8 +26,8 @@ object CryptoTools {
         decrypt: Boolean,
         report: (OpProgress) -> Unit
     ) {
-        if (password.isEmpty()) throw IOException("Escribe una contraseña")
-        if (target.exists()) throw IOException("El destino ya existe")
+        if (password.isEmpty()) throw IOException(tr("Escribe una contraseña"))
+        if (target.exists()) throw IOException(tr("El destino ya existe"))
         val temp = File.createTempFile(".oi-crypto-", ".tmp", target.parentFile)
         var key: ByteArray? = null
         try {
@@ -41,7 +41,7 @@ object CryptoTools {
                             input.readFully(magic)
                             if (!magic.contentEquals(MAGIC))
                                 throw IOException(
-                                    "No es un archivo cifrado compatible de OI Archivos")
+                                    tr("No es un archivo cifrado compatible de OI Archivos"))
                             input.readFully(salt)
                             input.readFully(prefix)
                         } else {
@@ -79,19 +79,19 @@ object CryptoTools {
                         while (true) {
                             currentCoroutineContext().ensureActive()
                             if (index == Int.MAX_VALUE)
-                                throw IOException("Archivo demasiado grande")
+                                throw IOException(tr("Archivo demasiado grande"))
                             val length: Int
                             if (decrypt) {
                                 length = input.readInt()
-                                if (length !in 0..CHUNK) throw IOException("Archivo cifrado dañado")
+                                if (length !in 0..CHUNK) throw IOException(tr("Archivo cifrado dañado"))
                                 val block = ByteArray(length + 16)
                                 input.readFully(block)
                                 val plaintext = cipher(length).doFinal(block)
                                 if (plaintext.size != length)
-                                    throw IOException("Longitud no válida")
+                                    throw IOException(tr("Longitud no válida"))
                                 if (length == 0) {
                                     if (input.read() != -1)
-                                        throw IOException("Datos adicionales después del final")
+                                        throw IOException(tr("Datos adicionales después del final"))
                                     break
                                 }
                                 output.write(plaintext)
@@ -115,7 +115,7 @@ object CryptoTools {
                             index++
                             report(
                                 OpProgress(
-                                    if (decrypt) "Descifrando" else "Cifrando",
+                                    if (decrypt) tr("Descifrando") else tr("Cifrando"),
                                     source.name,
                                     done,
                                     source.length()))

@@ -19,13 +19,13 @@ class Playlists(private val dir: File) {
 
     fun read(name: String): Playlist {
         val file = fileOf(name)
-        if (!file.isFile) throw IOException("No existe la lista «$name»")
+        if (!file.isFile) throw IOException(tr("No existe la lista «{0}»", name))
         return Playlist(name, parse(file.readText()))
     }
 
     fun create(name: String) {
         val file = fileOf(name)
-        if (file.exists()) throw IOException("Ya existe una lista llamada «${name.trim()}»")
+        if (file.exists()) throw IOException(tr("Ya existe una lista llamada «{0}»", name.trim()))
         write(file, emptyList())
     }
 
@@ -50,10 +50,10 @@ class Playlists(private val dir: File) {
     fun rename(from: String, to: String) {
         val source = fileOf(from)
         val target = fileOf(to)
-        if (!source.isFile) throw IOException("No existe la lista «$from»")
+        if (!source.isFile) throw IOException(tr("No existe la lista «{0}»", from))
         if (source == target) return
-        if (target.exists()) throw IOException("Ya existe una lista llamada «${to.trim()}»")
-        if (!source.renameTo(target)) throw IOException("No se pudo renombrar la lista")
+        if (target.exists()) throw IOException(tr("Ya existe una lista llamada «{0}»", to.trim()))
+        if (!source.renameTo(target)) throw IOException(tr("No se pudo renombrar la lista"))
     }
 
     fun delete(name: String) {
@@ -62,7 +62,7 @@ class Playlists(private val dir: File) {
 
     private fun update(name: String, change: (List<String>) -> List<String>) {
         val file = fileOf(name)
-        if (!file.isFile) throw IOException("No existe la lista «$name»")
+        if (!file.isFile) throw IOException(tr("No existe la lista «{0}»", name))
         write(file, change(parse(file.readText())))
     }
 
@@ -73,7 +73,7 @@ class Playlists(private val dir: File) {
         tmp.writeText(format(tracks))
         if (!tmp.renameTo(file)) {
             tmp.delete()
-            throw IOException("No se pudo guardar la lista")
+            throw IOException(tr("No se pudo guardar la lista"))
         }
     }
 
@@ -86,10 +86,10 @@ class Playlists(private val dir: File) {
         /** Devuelve el nombre limpio o lanza un error que se puede mostrar. */
         fun checkName(name: String): String {
             val clean = name.trim()
-            if (clean.isEmpty()) throw IOException("Escribe un nombre para la lista")
-            if (clean.length > MAX_NAME) throw IOException("El nombre es demasiado largo")
+            if (clean.isEmpty()) throw IOException(tr("Escribe un nombre para la lista"))
+            if (clean.length > MAX_NAME) throw IOException(tr("El nombre es demasiado largo"))
             if (clean.startsWith(".") || clean.any { it == '/' || it == '\\' || it < ' ' })
-                throw IOException("El nombre no puede tener «/», «\\» ni empezar por un punto")
+                throw IOException(tr("El nombre no puede tener «/», «\\» ni empezar por un punto"))
             return clean
         }
 

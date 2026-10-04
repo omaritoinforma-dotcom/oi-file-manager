@@ -35,6 +35,7 @@ import com.omaritoinforma.oiarchivos.util.*
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.omaritoinforma.oiarchivos.data.tr
 
 @Composable
 fun ViewerScreen(vm: MainViewModel, path: String) {
@@ -45,9 +46,9 @@ fun ViewerScreen(vm: MainViewModel, path: String) {
         vm,
         actions = {
             if (kind == FileKind.VIDEO)
-                TextButton(onClick = { vm.goTo(Screen.VideoEdit(path)) }) { Text("Editar") }
+                TextButton(onClick = { vm.goTo(Screen.VideoEdit(path)) }) { Text(tr("Editar")) }
             TextButton(onClick = { Opener.share(vm.getApplication(), listOf(file)) }) {
-                Text("Compartir")
+                Text(tr("Compartir"))
             }
         }) { pad ->
             when (kind) {
@@ -83,7 +84,7 @@ private fun ImageGallery(path: String, modifier: Modifier, onEdit: (File) -> Uni
     Column(modifier) {
         AsyncImage(
             model = images.getOrNull(index) ?: File(path),
-            contentDescription = "Imagen",
+            contentDescription = tr("Imagen"),
             contentScale = ContentScale.Fit,
             modifier =
                 Modifier.weight(1f)
@@ -110,10 +111,10 @@ private fun ImageGallery(path: String, modifier: Modifier, onEdit: (File) -> Uni
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { index-- }, enabled = index > 0) { Text("Anterior") }
+                TextButton(onClick = { index-- }, enabled = index > 0) { Text(tr("Anterior")) }
                 Text("${index+1} / ${images.size.coerceAtLeast(1)}")
                 TextButton(onClick = { index++ }, enabled = index < images.lastIndex) {
-                    Text("Siguiente")
+                    Text(tr("Siguiente"))
                 }
             }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -123,10 +124,10 @@ private fun ImageGallery(path: String, modifier: Modifier, onEdit: (File) -> Uni
                     x = 0f
                     y = 0f
                 }) {
-                    Text("Restablecer zoom")
+                    Text(tr("Restablecer zoom"))
                 }
             TextButton(onClick = { onEdit(images.getOrNull(index) ?: File(path)) }) {
-                Text("Editar imagen")
+                Text(tr("Editar imagen"))
             }
         }
     }
@@ -176,16 +177,16 @@ fun StreamScreen(vm: MainViewModel, url: String, title: String) {
                                     Uri.parse(url),
                                     if (kind == FileKind.AUDIO) "audio/*" else "video/*")
                         ctx.startActivity(
-                            android.content.Intent.createChooser(view, "Abrir con")
+                            android.content.Intent.createChooser(view, tr("Abrir con"))
                                 .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
                     }
                 }) {
-                    Text("Abrir con…")
+                    Text(tr("Abrir con…"))
                 }
         }) { pad ->
             Column(Modifier.fillMaxSize().padding(pad)) {
                 Text(
-                    "Desde la red, sin descargar",
+                    tr("Desde la red, sin descargar"),
                     Modifier.padding(horizontal = 16.dp),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -206,7 +207,7 @@ fun PlaylistPlayerScreen(vm: MainViewModel, name: String, start: Int) {
         }
     ToolPage(name, vm) { pad ->
         if (files.isEmpty())
-            Text("No hay pistas que reproducir.", Modifier.padding(pad).padding(16.dp))
+            Text(tr("No hay pistas que reproducir."), Modifier.padding(pad).padding(16.dp))
         else {
             val items =
                 remember(files) { files.map { PlayItem(Uri.fromFile(it), it.path, it.name) } }
@@ -261,7 +262,7 @@ private fun MediaPlayer(items: List<PlayItem>, start: Int, audio: Boolean, modif
                     if (!disposed)
                         runCatching { prepare(future.get()) }
                             .onFailure {
-                                playbackError = it.message ?: "No se pudo reproducir el audio"
+                                playbackError = it.message ?: tr("No se pudo reproducir el audio")
                             }
                 },
                 androidx.core.content.ContextCompat.getMainExecutor(ctx))
@@ -307,7 +308,7 @@ private fun MediaPlayer(items: List<PlayItem>, start: Int, audio: Boolean, modif
                     shuffle = !shuffle
                     player?.shuffleModeEnabled = shuffle
                 },
-                label = { Text("Aleatorio") })
+                label = { Text(tr("Aleatorio")) })
             Spacer(Modifier.width(12.dp))
             FilterChip(
                 repeat != Player.REPEAT_MODE_OFF,
@@ -318,9 +319,9 @@ private fun MediaPlayer(items: List<PlayItem>, start: Int, audio: Boolean, modif
                 label = {
                     Text(
                         when (repeat) {
-                            Player.REPEAT_MODE_ONE -> "Repetir uno"
-                            Player.REPEAT_MODE_ALL -> "Repetir todos"
-                            else -> "Sin repetición"
+                            Player.REPEAT_MODE_ONE -> tr("Repetir uno")
+                            Player.REPEAT_MODE_ALL -> tr("Repetir todos")
+                            else -> tr("Sin repetición")
                         })
                 })
         }
@@ -370,15 +371,15 @@ private fun PdfViewer(file: File, modifier: Modifier) {
             image?.let {
                 Image(
                     it.asImageBitmap(),
-                    "Página ${page+1}",
+                    tr("Página {0}", page+1),
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize())
             } ?: if (error != null) Text(error!!) else CircularProgressIndicator()
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            TextButton(onClick = { page-- }, enabled = page > 0) { Text("Anterior") }
+            TextButton(onClick = { page-- }, enabled = page > 0) { Text(tr("Anterior")) }
             Text("${page+1} / $count", Modifier.padding(top = 12.dp))
-            TextButton(onClick = { page++ }, enabled = page + 1 < count) { Text("Siguiente") }
+            TextButton(onClick = { page++ }, enabled = page + 1 < count) { Text(tr("Siguiente")) }
         }
     }
 }

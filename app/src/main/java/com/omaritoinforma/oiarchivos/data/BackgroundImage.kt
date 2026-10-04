@@ -26,14 +26,14 @@ object BackgroundImage {
 
     /** Guarda [source] como fondo (reducido y con la orientación aplicada) y devuelve la copia. */
     fun set(ctx: Context, source: File): File {
-        if (!source.isFile) throw IOException("No existe la imagen")
+        if (!source.isFile) throw IOException(tr("No existe la imagen"))
         val bitmap = ImageTools.open(source, MAX_PIXELS)
         val target = file(ctx)
         val temp = File(target.parentFile, "fondo.jpg.tmp")
         try {
             FileOutputStream(temp).use { out ->
                 if (!bitmap.compress(Bitmap.CompressFormat.JPEG, 88, out))
-                    throw IOException("No se pudo guardar el fondo")
+                    throw IOException(tr("No se pudo guardar el fondo"))
                 out.fd.sync()
             }
             SafeFiles.commit(temp, target, replace = true)

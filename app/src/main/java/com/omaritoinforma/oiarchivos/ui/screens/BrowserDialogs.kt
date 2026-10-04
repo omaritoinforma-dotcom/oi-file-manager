@@ -63,6 +63,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.omaritoinforma.oiarchivos.data.tr
 
 sealed interface BrowserDialog {
     data object CreateMenu : BrowserDialog
@@ -97,7 +98,7 @@ fun BrowserDialogs(vm: MainViewModel, dialog: BrowserDialog, setDialog: (Browser
     when (dialog) {
         is BrowserDialog.Encrypt ->
             PasswordDialog(
-                if (dialog.decrypt) "Descifrar archivo" else "Cifrar archivo", dismiss) { password
+                if (dialog.decrypt) tr("Descifrar archivo") else tr("Cifrar archivo"), dismiss) { password
                     ->
                     vm.encrypt(dialog.item, password, dialog.decrypt)
                     dismiss()
@@ -107,26 +108,26 @@ fun BrowserDialogs(vm: MainViewModel, dialog: BrowserDialog, setDialog: (Browser
         BrowserDialog.CreateMenu ->
             AlertDialog(
                 onDismissRequest = dismiss,
-                title = { Text("Crear nuevo") },
+                title = { Text(tr("Crear nuevo")) },
                 text = {
                     Column {
-                        DialogOption(Icons.Filled.CreateNewFolder, "Carpeta") {
+                        DialogOption(Icons.Filled.CreateNewFolder, tr("Carpeta")) {
                             setDialog(BrowserDialog.Create(folder = true))
                         }
-                        DialogOption(Icons.Filled.NoteAdd, "Archivo vacío") {
+                        DialogOption(Icons.Filled.NoteAdd, tr("Archivo vacío")) {
                             setDialog(BrowserDialog.Create(folder = false))
                         }
                     }
                 },
                 confirmButton = {},
-                dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } },
+                dismissButton = { TextButton(onClick = dismiss) { Text(tr("Cancelar")) } },
             )
 
         is BrowserDialog.Create ->
             NameDialog(
-                title = if (dialog.folder) "Nueva carpeta" else "Nuevo archivo",
+                title = if (dialog.folder) tr("Nueva carpeta") else tr("Nuevo archivo"),
                 initial = "",
-                confirm = "Crear",
+                confirm = tr("Crear"),
                 onDismiss = dismiss,
             ) {
                 vm.create(it, dialog.folder)
@@ -135,9 +136,9 @@ fun BrowserDialogs(vm: MainViewModel, dialog: BrowserDialog, setDialog: (Browser
 
         is BrowserDialog.Rename ->
             NameDialog(
-                title = "Renombrar",
+                title = tr("Renombrar"),
                 initial = dialog.item.name,
-                confirm = "Renombrar",
+                confirm = tr("Renombrar"),
                 selectBase = !dialog.item.isDirectory,
                 onDismiss = dismiss,
             ) {
@@ -155,12 +156,12 @@ fun BrowserDialogs(vm: MainViewModel, dialog: BrowserDialog, setDialog: (Browser
             var toTrash by remember { mutableStateOf(vm.useTrash) }
             AlertDialog(
                 onDismissRequest = dismiss,
-                title = { Text("Eliminar") },
+                title = { Text(tr("Eliminar")) },
                 text = {
                     Column {
                         Text(
-                            if (dialog.items.size == 1) "¿Eliminar «${dialog.items[0].name}»?"
-                            else "¿Eliminar ${dialog.items.size} elementos?",
+                            if (dialog.items.size == 1) tr("¿Eliminar «{0}»?", dialog.items[0].name)
+                            else tr("¿Eliminar {0} elementos?", dialog.items.size),
                         )
                         Spacer(Modifier.height(8.dp))
                         Row(
@@ -168,7 +169,7 @@ fun BrowserDialogs(vm: MainViewModel, dialog: BrowserDialog, setDialog: (Browser
                             modifier = Modifier.clickable { toTrash = !toTrash },
                         ) {
                             Checkbox(checked = toTrash, onCheckedChange = { toTrash = it })
-                            Text("Mover a la papelera (se puede restaurar)")
+                            Text(tr("Mover a la papelera (se puede restaurar)"))
                         }
                     }
                 },
@@ -178,10 +179,10 @@ fun BrowserDialogs(vm: MainViewModel, dialog: BrowserDialog, setDialog: (Browser
                             vm.delete(dialog.items, toTrash)
                             dismiss()
                         }) {
-                            Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                            Text(tr("Eliminar"), color = MaterialTheme.colorScheme.error)
                         }
                 },
-                dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } },
+                dismissButton = { TextButton(onClick = dismiss) { Text(tr("Cancelar")) } },
             )
         }
 
@@ -200,18 +201,18 @@ fun BrowserDialogs(vm: MainViewModel, dialog: BrowserDialog, setDialog: (Browser
                 text = {
                     Column {
                         DialogOption(
-                            Icons.Filled.Unarchive, "Extraer aquí (en una carpeta nueva)") {
+                            Icons.Filled.Unarchive, tr("Extraer aquí (en una carpeta nueva)")) {
                                 vm.extract(dialog.item)
                                 dismiss()
                             }
-                        DialogOption(Icons.Filled.OpenInNew, "Abrir con otra app") {
+                        DialogOption(Icons.Filled.OpenInNew, tr("Abrir con otra app")) {
                             Opener.open(ctx, dialog.item.file, chooser = true)
                             dismiss()
                         }
                     }
                 },
                 confirmButton = {},
-                dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } },
+                dismissButton = { TextButton(onClick = dismiss) { Text(tr("Cancelar")) } },
             )
 
         is BrowserDialog.OpenApk ->
@@ -220,22 +221,22 @@ fun BrowserDialogs(vm: MainViewModel, dialog: BrowserDialog, setDialog: (Browser
                 title = { Text(dialog.item.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
                 text = {
                     Column {
-                        DialogOption(Icons.Filled.Android, "Instalar") {
+                        DialogOption(Icons.Filled.Android, tr("Instalar")) {
                             Opener.installApk(ctx, dialog.item.file)
                             dismiss()
                         }
-                        DialogOption(Icons.Filled.Unarchive, "Extraer contenido") {
+                        DialogOption(Icons.Filled.Unarchive, tr("Extraer contenido")) {
                             vm.extract(dialog.item)
                             dismiss()
                         }
-                        DialogOption(Icons.Filled.OpenInNew, "Abrir con otra app") {
+                        DialogOption(Icons.Filled.OpenInNew, tr("Abrir con otra app")) {
                             Opener.open(ctx, dialog.item.file, chooser = true)
                             dismiss()
                         }
                     }
                 },
                 confirmButton = {},
-                dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } },
+                dismissButton = { TextButton(onClick = dismiss) { Text(tr("Cancelar")) } },
             )
 
         BrowserDialog.Sort -> {
@@ -243,13 +244,13 @@ fun BrowserDialogs(vm: MainViewModel, dialog: BrowserDialog, setDialog: (Browser
             var asc by remember { mutableStateOf(vm.ascending) }
             AlertDialog(
                 onDismissRequest = dismiss,
-                title = { Text("Ordenar por") },
+                title = { Text(tr("Ordenar por")) },
                 text = {
                     Column {
                         SortBy.entries.forEach { s -> RadioRow(s.label, sel == s) { sel = s } }
                         HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                        RadioRow("Ascendente (A→Z, antiguo→nuevo)", asc) { asc = true }
-                        RadioRow("Descendente (Z→A, nuevo→antiguo)", !asc) { asc = false }
+                        RadioRow(tr("Ascendente (A→Z, antiguo→nuevo)"), asc) { asc = true }
+                        RadioRow(tr("Descendente (Z→A, nuevo→antiguo)"), !asc) { asc = false }
                     }
                 },
                 confirmButton = {
@@ -258,10 +259,10 @@ fun BrowserDialogs(vm: MainViewModel, dialog: BrowserDialog, setDialog: (Browser
                             vm.setSort(sel, asc)
                             dismiss()
                         }) {
-                            Text("Aplicar")
+                            Text(tr("Aplicar"))
                         }
                 },
-                dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } },
+                dismissButton = { TextButton(onClick = dismiss) { Text(tr("Cancelar")) } },
             )
         }
     }
@@ -323,7 +324,7 @@ fun NameDialog(
                 Text(confirm)
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } },
     )
 }
 
@@ -344,42 +345,42 @@ private fun BatchRenameDialog(
             find, replace, prefix, suffix, numberFrom.toIntOrNull(), ext.trim().ifBlank { null })
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Renombrar ${items.size} elementos") },
+        title = { Text(tr("Renombrar {0} elementos", items.size)) },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedTextField(
-                        find, { find = it }, label = { Text("Buscar texto") }, singleLine = true)
+                        find, { find = it }, label = { Text(tr("Buscar texto")) }, singleLine = true)
                     OutlinedTextField(
                         replace,
                         { replace = it },
-                        label = { Text("Reemplazar por") },
+                        label = { Text(tr("Reemplazar por")) },
                         singleLine = true)
                     OutlinedTextField(
                         prefix,
                         { prefix = it },
-                        label = { Text("Agregar al inicio") },
+                        label = { Text(tr("Agregar al inicio")) },
                         singleLine = true)
                     OutlinedTextField(
                         suffix,
                         { suffix = it },
-                        label = { Text("Agregar al final") },
+                        label = { Text(tr("Agregar al final")) },
                         singleLine = true)
                     OutlinedTextField(
                         numberFrom,
                         { v -> numberFrom = v.filter { it.isDigit() } },
-                        label = { Text("Numerar desde (vacío = no)") },
+                        label = { Text(tr("Numerar desde (vacío = no)")) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     )
                     OutlinedTextField(
                         ext,
                         { ext = it },
-                        label = { Text("Nueva extensión (vacío = igual)") },
+                        label = { Text(tr("Nueva extensión (vacío = igual)")) },
                         singleLine = true)
                     Text(
-                        "Vista previa",
+                        tr("Vista previa"),
                         style = MaterialTheme.typography.labelLarge,
                         modifier = Modifier.padding(top = 6.dp))
                     items.take(4).forEachIndexed { i, it ->
@@ -391,11 +392,11 @@ private fun BatchRenameDialog(
                         )
                     }
                     if (items.size > 4)
-                        Text("…y ${items.size - 4} más", style = MaterialTheme.typography.bodySmall)
+                        Text(tr("…y {0} más", items.size - 4), style = MaterialTheme.typography.bodySmall)
                 }
         },
-        confirmButton = { TextButton(onClick = { onConfirm(rules) }) { Text("Renombrar") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+        confirmButton = { TextButton(onClick = { onConfirm(rules) }) { Text(tr("Renombrar")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } },
     )
 }
 
@@ -414,7 +415,7 @@ private fun PropertiesDialog(items: List<FileItem>, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         title = {
             Text(
-                single?.name ?: "${items.size} elementos",
+                single?.name ?: tr("{0} elementos", items.size),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis)
         },
@@ -424,39 +425,39 @@ private fun PropertiesDialog(items: List<FileItem>, onDismiss: () -> Unit) {
                     Modifier.verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         if (single != null) {
-                            PropRow("Ruta", single.path)
+                            PropRow(tr("Ruta"), single.path)
                             PropRow(
-                                "Tipo",
-                                if (single.isDirectory) "Carpeta"
+                                tr("Tipo"),
+                                if (single.isDirectory) tr("Carpeta")
                                 else
                                     Opener.mime(single.file).takeIf { it != "*/*" }
-                                        ?: "Archivo .${single.extension}",
+                                        ?: tr("Archivo .{0}", single.extension),
                             )
-                            PropRow("Modificado", formatDate(single.lastModified))
+                            PropRow(tr("Modificado"), formatDate(single.lastModified))
                             PropRow(
-                                "Permisos",
+                                tr("Permisos"),
                                 buildString {
-                                    append(if (single.file.canRead()) "Lectura" else "Sin lectura")
+                                    append(if (single.file.canRead()) tr("Lectura") else tr("Sin lectura"))
                                     append(" · ")
                                     append(
-                                        if (single.file.canWrite()) "Escritura" else "Solo lectura")
-                                    if (single.isHidden) append(" · Oculto")
+                                        if (single.file.canWrite()) tr("Escritura") else tr("Solo lectura"))
+                                    if (single.isHidden) append(tr(" · Oculto"))
                                 },
                             )
                         } else {
-                            PropRow("Ubicación", items.firstOrNull()?.file?.parent ?: "")
+                            PropRow(tr("Ubicación"), items.firstOrNull()?.file?.parent ?: "")
                         }
                         val i = info
                         PropRow(
-                            "Tamaño",
-                            if (i == null) "Calculando…"
-                            else "${formatSize(i.bytes)} (${"%,d".format(i.bytes)} bytes)",
+                            tr("Tamaño"),
+                            if (i == null) tr("Calculando…")
+                            else tr("{0} ({1} bytes)", formatSize(i.bytes), "%,d".format(i.bytes)),
                         )
                         if (single == null || single.isDirectory) {
                             PropRow(
-                                "Contenido",
-                                if (i == null) "Calculando…"
-                                else "${i.files} archivos · ${i.folders} carpetas")
+                                tr("Contenido"),
+                                if (i == null) tr("Calculando…")
+                                else tr("{0} archivos · {1} carpetas", i.files, i.folders))
                         }
                         if (single != null && !single.isDirectory) {
                             val h = hashes
@@ -473,7 +474,7 @@ private fun PropertiesDialog(items: List<FileItem>, onDismiss: () -> Unit) {
                                                             runCatching {
                                                                     FileRepo.hash(single.file, alg)
                                                                 }
-                                                                .getOrDefault("Error")
+                                                                .getOrDefault(tr("Error"))
                                                     }
                                                 }
                                             hashing = false
@@ -481,8 +482,8 @@ private fun PropertiesDialog(items: List<FileItem>, onDismiss: () -> Unit) {
                                     },
                                 ) {
                                     Text(
-                                        if (hashing) "Calculando…"
-                                        else "Calcular MD5 / SHA-1 / SHA-256")
+                                        if (hashing) tr("Calculando…")
+                                        else tr("Calcular MD5 / SHA-1 / SHA-256"))
                                 }
                             } else {
                                 h.forEach { (k, v) -> PropRow(k, v) }
@@ -491,7 +492,7 @@ private fun PropertiesDialog(items: List<FileItem>, onDismiss: () -> Unit) {
                     }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Cerrar")) } },
     )
 }
 
@@ -517,18 +518,18 @@ private fun PasswordDialog(title: String, dismiss: () -> Unit, submit: (String) 
                 OutlinedTextField(
                     password,
                     { password = it },
-                    label = { Text("Contraseña") },
+                    label = { Text(tr("Contraseña")) },
                     visualTransformation =
                         androidx.compose.ui.text.input.PasswordVisualTransformation())
-                Text("Se crea una copia. El original se conserva.")
+                Text(tr("Se crea una copia. El original se conserva."))
             }
         },
         confirmButton = {
             TextButton(onClick = { submit(password) }, enabled = password.isNotEmpty()) {
-                Text("Continuar")
+                Text(tr("Continuar"))
             }
         },
-        dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } })
+        dismissButton = { TextButton(onClick = dismiss) { Text(tr("Cancelar")) } })
 }
 
 @Composable
@@ -539,24 +540,24 @@ private fun CompressDialog(
     submit: (String, String, com.omaritoinforma.oiarchivos.data.CompressionLevel) -> Unit
 ) {
     var name by remember {
-        mutableStateOf((items.firstOrNull()?.name?.substringBeforeLast('.') ?: "Archivos") + ".zip")
+        mutableStateOf((items.firstOrNull()?.name?.substringBeforeLast('.') ?: tr("Archivos")) + ".zip")
     }
     var password by remember { mutableStateOf("") }
     var level by remember { mutableStateOf(initialLevel) }
     AlertDialog(
         onDismissRequest = dismiss,
-        title = { Text("Crear ZIP") },
+        title = { Text(tr("Crear ZIP")) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
-                    name, { name = it }, label = { Text("Nombre: .zip, .7z, .tar o .tar.gz") })
+                    name, { name = it }, label = { Text(tr("Nombre: .zip, .7z, .tar o .tar.gz")) })
                 OutlinedTextField(
                     password,
                     { password = it },
-                    label = { Text("Contraseña opcional (AES)") },
+                    label = { Text(tr("Contraseña opcional (AES)")) },
                     visualTransformation =
                         androidx.compose.ui.text.input.PasswordVisualTransformation())
-                Text("Nivel de compresión", style = MaterialTheme.typography.labelMedium)
+                Text(tr("Nivel de compresión"), style = MaterialTheme.typography.labelMedium)
                 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     com.omaritoinforma.oiarchivos.data.CompressionLevel.entries.forEach { option ->
@@ -570,10 +571,10 @@ private fun CompressDialog(
         },
         confirmButton = {
             TextButton(onClick = { submit(name, password, level) }, enabled = name.isNotBlank()) {
-                Text("Comprimir")
+                Text(tr("Comprimir"))
             }
         },
-        dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } })
+        dismissButton = { TextButton(onClick = dismiss) { Text(tr("Cancelar")) } })
 }
 
 @Composable
@@ -588,14 +589,14 @@ private fun ApkInfoDialog(item: FileItem, dismiss: () -> Unit) {
                         val packageInfo =
                             ctx.packageManager.getPackageArchiveInfo(
                                 item.path, android.content.pm.PackageManager.GET_PERMISSIONS)
-                                ?: throw IllegalArgumentException("No es un APK compatible")
+                                ?: throw IllegalArgumentException(tr("No es un APK compatible"))
                         val application = packageInfo.applicationInfo
                         application?.sourceDir = item.path
                         application?.publicSourceDir = item.path
-                        "Aplicación: ${application?.loadLabel(ctx.packageManager)}\nPaquete: ${packageInfo.packageName}\nVersión: ${packageInfo.versionName}\n\nPermisos solicitados:\n" +
-                            (packageInfo.requestedPermissions?.joinToString("\n") ?: "Ninguno")
+                        tr("Aplicación: {0}\nPaquete: {1}\nVersión: {2}\n\nPermisos solicitados:\n", application?.loadLabel(ctx.packageManager), packageInfo.packageName, packageInfo.versionName) +
+                            (packageInfo.requestedPermissions?.joinToString("\n") ?: tr("Ninguno"))
                     }
-                    .getOrElse { it.message ?: "No se pudo inspeccionar el APK" }
+                    .getOrElse { it.message ?: tr("No se pudo inspeccionar el APK") }
             }
     }
     AlertDialog(
@@ -603,8 +604,8 @@ private fun ApkInfoDialog(item: FileItem, dismiss: () -> Unit) {
         title = { Text(item.name) },
         text = {
             SelectionContainer {
-                Text(info ?: "Leyendo…", Modifier.verticalScroll(rememberScrollState()))
+                Text(info ?: tr("Leyendo…"), Modifier.verticalScroll(rememberScrollState()))
             }
         },
-        confirmButton = { TextButton(onClick = dismiss) { Text("Cerrar") } })
+        confirmButton = { TextButton(onClick = dismiss) { Text(tr("Cerrar")) } })
 }

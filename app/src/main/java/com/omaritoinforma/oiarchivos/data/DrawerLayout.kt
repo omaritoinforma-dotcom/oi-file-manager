@@ -1,19 +1,22 @@
 package com.omaritoinforma.oiarchivos.data
 
 /** Opciones del menú lateral que se pueden ocultar y reordenar («Manejo de barra lateral» de ES). */
-enum class DrawerEntry(val label: String) {
-    DOWNLOADS("Descargas"),
-    ROOT_DIR("Raíz del sistema"),
-    TRASH("Papelera"),
-    APPS("Aplicaciones"),
-    NETWORK("Red, nube y USB"),
-    ANALYZE("Analizar espacio"),
-    PLAYLISTS("Listas de reproducción"),
-    CLEANER("Limpiar basura"),
-    TRANSFERS("Transferencias"),
-    HISTORY("Historial"),
-    HIDDEN("Lista de ocultos"),
-    ROOT_TOOLS("Root con Magisk")
+enum class DrawerEntry(private val labelEs: String) {
+    DOWNLOADS(trKey("Descargas")),
+    ROOT_DIR(trKey("Raíz del sistema")),
+    TRASH(trKey("Papelera")),
+    APPS(trKey("Aplicaciones")),
+    NETWORK(trKey("Red, nube y USB")),
+    ANALYZE(trKey("Analizar espacio")),
+    PLAYLISTS(trKey("Listas de reproducción")),
+    CLEANER(trKey("Limpiar basura")),
+    TRANSFERS(trKey("Transferencias")),
+    HISTORY(trKey("Historial")),
+    HIDDEN(trKey("Lista de ocultos")),
+    ROOT_TOOLS(trKey("Root con Magisk"));
+
+    val label: String
+        get() = tr(labelEs)
 }
 
 /**

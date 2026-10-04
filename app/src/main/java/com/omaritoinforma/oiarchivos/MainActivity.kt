@@ -92,6 +92,16 @@ class MainActivity : ComponentActivity() {
                         ScreenOrientation.LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
                     }
             }
+            // «Idioma»: al cambiarlo (en Ajustes o al restaurar una copia) se carga el catálogo y la
+            // pantalla se vuelve a crear para que todos los textos salgan en el idioma nuevo.
+            val language = vm.appLanguage.value
+            val startLanguage = remember { language }
+            LaunchedEffect(language) {
+                if (language != startLanguage) {
+                    com.omaritoinforma.oiarchivos.data.I18n.apply(this@MainActivity, language)
+                    recreate()
+                }
+            }
             // «Diseño grande»: la interfaz entera, un 20 % más grande.
             val density = LocalDensity.current
             val scaled =

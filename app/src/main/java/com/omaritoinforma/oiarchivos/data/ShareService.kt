@@ -51,20 +51,20 @@ class ShareService : Service() {
             22,
             NotificationCompat.Builder(this, "transfers")
                 .setSmallIcon(android.R.drawable.stat_sys_upload)
-                .setContentTitle("Compartir archivos por red")
-                .setContentText("Servidor activo · toca Detener al terminar")
+                .setContentTitle(tr("Compartir archivos por red"))
+                .setContentText(tr("Servidor activo · toca Detener al terminar"))
                 .setOngoing(true)
-                .addAction(0, "Detener", stop)
+                .addAction(0, tr("Detener"), stop)
                 .build())
         try {
             http?.stop()
             ftp?.close()
             val root =
-                File(intent?.getStringExtra("root") ?: throw IOException("Elige una carpeta"))
+                File(intent?.getStringExtra("root") ?: throw IOException(tr("Elige una carpeta")))
                     .canonicalFile
             if (!root.isDirectory || !root.canRead())
-                throw IOException("La carpeta no se puede leer")
-            val address = localAddress() ?: throw IOException("Conéctate a una red Wi-Fi local")
+                throw IOException(tr("La carpeta no se puede leer"))
+            val address = localAddress() ?: throw IOException(tr("Conéctate a una red Wi-Fi local"))
             val mode = intent.getStringExtra("mode") ?: "HTTP"
             // Con una contraseña fija elegida en la pantalla de compartir, el PC puede guardar la conexión (solo FTP).
             val fixed = Prefs(this).ftpPassword.takeIf { mode == "FTP" && ftpPasswordValid(it) && it.isNotEmpty() }
@@ -80,7 +80,7 @@ class ShareService : Service() {
                         try {
                             LocalFtp(root, address, password, prefs.ftpPort, prefs.ftpEncoding.charset)
                         } catch (e: BindException) {
-                            throw IOException("El puerto ${prefs.ftpPort} está ocupado: elige otro")
+                            throw IOException(tr("El puerto {0} está ocupado: elige otro", prefs.ftpPort))
                         }
                     ftp!!.apply { start() }.port
                 } else {

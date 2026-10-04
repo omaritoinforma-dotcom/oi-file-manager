@@ -8,23 +8,23 @@ import android.content.pm.PackageManager
 import android.os.Build
 
 /** Permisos que tocan datos o funciones delicadas, agrupados por lo que significan para el usuario. */
-enum class SensitiveGroup(val label: String, val permissions: Set<String>) {
+enum class SensitiveGroup(private val labelEs: String, val permissions: Set<String>) {
     LOCATION(
-        "Ubicación",
+        trKey("Ubicación"),
         setOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION,
             "android.permission.ACCESS_BACKGROUND_LOCATION")),
-    CAMERA("Cámara", setOf(Manifest.permission.CAMERA)),
-    MICROPHONE("Micrófono", setOf(Manifest.permission.RECORD_AUDIO)),
+    CAMERA(trKey("Cámara"), setOf(Manifest.permission.CAMERA)),
+    MICROPHONE(trKey("Micrófono"), setOf(Manifest.permission.RECORD_AUDIO)),
     CONTACTS(
-        "Contactos",
+        trKey("Contactos"),
         setOf(
             Manifest.permission.READ_CONTACTS,
             Manifest.permission.WRITE_CONTACTS,
             Manifest.permission.GET_ACCOUNTS)),
     SMS(
-        "SMS",
+        trKey("SMS"),
         setOf(
             Manifest.permission.READ_SMS,
             Manifest.permission.SEND_SMS,
@@ -32,7 +32,7 @@ enum class SensitiveGroup(val label: String, val permissions: Set<String>) {
             Manifest.permission.RECEIVE_MMS,
             Manifest.permission.RECEIVE_WAP_PUSH)),
     PHONE(
-        "Teléfono y llamadas",
+        trKey("Teléfono y llamadas"),
         setOf(
             Manifest.permission.READ_PHONE_STATE,
             Manifest.permission.CALL_PHONE,
@@ -41,16 +41,16 @@ enum class SensitiveGroup(val label: String, val permissions: Set<String>) {
             Manifest.permission.ANSWER_PHONE_CALLS,
             Manifest.permission.READ_PHONE_NUMBERS)),
     CALENDAR(
-        "Calendario",
+        trKey("Calendario"),
         setOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)),
     BODY(
-        "Salud y actividad",
+        trKey("Salud y actividad"),
         setOf(
             Manifest.permission.BODY_SENSORS,
             Manifest.permission.ACTIVITY_RECOGNITION,
             "android.permission.BODY_SENSORS_BACKGROUND")),
     STORAGE(
-        "Archivos y multimedia",
+        trKey("Archivos y multimedia"),
         setOf(
             Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
@@ -59,18 +59,21 @@ enum class SensitiveGroup(val label: String, val permissions: Set<String>) {
             "android.permission.READ_MEDIA_VIDEO",
             "android.permission.READ_MEDIA_AUDIO")),
     NEARBY(
-        "Dispositivos cercanos",
+        trKey("Dispositivos cercanos"),
         setOf(
             "android.permission.BLUETOOTH_SCAN",
             "android.permission.BLUETOOTH_CONNECT",
             "android.permission.BLUETOOTH_ADVERTISE",
             "android.permission.NEARBY_WIFI_DEVICES")),
     SYSTEM(
-        "Sobre otras apps, instalar y ver apps",
+        trKey("Sobre otras apps, instalar y ver apps"),
         setOf(
             Manifest.permission.SYSTEM_ALERT_WINDOW,
             Manifest.permission.REQUEST_INSTALL_PACKAGES,
-            "android.permission.QUERY_ALL_PACKAGES"))
+            "android.permission.QUERY_ALL_PACKAGES"));
+
+    val label: String
+        get() = tr(labelEs)
 }
 
 /** Una app con sus permisos delicados: [granted] ya concedidos, [requested] solo pedidos. */

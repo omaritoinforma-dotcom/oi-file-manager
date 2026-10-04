@@ -66,6 +66,7 @@ import com.omaritoinforma.oiarchivos.util.formatSize
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.omaritoinforma.oiarchivos.data.tr
 
 /**
  * Gestor de aplicaciones: ver, abrir, respaldar APK, compartir y desinstalar. Como en ES, al
@@ -95,17 +96,17 @@ fun AppsScreen(vm: MainViewModel) {
             TopAppBar(
                 title = {
                     Text(
-                        if (selected.isEmpty()) "Aplicaciones (${shown.size})"
-                        else "${selected.size} seleccionada(s)")
+                        if (selected.isEmpty()) tr("Aplicaciones ({0})", shown.size)
+                        else tr("{0} seleccionada(s)", selected.size))
                 },
                 navigationIcon = {
                     if (selected.isEmpty())
                         IconButton(onClick = vm::back) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, tr("Atrás"))
                         }
                     else
                         IconButton(onClick = { selected.clear() }) {
-                            Icon(Icons.Filled.Close, "Cancelar selección")
+                            Icon(Icons.Filled.Close, tr("Cancelar selección"))
                         }
                 },
                 actions = {
@@ -115,30 +116,30 @@ fun AppsScreen(vm: MainViewModel) {
                                 selected.clear()
                                 selected.addAll(shown.map { it.packageName })
                             }) {
-                                Icon(Icons.Filled.SelectAll, "Seleccionar todas")
+                                Icon(Icons.Filled.SelectAll, tr("Seleccionar todas"))
                             }
                         IconButton(
                             onClick = {
                                 vm.backupApps(chosen)
                                 selected.clear()
                             }) {
-                                Icon(Icons.Filled.Save, "Respaldar seleccionadas")
+                                Icon(Icons.Filled.Save, tr("Respaldar seleccionadas"))
                             }
                         IconButton(
                             onClick = {
                                 vm.uninstallApps(chosen)
                                 selected.clear()
                             }) {
-                                Icon(Icons.Filled.Delete, "Desinstalar seleccionadas")
+                                Icon(Icons.Filled.Delete, tr("Desinstalar seleccionadas"))
                             }
                     } else Box {
-                        IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Más") }
+                        IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, tr("Más")) }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                             DropdownMenuItem(
                                 text = {
                                     Text(
-                                        if (showSystem) "Ocultar apps del sistema"
-                                        else "Mostrar apps del sistema")
+                                        if (showSystem) tr("Ocultar apps del sistema")
+                                        else tr("Mostrar apps del sistema"))
                                 },
                                 onClick = {
                                     menu = false
@@ -146,14 +147,14 @@ fun AppsScreen(vm: MainViewModel) {
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text("Analizar permisos") },
+                                text = { Text(tr("Analizar permisos")) },
                                 onClick = {
                                     menu = false
                                     vm.goTo(com.omaritoinforma.oiarchivos.ui.Screen.AppAnalysis)
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text("Respaldar todas las mostradas") },
+                                text = { Text(tr("Respaldar todas las mostradas")) },
                                 onClick = {
                                     menu = false
                                     vm.backupApps(shown)
@@ -169,7 +170,7 @@ fun AppsScreen(vm: MainViewModel) {
             OutlinedTextField(
                 value = filter,
                 onValueChange = { filter = it },
-                placeholder = { Text("Buscar app…") },
+                placeholder = { Text(tr("Buscar app…")) },
                 leadingIcon = { Icon(Icons.Filled.Search, null) },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -177,7 +178,8 @@ fun AppsScreen(vm: MainViewModel) {
             if (vm.appsLoading) LinearProgressIndicator(Modifier.fillMaxWidth())
             batch?.let { b ->
                 Text(
-                    "${if (b.installing) "Instalando" else "Desinstalando"} ${b.done + 1} de ${b.total}: ${b.current}",
+                    if (b.installing) tr("Instalando {0} de {1}: {2}", b.done + 1, b.total, b.current)
+                    else tr("Desinstalando {0} de {1}: {2}", b.done + 1, b.total, b.current),
                     Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
                 LinearProgressIndicator(
                     progress = { b.done.toFloat() / b.total },
@@ -216,32 +218,32 @@ private fun AppRow(
         headlineContent = { Text(app.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         supportingContent = {
             Text(
-                "${app.packageName}\nv${app.versionName} · ${formatSize(app.size)}" +
-                    (if (app.isSystem) " · Sistema" else ""),
+                tr("{0}\nv{1} · {2}", app.packageName, app.versionName, formatSize(app.size)) +
+                    (if (app.isSystem) tr(" · Sistema") else ""),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
         },
         trailingContent = {
             Box {
-                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Opciones") }
+                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, tr("Opciones")) }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    MenuItem("Abrir", Icons.Filled.OpenInNew) {
+                    MenuItem(tr("Abrir"), Icons.Filled.OpenInNew) {
                         menu = false
                         val launch = ctx.packageManager.getLaunchIntentForPackage(app.packageName)
                         if (launch != null)
                             ctx.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                        else vm.toast("Esta app no tiene pantalla para abrir")
+                        else vm.toast(tr("Esta app no tiene pantalla para abrir"))
                     }
-                    MenuItem("Respaldar APK", Icons.Filled.Save) {
+                    MenuItem(tr("Respaldar APK"), Icons.Filled.Save) {
                         menu = false
                         vm.backupApps(listOf(app))
                     }
-                    MenuItem("Compartir APK", Icons.Filled.Share) {
+                    MenuItem(tr("Compartir APK"), Icons.Filled.Share) {
                         menu = false
                         Opener.share(ctx, listOf(File(app.apkPath)))
                     }
-                    MenuItem("Información de la app", Icons.Filled.Info) {
+                    MenuItem(tr("Información de la app"), Icons.Filled.Info) {
                         menu = false
                         runCatching {
                             ctx.startActivity(
@@ -253,7 +255,7 @@ private fun AppRow(
                         }
                     }
                     if (!app.isSystem) {
-                        MenuItem("Desinstalar", Icons.Filled.Delete) {
+                        MenuItem(tr("Desinstalar"), Icons.Filled.Delete) {
                             menu = false
                             vm.uninstall(app)
                         }

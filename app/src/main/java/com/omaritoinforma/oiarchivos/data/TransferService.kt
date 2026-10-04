@@ -293,7 +293,7 @@ class TransferService : Service() {
                         (p.doneBytes * 100 / p.totalBytes).toInt().coerceIn(0, 100)
                     else 0,
                     p.totalBytes <= 0)
-                .addAction(0, "Cancelar", cancel)
+                .addAction(0, tr("Cancelar"), cancel)
                 .apply {
                     if (supportsPause.value)
                         addAction(0, if (paused.value) "Reanudar" else "Pausar", pause)

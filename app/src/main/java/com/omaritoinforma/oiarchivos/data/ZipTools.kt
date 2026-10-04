@@ -73,7 +73,7 @@ object ZipTools {
                 last = e
             }
         }
-        throw IOException("El ZIP está dañado o no es compatible", last)
+        throw IOException(tr("El ZIP está dañado o no es compatible"), last)
     }
 
     suspend fun extract(zip: File, destDir: File, report: (OpProgress) -> Unit): Int {
@@ -82,14 +82,14 @@ object ZipTools {
             val t = Tracker("Extrayendo", report)
             t.totalBytes = entries.sumOf { e -> if (e.size > 0) e.size else 0L }
             t.totalFiles = entries.count { e -> !e.isDirectory }
-            if (!destDir.exists() && !destDir.mkdirs()) throw IOException("No se pudo crear «${destDir.name}»")
+            if (!destDir.exists() && !destDir.mkdirs()) throw IOException(tr("No se pudo crear «{0}»", destDir.name))
             val destCanon = destDir.canonicalPath
             for (e in entries) {
                 val out = File(destDir, e.name)
                 val canon = out.canonicalPath
                 // Protección contra "zip slip" (rutas que intentan salir de la carpeta).
                 if (canon != destCanon && !canon.startsWith(destCanon + File.separator)) {
-                    throw IOException("Entrada insegura en el ZIP: ${e.name}")
+                    throw IOException(tr("Entrada insegura en el ZIP: {0}", e.name))
                 }
                 if (e.isDirectory) {
                     out.mkdirs()

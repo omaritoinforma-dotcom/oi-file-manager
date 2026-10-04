@@ -30,7 +30,7 @@ object AdditionalCloudAuth {
 
     fun baiduStart(c: Connection): DeviceApproval {
         if (c.clientId.isBlank() || c.clientSecret.isBlank())
-            throw IOException("Configura las claves de tu aplicación Baidu")
+            throw IOException(tr("Configura las claves de tu aplicación Baidu"))
         val result =
             baidu(
                 "device/code",
@@ -38,11 +38,11 @@ object AdditionalCloudAuth {
                     "response_type" to "device_code",
                     "client_id" to c.clientId,
                     "scope" to "basic,netdisk"))
-        if (result.has("error")) throw IOException("Baidu no pudo iniciar la autorización")
+        if (result.has("error")) throw IOException(tr("Baidu no pudo iniciar la autorización"))
         val url = java.net.URL(result.getString("verification_url"))
         if (url.protocol != "https" ||
             !(url.host == "baidu.com" || url.host.endsWith(".baidu.com")))
-            throw IOException("Dirección de autorización no válida")
+            throw IOException(tr("Dirección de autorización no válida"))
         return DeviceApproval(
             result.getString("device_code"),
             result.getString("user_code"),
@@ -67,11 +67,11 @@ object AdditionalCloudAuth {
                 "" -> return saveBaidu(ctx, c, response)
                 "authorization_pending" -> {}
                 "slow_down" -> interval = (interval + 5000).coerceAtMost(60000)
-                else -> throw IOException("Baidu rechazó la autorización. Vuelve a entrar.")
+                else -> throw IOException(tr("Baidu rechazó la autorización. Vuelve a entrar."))
             }
             delay(interval)
         }
-        throw IOException("El código de Baidu caducó. Vuelve a entrar.")
+        throw IOException(tr("El código de Baidu caducó. Vuelve a entrar."))
     }
 
     private fun saveBaidu(ctx: Context, c: Connection, response: JSONObject): Connection {
@@ -79,7 +79,7 @@ object AdditionalCloudAuth {
         val refresh = response.optString("refresh_token", previous)
         val token = response.optString("access_token")
         if (token.isBlank() || refresh.isBlank())
-            throw IOException("Baidu no devolvió el acceso a los archivos")
+            throw IOException(tr("Baidu no devolvió el acceso a los archivos"))
         return save(
             ctx,
             c.copy(
@@ -94,7 +94,7 @@ object AdditionalCloudAuth {
             c.host.isBlank() ||
             c.clientId.isBlank() ||
             c.clientSecret.isBlank())
-            throw IOException("Completa la cuenta y las claves de tu aplicación SugarSync")
+            throw IOException(tr("Completa la cuenta y las claves de tu aplicación SugarSync"))
         val body =
             CloudXml.body(
                 "appAuthorization",
@@ -124,7 +124,7 @@ object AdditionalCloudAuth {
             val location =
                 sugarEndpoint(
                     connection.getHeaderField("Location")
-                        ?: throw IOException("SugarSync no devolvió la autorización"))
+                        ?: throw IOException(tr("SugarSync no devolvió la autorización")))
             return location to if (bytes.isEmpty()) null else CloudXml.parse(bytes.inputStream())
         } finally {
             connection.disconnect()
@@ -142,14 +142,14 @@ object AdditionalCloudAuth {
                         "privateAccessKey" to c.clientSecret,
                         "refreshToken" to sugarEndpoint(refresh))))
         val document =
-            result.second?.documentElement ?: throw IOException("SugarSync no devolvió la cuenta")
+            result.second?.documentElement ?: throw IOException(tr("SugarSync no devolvió la cuenta"))
         val expires =
             runCatching {
                     OffsetDateTime.parse(CloudXml.text(document, "expiration"))
                         .toInstant()
                         .toEpochMilli()
                 }
-                .getOrElse { throw IOException("Caducidad de SugarSync no válida") }
+                .getOrElse { throw IOException(tr("Caducidad de SugarSync no válida")) }
         val user = sugarEndpoint(CloudXml.text(document, "user"))
         return save(
             ctx,
@@ -176,11 +176,11 @@ object AdditionalCloudAuth {
                             "refresh_token" to refresh,
                             "client_id" to c.clientId,
                             "client_secret" to c.clientSecret))
-                if (response.has("error")) throw IOException("Vuelve a entrar en Baidu")
+                if (response.has("error")) throw IOException(tr("Vuelve a entrar en Baidu"))
                 saveBaidu(ctx, c, response)
             }
             Protocol.SUGARSYNC -> sugarRefresh(ctx, c, refresh)
-            else -> throw IOException("Proveedor de autorización no válido")
+            else -> throw IOException(tr("Proveedor de autorización no válido"))
         }
     }
 

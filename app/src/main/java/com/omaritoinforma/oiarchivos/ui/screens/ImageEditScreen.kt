@@ -84,7 +84,7 @@ fun ImageEditScreen(vm: MainViewModel, path: String) {
                 preview = it.first
                 dims = it.second
             }
-            .onFailure { error = it.message ?: "No se pudo abrir la imagen" }
+            .onFailure { error = it.message ?: tr("No se pudo abrir la imagen") }
     }
     val shown = remember(preview, turns, flip) { preview?.let { ImageTools.transform(it, turns, flip, CropBox.FULL) } }
     // Al girar o voltear, el recuadro vuelve a empezar con la proporción elegida.
@@ -96,19 +96,19 @@ fun ImageEditScreen(vm: MainViewModel, path: String) {
         val t = turns
         val f = flip
         val c = crop
-        vm.runTask("Guardando imagen") {
+        vm.runTask(tr("Guardando imagen")) {
             val out = ImageTools.save(file, t, f, c, replace)
-            OperationResult(if (replace) "Imagen guardada" else "Guardada como «${out.name}»", listOf(out))
+            OperationResult(if (replace) tr("Imagen guardada") else tr("Guardada como «{0}»", out.name), listOf(out))
         }
         vm.back()
     }
 
-    ToolPage("Editar imagen", vm) { pad ->
+    ToolPage(tr("Editar imagen"), vm) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
             val image = shown
             if (image == null) {
                 Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text(error ?: "Abriendo la imagen…")
+                    Text(error ?: tr("Abriendo la imagen…"))
                 }
             } else {
                 Canvas(
@@ -182,7 +182,7 @@ fun ImageEditScreen(vm: MainViewModel, path: String) {
                 if (real != null) {
                     val px = ImageCrop.pixels(crop, real.first, real.second)
                     Text(
-                        "Recorte: ${px.width} × ${px.height} px de ${real.first} × ${real.second}",
+                        tr("Recorte: {0} × {1} px de {2} × {3}", px.width, px.height, real.first, real.second),
                         style = MaterialTheme.typography.labelLarge)
                 }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -201,22 +201,22 @@ fun ImageEditScreen(vm: MainViewModel, path: String) {
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { turns = (turns + 3) % 4 }) {
-                            Icon(Icons.Filled.RotateLeft, "Girar a la izquierda")
+                            Icon(Icons.Filled.RotateLeft, tr("Girar a la izquierda"))
                         }
                         IconButton(onClick = { turns = (turns + 1) % 4 }) {
-                            Icon(Icons.Filled.RotateRight, "Girar a la derecha")
+                            Icon(Icons.Filled.RotateRight, tr("Girar a la derecha"))
                         }
-                        IconButton(onClick = { flip = !flip }) { Icon(Icons.Filled.Flip, "Voltear") }
+                        IconButton(onClick = { flip = !flip }) { Icon(Icons.Filled.Flip, tr("Voltear")) }
                     }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = { save(false) }, enabled = shown != null, modifier = Modifier.weight(1f)) {
-                        Text("Guardar copia")
+                        Text(tr("Guardar copia"))
                     }
                     OutlinedButton(
                         onClick = { confirmReplace = true },
                         enabled = shown != null && ImageTools.canReplace(file),
                         modifier = Modifier.weight(1f)) {
-                            Text("Reemplazar")
+                            Text(tr("Reemplazar"))
                         }
                 }
             }
@@ -225,16 +225,16 @@ fun ImageEditScreen(vm: MainViewModel, path: String) {
     if (confirmReplace)
         AlertDialog(
             onDismissRequest = { confirmReplace = false },
-            title = { Text("¿Reemplazar la imagen?") },
-            text = { Text("«${file.name}» se sustituirá por la versión editada y no se podrá recuperar.") },
+            title = { Text(tr("¿Reemplazar la imagen?")) },
+            text = { Text(tr("«{0}» se sustituirá por la versión editada y no se podrá recuperar.", file.name)) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         confirmReplace = false
                         save(true)
                     }) {
-                        Text("Reemplazar")
+                        Text(tr("Reemplazar"))
                     }
             },
-            dismissButton = { TextButton(onClick = { confirmReplace = false }) { Text("Cancelar") } })
+            dismissButton = { TextButton(onClick = { confirmReplace = false }) { Text(tr("Cancelar")) } })
 }

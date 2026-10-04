@@ -1,7 +1,10 @@
 package com.omaritoinforma.oiarchivos.data
 
-enum class GestureAction(val label: String) {
-    NONE("Sin acción"), UP("Carpeta superior"), HOME("Inicio"), REFRESH("Actualizar"),
-    NEXT_TAB("Pestaña siguiente"), PREVIOUS_TAB("Pestaña anterior"), NEW_TAB("Nueva pestaña"),
-    HIDDEN("Mostrar / ocultar archivos ocultos"), SELECT_ALL("Seleccionar todo")
+enum class GestureAction(private val labelEs: String) {
+    NONE(trKey("Sin acción")), UP(trKey("Carpeta superior")), HOME(trKey("Inicio")), REFRESH(trKey("Actualizar")),
+    NEXT_TAB(trKey("Pestaña siguiente")), PREVIOUS_TAB(trKey("Pestaña anterior")), NEW_TAB(trKey("Nueva pestaña")),
+    HIDDEN(trKey("Mostrar / ocultar archivos ocultos")), SELECT_ALL(trKey("Seleccionar todo"));
+
+    val label: String
+        get() = tr(labelEs)
 }

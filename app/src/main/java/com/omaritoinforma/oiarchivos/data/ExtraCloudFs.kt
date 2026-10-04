@@ -36,14 +36,14 @@ internal class YandexFs(c: Connection) : RemoteFs {
             }
             if (items.length() < 1000) break
             offset += items.length()
-            if (offset > 50000) throw IOException("La carpeta supera el límite de 50.000 elementos")
+            if (offset > 50000) throw IOException(tr("La carpeta supera el límite de 50.000 elementos"))
         }
         return out
     }
 
     private fun signed(url: String): String {
         val href = json(url).getString("href")
-        if (URL(href).protocol != "https") throw IOException("Respuesta sin HTTPS")
+        if (URL(href).protocol != "https") throw IOException(tr("Respuesta sin HTTPS"))
         return href
     }
 
@@ -107,7 +107,7 @@ internal class BoxFs(c: Connection) : RemoteFs {
             }
             offset += entries.length()
             if (offset >= result.getInt("total_count")) break
-            if (offset > 50000) throw IOException("La carpeta supera el límite de 50.000 elementos")
+            if (offset > 50000) throw IOException(tr("La carpeta supera el límite de 50.000 elementos"))
         } while (true)
         return out
     }
@@ -119,9 +119,9 @@ internal class BoxFs(c: Connection) : RemoteFs {
         val code = c.responseCode
         if (code in 300..399) {
             val location =
-                c.getHeaderField("Location") ?: throw IOException("No se recibió una descarga")
+                c.getHeaderField("Location") ?: throw IOException(tr("No se recibió una descarga"))
             c.disconnect()
-            if (URL(location).protocol != "https") throw IOException("Descarga sin HTTPS")
+            if (URL(location).protocol != "https") throw IOException(tr("Descarga sin HTTPS"))
             return Http("").response(Http("").open(location, "GET"))
         }
         return http.response(c)
@@ -195,9 +195,9 @@ internal class S3Fs(private val account: Connection) : RemoteFs {
     private val region = account.fingerprint.ifBlank { "us-east-1" }
 
     init {
-        if (URL(base).protocol != "https") throw IOException("S3 requiere un endpoint HTTPS")
+        if (URL(base).protocol != "https") throw IOException(tr("S3 requiere un endpoint HTTPS"))
         if (account.user.isBlank() || account.secret.isBlank())
-            throw IOException("Faltan las claves de S3")
+            throw IOException(tr("Faltan las claves de S3"))
     }
 
     private fun uri(path: String) =
@@ -277,10 +277,10 @@ internal class S3Fs(private val account: Connection) : RemoteFs {
 
     private fun xml(input: InputStream): org.w3c.dom.Document {
         val bytes = input.use { it.readBytes() }
-        if (bytes.size > 8 * 1024 * 1024) throw IOException("Respuesta XML demasiado grande")
+        if (bytes.size > 8 * 1024 * 1024) throw IOException(tr("Respuesta XML demasiado grande"))
         val text = String(bytes, Charsets.UTF_8)
         if (Regex("<!\\s*(DOCTYPE|ENTITY)", RegexOption.IGNORE_CASE).containsMatchIn(text))
-            throw IOException("Declaración XML no permitida")
+            throw IOException(tr("Declaración XML no permitida"))
         val factory =
             DocumentBuilderFactory.newInstance().apply {
                 isNamespaceAware = true
@@ -300,7 +300,7 @@ internal class S3Fs(private val account: Connection) : RemoteFs {
     override fun list(path: String): List<RemoteEntry> {
         val clean = path.trim('/')
         val bucket = clean.substringBefore('/')
-        if (bucket.isBlank()) throw IOException("Escribe /nombre-del-bucket en la carpeta inicial")
+        if (bucket.isBlank()) throw IOException(tr("Escribe /nombre-del-bucket en la carpeta inicial"))
         val prefix = if (clean.contains('/')) clean.substringAfter('/').trimEnd('/') + "/" else ""
         val out = ArrayList<RemoteEntry>()
         var next = ""
@@ -336,7 +336,7 @@ internal class S3Fs(private val account: Connection) : RemoteFs {
                     ?.textContent
                     .orEmpty()
             if (out.size > 50000)
-                throw IOException("La carpeta supera el límite de 50.000 elementos")
+                throw IOException(tr("La carpeta supera el límite de 50.000 elementos"))
         } while (next.isNotEmpty())
         return out
     }
@@ -356,7 +356,7 @@ internal class S3Fs(private val account: Connection) : RemoteFs {
         val target = RemoteFiles.join(entry.path.substringBeforeLast('/'), name)
         if (target == entry.path) return
         if (list(entry.path.substringBeforeLast('/')).any { it.name == name })
-            throw IOException("Ya existe un archivo o carpeta con ese nombre")
+            throw IOException(tr("Ya existe un archivo o carpeta con ese nombre"))
         if (entry.directory) {
             // Snapshot the complete prefix first. Originals are deleted only once every copy
             // succeeded.
@@ -376,10 +376,10 @@ internal class S3Fs(private val account: Connection) : RemoteFs {
                             .item(0)
                             .textContent
                     if (!key.startsWith(prefix))
-                        throw IOException("S3 devolvió un archivo fuera de la carpeta")
+                        throw IOException(tr("S3 devolvió un archivo fuera de la carpeta"))
                     objects += "/$bucket/$key"
                     if (objects.size > 100000)
-                        throw IOException("La carpeta supera el límite de 100.000 archivos")
+                        throw IOException(tr("La carpeta supera el límite de 100.000 archivos"))
                 }
                 next =
                     doc.getElementsByTagNameNS("*", "NextContinuationToken")
@@ -413,7 +413,7 @@ internal class S3Fs(private val account: Connection) : RemoteFs {
                             "if-none-match" to "*"),
                     size = 0))
         if (result.documentElement.localName != "CopyObjectResult")
-            throw IOException("S3 no confirmó la copia")
+            throw IOException(tr("S3 no confirmó la copia"))
     }
 
     override fun delete(entry: RemoteEntry) {

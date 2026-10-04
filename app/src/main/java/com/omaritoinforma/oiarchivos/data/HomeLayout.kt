@@ -1,30 +1,36 @@
 package com.omaritoinforma.oiarchivos.data
 
 /** Secciones de la pantalla de inicio que se pueden ocultar y reordenar («Distribución» de ES). */
-enum class HomeSection(val label: String) {
-    STORAGE("Almacenamiento"),
-    CATEGORIES("Categorías"),
-    QUICK("Accesos rápidos"),
-    BOOKMARKS("Marcadores"),
+enum class HomeSection(private val labelEs: String) {
+    STORAGE(trKey("Almacenamiento")),
+    CATEGORIES(trKey("Categorías")),
+    QUICK(trKey("Accesos rápidos")),
+    BOOKMARKS(trKey("Marcadores")),
 
     /** Los últimos archivos que aparecieron («Mostrar nuevos archivos en la página de inicio» de ES). */
-    NEW_FILES("Archivos nuevos")
+    NEW_FILES(trKey("Archivos nuevos"));
+
+    val label: String
+        get() = tr(labelEs)
 }
 
 /** Iconos de «Accesos rápidos». El nombre es la clave que se guarda; la etiqueta, lo que se ve. */
-enum class QuickTile(val label: String) {
-    DOWNLOADS("Descargas"),
-    CAMERA("Cámara"),
-    PICTURES("Imágenes"),
-    DOCUMENTS("Documentos"),
-    TRASH("Papelera"),
-    APPS("Apps"),
-    NETWORK("Red / nube"),
-    ANALYZE("Analizar"),
-    HISTORY("Historial"),
-    TRANSFERS("Transferir"),
-    ROOT("Raíz"),
-    SETTINGS("Ajustes")
+enum class QuickTile(private val labelEs: String) {
+    DOWNLOADS(trKey("Descargas")),
+    CAMERA(trKey("Cámara")),
+    PICTURES(trKey("Imágenes")),
+    DOCUMENTS(trKey("Documentos")),
+    TRASH(trKey("Papelera")),
+    APPS(trKey("Apps")),
+    NETWORK(trKey("Red / nube")),
+    ANALYZE(trKey("Analizar")),
+    HISTORY(trKey("Historial")),
+    TRANSFERS(trKey("Transferir")),
+    ROOT(trKey("Raíz")),
+    SETTINGS(trKey("Ajustes"));
+
+    val label: String
+        get() = tr(labelEs)
 }
 
 /**

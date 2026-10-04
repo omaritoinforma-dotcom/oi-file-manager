@@ -57,7 +57,7 @@ object VideoTools {
                 else {
                     val file = File(edit.subtitles)
                     if (file.length() > 2 * 1024 * 1024)
-                        throw IOException("Subtítulos demasiado grandes")
+                        throw IOException(tr("Subtítulos demasiado grandes"))
                     Subtitles.parseSrt(file.readText(Charsets.UTF_8))
                 }
             // Intro y outro: se dibujan con el tamaño final del vídeo y se ponen antes y después.
@@ -206,7 +206,7 @@ object VideoTools {
                         if (transformer.getProgress(p) == Transformer.PROGRESS_STATE_AVAILABLE)
                             report(
                                 OpProgress(
-                                    "Exportando video", source.name, p.progress.toLong(), 100))
+                                    tr("Exportando video"), source.name, p.progress.toLong(), 100))
                         delay(250)
                     }
                     done.await()
@@ -261,14 +261,14 @@ object VideoTools {
         report: (OpProgress) -> Unit
     ) {
         val duration = (endMs - startMs).coerceAtMost(10000)
-        if (duration <= 0) throw IOException("Elige un intervalo de hasta 10 segundos")
+        if (duration <= 0) throw IOException(tr("Elige un intervalo de hasta 10 segundos"))
         val temp = File.createTempFile(".oi-gif-", ".tmp", target.parentFile)
         val retriever = MediaMetadataRetriever()
         try {
             retriever.setDataSource(source.path)
             val frame =
                 retriever.getFrameAtTime(startMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
-                    ?: throw IOException("No se pudo leer el video")
+                    ?: throw IOException(tr("No se pudo leer el video"))
             val width = frame.width.coerceAtMost(480)
             val height = (frame.height.toDouble() * width / frame.width).toInt().coerceAtLeast(1)
             frame.recycle()
@@ -288,7 +288,7 @@ object VideoTools {
                         else
                             retriever.getFrameAtTime(
                                 (startMs + i * 125) * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
-                    val original = raw ?: throw IOException("No se pudo leer un fotograma")
+                    val original = raw ?: throw IOException(tr("No se pudo leer un fotograma"))
                     val bitmap =
                         if (original.width == width && original.height == height) original
                         else
@@ -299,7 +299,7 @@ object VideoTools {
                     bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
                     bitmap.recycle()
                     encoder.frame(pixels, 13)
-                    report(OpProgress("Creando GIF", source.name, (i + 1).toLong(), count.toLong()))
+                    report(OpProgress(tr("Creando GIF"), source.name, (i + 1).toLong(), count.toLong()))
                 }
                 encoder.end()
             }

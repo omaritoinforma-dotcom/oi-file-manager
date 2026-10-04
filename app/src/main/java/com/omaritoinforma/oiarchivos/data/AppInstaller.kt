@@ -119,7 +119,7 @@ object AppInstaller {
             queue = null
             progress.value = null
             confirm.value = null
-            finished.tryEmit(q.summary(if (installing) "Instaladas" else "Desinstaladas"))
+            finished.tryEmit(q.summary(if (installing) tr("Instaladas") else tr("Desinstaladas")))
             return
         }
         progress.value = Progress(installing, q.done, q.total, job.label)
@@ -142,7 +142,7 @@ object AppInstaller {
             @Suppress("DEPRECATION")
             val info =
                 ctx.packageManager.getPackageArchiveInfo(apk.path, 0)
-                    ?: throw IOException("no es un APK válido")
+                    ?: throw IOException(tr("no es un APK válido"))
             val installer = ctx.packageManager.packageInstaller
             val params =
                 PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
@@ -183,7 +183,7 @@ object AppInstaller {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 if (queue?.key != key) return
                 val ask = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_INTENT, Intent::class.java)
-                if (ask == null) finish(ctx, key, false, "Android no pidió confirmación")
+                if (ask == null) finish(ctx, key, false, tr("Android no pidió confirmación"))
                 else confirm.value = ask
             }
             PackageInstaller.STATUS_SUCCESS -> finish(ctx, key, true, null)
@@ -228,11 +228,11 @@ object AppInstaller {
     fun describe(status: Int, message: String?): String =
         when (status) {
             PackageInstaller.STATUS_FAILURE_ABORTED -> "cancelado"
-            PackageInstaller.STATUS_FAILURE_BLOCKED -> "bloqueado por el sistema"
-            PackageInstaller.STATUS_FAILURE_CONFLICT -> "choca con una app ya instalada"
-            PackageInstaller.STATUS_FAILURE_INCOMPATIBLE -> "no es compatible con este teléfono"
-            PackageInstaller.STATUS_FAILURE_INVALID -> "APK no válido"
-            PackageInstaller.STATUS_FAILURE_STORAGE -> "no hay espacio suficiente"
+            PackageInstaller.STATUS_FAILURE_BLOCKED -> tr("bloqueado por el sistema")
+            PackageInstaller.STATUS_FAILURE_CONFLICT -> tr("choca con una app ya instalada")
+            PackageInstaller.STATUS_FAILURE_INCOMPATIBLE -> tr("no es compatible con este teléfono")
+            PackageInstaller.STATUS_FAILURE_INVALID -> tr("APK no válido")
+            PackageInstaller.STATUS_FAILURE_STORAGE -> tr("no hay espacio suficiente")
             else -> message?.takeIf { it.isNotBlank() } ?: "error"
         }
 }

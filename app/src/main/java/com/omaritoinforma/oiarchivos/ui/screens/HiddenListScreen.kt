@@ -21,6 +21,7 @@ import com.omaritoinforma.oiarchivos.ui.MainViewModel
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.omaritoinforma.oiarchivos.data.tr
 
 /** Lista de ocultos: lo que se ocultó con «Ocultar»; con contraseña si «Proteger los archivos ocultos» está activado. */
 @Composable
@@ -30,13 +31,13 @@ fun HiddenListScreen(vm: MainViewModel) {
     LaunchedEffect(version) {
         files = withContext(Dispatchers.IO) { vm.hiddenList() }
     }
-    ToolPage("Lista de ocultos", vm) { pad ->
+    ToolPage(tr("Lista de ocultos"), vm) { pad ->
         val list = files
         when {
-            list == null -> Text("Leyendo…", Modifier.padding(pad).padding(16.dp))
+            list == null -> Text(tr("Leyendo…"), Modifier.padding(pad).padding(16.dp))
             list.isEmpty() ->
                 Text(
-                    "No hay nada oculto. Selecciona archivos o carpetas y usa «Más» → «Ocultar».",
+                    tr("No hay nada oculto. Selecciona archivos o carpetas y usa «Más» → «Ocultar»."),
                     Modifier.padding(pad).padding(16.dp))
             else ->
                 LazyColumn(Modifier.padding(pad)) {
@@ -50,7 +51,7 @@ fun HiddenListScreen(vm: MainViewModel) {
                                         vm.unhideFiles(listOf(file))
                                         version++
                                     }) {
-                                        Text("Mostrar")
+                                        Text(tr("Mostrar"))
                                     }
                             },
                             modifier =

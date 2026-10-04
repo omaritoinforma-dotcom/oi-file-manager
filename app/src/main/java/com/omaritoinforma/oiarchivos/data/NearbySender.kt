@@ -62,7 +62,7 @@ object Nearby {
     fun parseOffer(json: String): Offer {
         val o = JSONObject(json)
         val list = o.getJSONArray("files")
-        if (list.length() !in 1..MAX_FILES) throw IOException("Oferta con demasiados archivos")
+        if (list.length() !in 1..MAX_FILES) throw IOException(tr("Oferta con demasiados archivos"))
         val files =
             (0 until list.length()).map { i ->
                 val f = list.getJSONObject(i)
@@ -71,12 +71,12 @@ object Nearby {
                 val size = f.getLong("size")
                 val sha = f.getString("sha256").lowercase()
                 if (size < 0 || !sha.matches(Regex("[0-9a-f]{64}")))
-                    throw IOException("Oferta no válida")
+                    throw IOException(tr("Oferta no válida"))
                 OfferedFile(name, size, sha)
             }
         if (files.map { it.name }.toSet().size != files.size)
-            throw IOException("Nombres repetidos en la oferta")
-        return Offer(o.optString("from").take(64).ifBlank { "Otro teléfono" }, files)
+            throw IOException(tr("Nombres repetidos en la oferta"))
+        return Offer(o.optString("from").take(64).ifBlank { tr("Otro teléfono") }, files)
     }
 
     fun sha256(file: File): String {
@@ -136,20 +136,20 @@ object Nearby {
         files: List<File>,
         report: (OpProgress) -> Unit
     ): Boolean {
-        val tracker = Tracker("Enviando a ${peer.name}", report)
+        val tracker = Tracker(tr("Enviando a {0}", peer.name), report)
         tracker.totalFiles = files.size
         tracker.totalBytes = files.sumOf { it.length() }
-        tracker.current = "Preparando"
+        tracker.current = tr("Preparando")
         tracker.emit()
         val offered =
             files.map {
                 currentCoroutineContext().ensureActive()
                 SafeFiles.requireRegular(it)
-                if (!it.isFile) throw IOException("Solo se envían archivos: ${it.name}")
+                if (!it.isFile) throw IOException(tr("Solo se envían archivos: {0}", it.name))
                 OfferedFile(it.name, it.length(), sha256(it))
             }
         val base = "http://${peer.address}:${peer.port}$PATH"
-        tracker.current = "Esperando que ${peer.name} acepte"
+        tracker.current = tr("Esperando que {0} acepte", peer.name)
         tracker.emit()
         val c = URL("$base/oferta").openConnection() as HttpURLConnection
         val token =
@@ -165,7 +165,7 @@ object Nearby {
                         JSONObject(c.inputStream.bufferedReader().use { it.readText() })
                             .getString("token")
                     403 -> return false
-                    else -> throw IOException("El otro teléfono respondió ${c.responseCode}")
+                    else -> throw IOException(tr("El otro teléfono respondió {0}", c.responseCode))
                 }
             } finally {
                 c.disconnect()
@@ -250,8 +250,8 @@ class NearbyReceiver(
         }
 
     private fun body(session: IHTTPSession, limit: Long): ByteArray {
-        val length = session.headers["content-length"]?.toLongOrNull() ?: throw IOException("Falta el tamaño")
-        if (length !in 0..limit) throw IOException("Tamaño no permitido")
+        val length = session.headers["content-length"]?.toLongOrNull() ?: throw IOException(tr("Falta el tamaño"))
+        if (length !in 0..limit) throw IOException(tr("Tamaño no permitido"))
         val bytes = ByteArray(length.toInt())
         java.io.DataInputStream(session.inputStream).readFully(bytes)
         return bytes
@@ -260,7 +260,7 @@ class NearbyReceiver(
     private fun offer(session: IHTTPSession): Response {
         val offer = Nearby.parseOffer(String(body(session, 1L shl 20), Charsets.UTF_8))
         if (!destination.isDirectory && !destination.mkdirs())
-            throw IOException("No se pudo crear la carpeta de destino")
+            throw IOException(tr("No se pudo crear la carpeta de destino"))
         if (offer.bytes > destination.usableSpace)
             return text(Response.Status.BAD_REQUEST, "No hay espacio suficiente")
         if (!decide(offer)) return text(Response.Status.FORBIDDEN, "Rechazado")
@@ -275,10 +275,10 @@ class NearbyReceiver(
             offers[session.parms["token"].orEmpty()]
                 ?: return text(Response.Status.FORBIDDEN, "Envío no aceptado")
         val expected =
-            pending.offer.files.getOrNull(index) ?: throw IOException("Archivo no ofrecido")
+            pending.offer.files.getOrNull(index) ?: throw IOException(tr("Archivo no ofrecido"))
         val length = session.headers["content-length"]?.toLongOrNull()
-        if (length != expected.size) throw IOException("El tamaño no coincide con la oferta")
-        if (!pending.done.add(index)) throw IOException("Archivo ya recibido")
+        if (length != expected.size) throw IOException(tr("El tamaño no coincide con la oferta"))
+        if (!pending.done.add(index)) throw IOException(tr("Archivo ya recibido"))
         val temp = File(destination, ".oi-recibiendo-${UUID.randomUUID()}.part")
         try {
             val md = MessageDigest.getInstance("SHA-256")
@@ -288,7 +288,7 @@ class NearbyReceiver(
                 val buffer = ByteArray(1 shl 16)
                 while (left > 0) {
                     val n = input.read(buffer, 0, minOf(buffer.size.toLong(), left).toInt())
-                    if (n < 0) throw IOException("Envío incompleto")
+                    if (n < 0) throw IOException(tr("Envío incompleto"))
                     out.write(buffer, 0, n)
                     md.update(buffer, 0, n)
                     left -= n
@@ -297,7 +297,7 @@ class NearbyReceiver(
                 out.fd.sync()
             }
             val sha = md.digest().joinToString("") { "%02x".format(it) }
-            if (sha != expected.sha256) throw IOException("El archivo llegó dañado")
+            if (sha != expected.sha256) throw IOException(tr("El archivo llegó dañado"))
             val target = FileOps.uniqueName(destination, expected.name)
             SafeFiles.commit(temp, target, replace = false)
             onReceived(target)

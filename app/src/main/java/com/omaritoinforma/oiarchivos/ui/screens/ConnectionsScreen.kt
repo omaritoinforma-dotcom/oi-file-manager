@@ -49,7 +49,7 @@ fun ConnectionsScreen(vm: MainViewModel) {
                 CloudAuth.finish(ctx, authService, account, result.data) { outcome ->
                     outcome
                         .onSuccess { refresh++ }
-                        .onFailure { vm.toast(it.message ?: "No se pudo entrar") }
+                        .onFailure { vm.toast(it.message ?: tr("No se pudo entrar")) }
                 }
         }
     val google =
@@ -57,13 +57,13 @@ fun ConnectionsScreen(vm: MainViewModel) {
             result ->
             runCatching {
                     val data =
-                        result.data ?: throw java.io.IOException("Inicio de sesión cancelado")
+                        result.data ?: throw java.io.IOException(tr("Inicio de sesión cancelado"))
                     CloudAuth.googleFinish(
                         ctx,
                         Identity.getAuthorizationClient(ctx).getAuthorizationResultFromIntent(data))
                 }
                 .onSuccess { refresh++ }
-                .onFailure { vm.toast(it.message ?: "No se pudo autorizar Google Drive") }
+                .onFailure { vm.toast(it.message ?: tr("No se pudo autorizar Google Drive")) }
         }
     fun loginGoogle() {
         Identity.getAuthorizationClient(ctx)
@@ -75,9 +75,9 @@ fun ConnectionsScreen(vm: MainViewModel) {
                 else
                     runCatching { CloudAuth.googleFinish(ctx, result) }
                         .onSuccess { refresh++ }
-                        .onFailure { vm.toast(it.message ?: "No se pudo entrar") }
+                        .onFailure { vm.toast(it.message ?: tr("No se pudo entrar")) }
             }
-            .addOnFailureListener { vm.toast("No se pudo autorizar Google Drive: ${it.message}") }
+            .addOnFailureListener { vm.toast(tr("No se pudo autorizar Google Drive: {0}", it.message)) }
     }
     val tree =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -89,7 +89,7 @@ fun ConnectionsScreen(vm: MainViewModel) {
                                 Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                     }
                     .onFailure {
-                        vm.toast("Permiso temporal; vuelve a elegir la carpeta si caduca")
+                        vm.toast(tr("Permiso temporal; vuelve a elegir la carpeta si caduca"))
                     }
                 vm.goTo(Screen.Documents(uri.toString()))
             }
@@ -97,10 +97,10 @@ fun ConnectionsScreen(vm: MainViewModel) {
     LaunchedEffect(edit, refresh) {
         withContext(Dispatchers.IO) { runCatching { store.load() } }
             .onSuccess { accounts = it }
-            .onFailure { loadingError = "No se pudieron leer las conexiones: ${it.message}" }
+            .onFailure { loadingError = tr("No se pudieron leer las conexiones: {0}", it.message) }
     }
     ToolPage(
-        "Red, nube y USB",
+        tr("Red, nube y USB"),
         vm,
         actions = {
             TextButton(
@@ -109,62 +109,62 @@ fun ConnectionsScreen(vm: MainViewModel) {
                     prefilled = false
                     edit = true
                 }) {
-                    Text("Agregar")
+                    Text(tr("Agregar"))
                 }
         }) { pad ->
             LazyColumn(Modifier.fillMaxSize().padding(pad)) {
                 item {
                     ListItem(
-                        headlineContent = { Text("Entrar en Google Drive") },
+                        headlineContent = { Text(tr("Entrar en Google Drive")) },
                         supportingContent = {
-                            Text("Elegir una cuenta y autorizar acceso a sus archivos")
+                            Text(tr("Elegir una cuenta y autorizar acceso a sus archivos"))
                         },
                         modifier = Modifier.clickable { loginGoogle() })
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text("Enviar a otro teléfono") },
-                        supportingContent = { Text("Enviar o recibir archivos por la misma Wi-Fi") },
+                        headlineContent = { Text(tr("Enviar a otro teléfono")) },
+                        supportingContent = { Text(tr("Enviar o recibir archivos por la misma Wi-Fi")) },
                         modifier = Modifier.clickable { vm.goTo(Screen.Nearby) })
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text("Descargar desde una URL") },
-                        supportingContent = { Text("Gestor de descargas; si se corta, continúa donde iba") },
+                        headlineContent = { Text(tr("Descargar desde una URL")) },
+                        supportingContent = { Text(tr("Gestor de descargas; si se corta, continúa donde iba")) },
                         modifier = Modifier.clickable { downloadUrl = true })
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text("Enviar a la TV") },
-                        supportingContent = { Text("Fotos, música y vídeos en un televisor DLNA") },
+                        headlineContent = { Text(tr("Enviar a la TV")) },
+                        supportingContent = { Text(tr("Fotos, música y vídeos en un televisor DLNA")) },
                         modifier = Modifier.clickable { vm.goTo(Screen.Cast) })
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text("Buscar en la red local") },
+                        headlineContent = { Text(tr("Buscar en la red local")) },
                         supportingContent = {
-                            Text("Servidores SMB, FTP, FTPS y SFTP de tu Wi-Fi")
+                            Text(tr("Servidores SMB, FTP, FTPS y SFTP de tu Wi-Fi"))
                         },
                         modifier = Modifier.clickable { scan = true })
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text("Explorar equipos por Bluetooth") },
-                        supportingContent = { Text("Archivos y carpetas mediante OBEX FTP") },
+                        headlineContent = { Text(tr("Explorar equipos por Bluetooth")) },
+                        supportingContent = { Text(tr("Archivos y carpetas mediante OBEX FTP")) },
                         modifier = Modifier.clickable { vm.goTo(Screen.Bluetooth) })
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text("Carpeta de SD / USB / proveedor de nube") },
+                        headlineContent = { Text(tr("Carpeta de SD / USB / proveedor de nube")) },
                         supportingContent = {
-                            Text("Elegir una carpeta usando el selector de Android")
+                            Text(tr("Elegir una carpeta usando el selector de Android"))
                         },
                         modifier = Modifier.clickable { tree.launch(null) })
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text("Compartir por Wi-Fi / FTP") },
-                        supportingContent = { Text("Acceder desde una computadora") },
+                        headlineContent = { Text(tr("Compartir por Wi-Fi / FTP")) },
+                        supportingContent = { Text(tr("Acceder desde una computadora")) },
                         modifier = Modifier.clickable { vm.goTo(Screen.Sharing) })
                 }
                 if (loadingError != null)
@@ -182,7 +182,7 @@ fun ConnectionsScreen(vm: MainViewModel) {
                             Column {
                                 if (c.protocol == Protocol.BAIDU ||
                                     c.protocol == Protocol.SUGARSYNC)
-                                    TextButton(onClick = { additionalLogin = c }) { Text("Entrar") }
+                                    TextButton(onClick = { additionalLogin = c }) { Text(tr("Entrar")) }
                                 if (c.protocol in CloudAuth.providers && c.clientId.isNotBlank())
                                     TextButton(
                                         onClick = {
@@ -191,17 +191,17 @@ fun ConnectionsScreen(vm: MainViewModel) {
                                                     oauth.launch(CloudAuth.request(authService, c))
                                                 }
                                                 .onFailure {
-                                                    vm.toast(it.message ?: "No se pudo entrar")
+                                                    vm.toast(it.message ?: tr("No se pudo entrar"))
                                                 }
                                         }) {
-                                            Text("Entrar")
+                                            Text(tr("Entrar"))
                                         }
                                 TextButton(
                                     onClick = {
                                         selected = c
                                         edit = true
                                     }) {
-                                        Text("Editar")
+                                        Text(tr("Editar"))
                                     }
                             }
                         },
@@ -210,7 +210,7 @@ fun ConnectionsScreen(vm: MainViewModel) {
                 if (accounts.isEmpty())
                     item {
                         Text(
-                            "Agrega un servidor FTP, FTPS, SFTP, SMB, WebDAV o una cuenta de nube. Puedes guardar varias cuentas de cada proveedor.",
+                            tr("Agrega un servidor FTP, FTPS, SFTP, SMB, WebDAV o una cuenta de nube. Puedes guardar varias cuentas de cada proveedor."),
                             Modifier.padding(20.dp))
                     }
             }
@@ -251,7 +251,7 @@ fun ConnectionsScreen(vm: MainViewModel) {
                     store.save(accounts.filter { it.id != c.id } + c)
                     edit = false
                 } catch (e: Exception) {
-                    vm.toast(e.message ?: "No se pudo guardar")
+                    vm.toast(e.message ?: tr("No se pudo guardar"))
                 }
             },
             onDelete = { c ->
@@ -291,12 +291,12 @@ private fun ConnectionDialog(
                 Protocol.SUGARSYNC)
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (isNew) "Nueva conexión" else "Editar conexión") },
+        title = { Text(if (isNew) tr("Nueva conexión") else tr("Editar conexión")) },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 item {
                     OutlinedTextField(
-                        label, { label = it }, label = { Text("Nombre de la conexión") })
+                        label, { label = it }, label = { Text(tr("Nombre de la conexión")) })
                 }
                 item {
                     Column {
@@ -342,36 +342,36 @@ private fun ConnectionDialog(
                             label = {
                                 Text(
                                     if (protocol == Protocol.WEBDAV || protocol == Protocol.S3)
-                                        "URL completa https://…"
-                                    else "Servidor")
+                                        tr("URL completa https://…")
+                                    else tr("Servidor"))
                             })
                     }
                     // NFS encuentra sus puertos por el portmapper: no hay puerto que elegir.
                     if (protocol != Protocol.NFS)
-                        item { OutlinedTextField(port, { port = it }, label = { Text("Puerto") }) }
+                        item { OutlinedTextField(port, { port = it }, label = { Text(tr("Puerto")) }) }
                     item {
                         OutlinedTextField(
                             user,
                             { user = it },
                             label = {
-                                Text(if (protocol == Protocol.NFS) "Usuario y grupo uid:gid" else "Usuario")
+                                Text(if (protocol == Protocol.NFS) tr("Usuario y grupo uid:gid") else tr("Usuario"))
                             },
                             supportingText = {
                                 if (protocol == Protocol.NFS)
-                                    Text("Vacío: 65534:65534 («nobody»). NFS no cifra nada: úsalo en una red de confianza")
+                                    Text(tr("Vacío: 65534:65534 («nobody»). NFS no cifra nada: úsalo en una red de confianza"))
                             })
                     }
                 }
                 if (protocol == Protocol.SUGARSYNC) {
                     item {
                         OutlinedTextField(
-                            user, { user = it }, label = { Text("Correo de SugarSync") })
+                            user, { user = it }, label = { Text(tr("Correo de SugarSync")) })
                     }
                     item {
                         OutlinedTextField(
                             host,
                             { host = it },
-                            label = { Text("Identificador de tu aplicación SugarSync /sc/…") })
+                            label = { Text(tr("Identificador de tu aplicación SugarSync /sc/…")) })
                     }
                 }
                 if (protocol != Protocol.NFS)
@@ -381,8 +381,8 @@ private fun ConnectionDialog(
                         { secret = it },
                         label = {
                             Text(
-                                if (cloud) "Token de acceso (opcional si usas Entrar)"
-                                else "Contraseña")
+                                if (cloud) tr("Token de acceso (opcional si usas Entrar)")
+                                else tr("Contraseña"))
                         },
                         visualTransformation = PasswordVisualTransformation())
                 }
@@ -393,11 +393,11 @@ private fun ConnectionDialog(
                         label = {
                             Text(
                                 if (protocol == Protocol.S3) "/nombre-del-bucket/carpeta"
-                                else if (protocol == Protocol.BOX) "ID de carpeta, 0 para la raíz"
-                                else if (protocol == Protocol.DRIVE) "ID de carpeta o root"
-                                else if (protocol == Protocol.SMB) "Carpeta compartida /nombre"
-                                else if (protocol == Protocol.NFS) "Ruta exportada /srv/datos"
-                                else "Carpeta inicial")
+                                else if (protocol == Protocol.BOX) tr("ID de carpeta, 0 para la raíz")
+                                else if (protocol == Protocol.DRIVE) tr("ID de carpeta o root")
+                                else if (protocol == Protocol.SMB) tr("Carpeta compartida /nombre")
+                                else if (protocol == Protocol.NFS) tr("Ruta exportada /srv/datos")
+                                else tr("Carpeta inicial"))
                         })
                 }
                 if (protocol == Protocol.S3)
@@ -405,17 +405,17 @@ private fun ConnectionDialog(
                         OutlinedTextField(
                             fingerprint,
                             { fingerprint = it },
-                            label = { Text("Región de S3, por ejemplo us-east-1") })
+                            label = { Text(tr("Región de S3, por ejemplo us-east-1")) })
                     }
                 if (protocol == Protocol.SFTP)
                     item {
                         OutlinedTextField(
                             fingerprint,
                             { fingerprint = it },
-                            label = { Text("Huella del servidor SHA256:…") },
+                            label = { Text(tr("Huella del servidor SHA256:…")) },
                             supportingText = {
                                 Text(
-                                    "Cópiala del administrador del servidor. No se aceptan claves distintas.")
+                                    tr("Cópiala del administrador del servidor. No se aceptan claves distintas."))
                             })
                     }
                 if (protocol in CloudAuth.providers ||
@@ -428,31 +428,31 @@ private fun ConnectionDialog(
                             label = {
                                 Text(
                                     if (protocol == Protocol.SUGARSYNC)
-                                        "Access Key ID de tu aplicación"
-                                    else "Identificador de la aplicación OAuth")
+                                        tr("Access Key ID de tu aplicación")
+                                    else tr("Identificador de la aplicación OAuth"))
                             },
                             supportingText = {
                                 Text(
-                                    "Tras guardar, pulsa Entrar para autorizar la cuenta y renovar el acceso automáticamente.")
+                                    tr("Tras guardar, pulsa Entrar para autorizar la cuenta y renovar el acceso automáticamente."))
                             })
                     }
                     item {
                         OutlinedTextField(
                             clientSecret,
                             { clientSecret = it },
-                            label = { Text("Clave de tu aplicación (si el proveedor la exige)") },
+                            label = { Text(tr("Clave de tu aplicación (si el proveedor la exige)")) },
                             visualTransformation = PasswordVisualTransformation())
                     }
                 }
                 if (cloud && clientId.isBlank())
                     item {
                         Text(
-                            "Esta conexión usa un token de tu cuenta con permisos de archivos. Cuando caduque, actualízalo aquí. También puedes usar el selector de Android si tienes instalada la app de tu nube.")
+                            tr("Esta conexión usa un token de tu cuenta con permisos de archivos. Cuando caduque, actualízalo aquí. También puedes usar el selector de Android si tienes instalada la app de tu nube."))
                     }
                 if (protocol == Protocol.FTP)
                     item {
                         Text(
-                            "FTP envía datos y contraseña sin cifrar. Para conexiones de Internet usa FTPS o SFTP.")
+                            tr("FTP envía datos y contraseña sin cifrar. Para conexiones de Internet usa FTPS o SFTP."))
                     }
                 if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
             }
@@ -467,7 +467,7 @@ private fun ConnectionDialog(
                         n !in 1..65535 ||
                         (protocol == Protocol.SFTP && fingerprint.isBlank()) ||
                         (cloud && secret.isBlank() && clientId.isBlank())) {
-                        error = "Completa los campos y revisa el puerto"
+                        error = tr("Completa los campos y revisa el puerto")
                     } else
                         onSave(
                             Connection(
@@ -490,14 +490,14 @@ private fun ConnectionDialog(
                                 if (secret == existing?.secret) existing?.expiresAt ?: 0 else 0,
                                 existing?.googleAccount.orEmpty()))
                 }) {
-                    Text("Guardar")
+                    Text(tr("Guardar"))
                 }
         },
         dismissButton = {
             Row {
                 if (existing != null && !isNew)
-                    TextButton(onClick = { onDelete(existing) }) { Text("Eliminar") }
-                TextButton(onClick = onDismiss) { Text("Cancelar") }
+                    TextButton(onClick = { onDelete(existing) }) { Text(tr("Eliminar")) }
+                TextButton(onClick = onDismiss) { Text(tr("Cancelar")) }
             }
         })
 }
@@ -509,7 +509,7 @@ private fun DownloadUrlDialog(vm: MainViewModel, onDismiss: () -> Unit) {
     var error by remember { mutableStateOf<String?>(null) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Descargar desde una URL") },
+        title = { Text(tr("Descargar desde una URL")) },
         text = {
             Column {
                 OutlinedTextField(
@@ -518,10 +518,10 @@ private fun DownloadUrlDialog(vm: MainViewModel, onDismiss: () -> Unit) {
                         url = it
                         error = null
                     },
-                    label = { Text("Dirección (URL)") },
+                    label = { Text(tr("Dirección (URL)")) },
                     singleLine = true,
                     isError = error != null,
-                    supportingText = { Text(error ?: "Se guarda en ${vm.downloadFolder.value}") })
+                    supportingText = { Text(error ?: tr("Se guarda en {0}", vm.downloadFolder.value)) })
             }
         },
         confirmButton = {
@@ -536,13 +536,13 @@ private fun DownloadUrlDialog(vm: MainViewModel, onDismiss: () -> Unit) {
                     val link = url.trim()
                     val folder = java.io.File(vm.downloadFolder.value)
                     onDismiss()
-                    vm.runTask("Descargando") { report ->
+                    vm.runTask(tr("Descargando")) { report ->
                         val file = UrlDownloader.download(link, folder, report)
-                        OperationResult("Descargado: ${file.name}", listOf(file))
+                        OperationResult(tr("Descargado: {0}", file.name), listOf(file))
                     }
                 }) {
-                    Text("Descargar")
+                    Text(tr("Descargar"))
                 }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } })
 }

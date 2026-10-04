@@ -14,12 +14,13 @@ import com.omaritoinforma.oiarchivos.ui.MainViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.omaritoinforma.oiarchivos.data.tr
 
 /** «Enviar a la TV»: elegir un televisor DLNA y controlar la reproducción. */
 @Composable
 fun CastScreen(vm: MainViewModel) {
     val session by CastSession.state.collectAsState()
-    ToolPage("Enviar a la TV", vm) { pad ->
+    ToolPage(tr("Enviar a la TV"), vm) { pad ->
         Column(Modifier.fillMaxSize().padding(pad)) {
             val current = session
             if (current != null) CastControls(current) else CastPicker(vm)
@@ -33,9 +34,9 @@ private fun CastControls(state: CastSession.State) {
         Text(state.title, style = MaterialTheme.typography.titleMedium)
         Text(
             when {
-                state.busy -> "Enviando a «${state.renderer.name}»…"
-                state.playing -> "Reproduciendo en «${state.renderer.name}»"
-                else -> "En pausa en «${state.renderer.name}»"
+                state.busy -> tr("Enviando a «{0}»…", state.renderer.name)
+                state.playing -> tr("Reproduciendo en «{0}»", state.renderer.name)
+                else -> tr("En pausa en «{0}»", state.renderer.name)
             })
         if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -53,13 +54,12 @@ private fun CastControls(state: CastSession.State) {
         Text("${clock(state.position)} / ${if (state.duration > 0) clock(state.duration) else "--:--"}")
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Button(onClick = CastSession::pauseOrResume, enabled = !state.busy && state.error == null) {
-                Text(if (state.playing) "Pausa" else "Reanudar")
+                Text(if (state.playing) tr("Pausa") else tr("Reanudar"))
             }
-            OutlinedButton(onClick = CastSession::stop) { Text("Detener") }
+            OutlinedButton(onClick = CastSession::stop) { Text(tr("Detener")) }
         }
         Text(
-            "La TV lee el archivo directamente de este teléfono; mantén la app abierta o en " +
-                "segundo plano mientras se reproduce.",
+            tr("La TV lee el archivo directamente de este teléfono; mantén la app abierta o en segundo plano mientras se reproduce."),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -90,14 +90,13 @@ private fun CastPicker(vm: MainViewModel) {
         item {
             Text(
                 if (source == null)
-                    "Elige una foto, música o vídeo en el explorador y usa Más → Enviar a la TV."
-                else "Enviar «${source.name}» a:",
+                    tr("Elige una foto, música o vídeo en el explorador y usa Más → Enviar a la TV.")
+                else tr("Enviar «{0}» a:", source.name),
                 Modifier.padding(16.dp))
             if (searching) LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 16.dp))
             else if (found.isEmpty())
                 Text(
-                    "No se encontró ninguna TV. Debe estar encendida y en la misma Wi-Fi; " +
-                        "también puedes añadirla por su dirección.",
+                    tr("No se encontró ninguna TV. Debe estar encendida y en la misma Wi-Fi; también puedes añadirla por su dirección."),
                     Modifier.padding(16.dp))
         }
         items(found, key = { it.location }) { renderer ->
@@ -111,8 +110,8 @@ private fun CastPicker(vm: MainViewModel) {
         }
         item {
             Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = { round++ }, enabled = !searching) { Text("Buscar otra vez") }
-                OutlinedButton(onClick = { adding = true }) { Text("Añadir por dirección") }
+                OutlinedButton(onClick = { round++ }, enabled = !searching) { Text(tr("Buscar otra vez")) }
+                OutlinedButton(onClick = { adding = true }) { Text(tr("Añadir por dirección")) }
             }
         }
     }
@@ -133,17 +132,17 @@ private fun AddRendererDialog(onDismiss: () -> Unit, onFound: (Dlna.Renderer) ->
     val scope = rememberCoroutineScope()
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Añadir TV") },
+        title = { Text(tr("Añadir TV")) },
         text = {
             Column {
-                Text("IP de la TV (por ejemplo 192.168.1.50) o la URL de su descripción.")
+                Text(tr("IP de la TV (por ejemplo 192.168.1.50) o la URL de su descripción."))
                 OutlinedTextField(
                     address,
                     {
                         address = it
                         error = null
                     },
-                    label = { Text("Dirección de la TV") },
+                    label = { Text(tr("Dirección de la TV")) },
                     singleLine = true,
                     isError = error != null,
                     supportingText = { error?.let { Text(it) } })
@@ -160,14 +159,14 @@ private fun AddRendererDialog(onDismiss: () -> Unit, onFound: (Dlna.Renderer) ->
                             withContext(Dispatchers.IO) { runCatching { Dlna.find(address) } }
                         busy = false
                         renderer
-                            .onSuccess { if (it != null) onFound(it) else error = "No respondió ninguna TV" }
-                            .onFailure { error = it.message ?: "No se pudo conectar" }
+                            .onSuccess { if (it != null) onFound(it) else error = tr("No respondió ninguna TV") }
+                            .onFailure { error = it.message ?: tr("No se pudo conectar") }
                     }
                 }) {
-                    Text("Buscar")
+                    Text(tr("Buscar"))
                 }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } })
 }
 
 private fun clock(seconds: Long) =

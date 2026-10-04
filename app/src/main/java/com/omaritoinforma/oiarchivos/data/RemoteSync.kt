@@ -85,7 +85,7 @@ object RemoteSync {
         try {
             fs.rename(RemoteEntry(written, temp, false, size), edit.name)
         } catch (e: Exception) {
-            throw IOException("El archivo se subió como «$temp» pero no se pudo renombrar: ${e.message}")
+            throw IOException(tr("El archivo se subió como «{0}» pero no se pudo renombrar: {1}", temp, e.message))
         }
         return Outcome.Updated(synced)
     }
@@ -133,7 +133,7 @@ object RemoteSync {
             }
             val tmp = File(file.path + ".tmp")
             tmp.writeText(array.toString())
-            if (!tmp.renameTo(file)) throw IOException("No se pudo guardar la lista de archivos remotos")
+            if (!tmp.renameTo(file)) throw IOException(tr("No se pudo guardar la lista de archivos remotos"))
         }
     }
 }

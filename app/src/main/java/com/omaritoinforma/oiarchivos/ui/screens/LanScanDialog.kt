@@ -17,6 +17,7 @@ import com.omaritoinforma.oiarchivos.data.LanScanner
 import com.omaritoinforma.oiarchivos.data.Protocol
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.omaritoinforma.oiarchivos.data.tr
 
 /** Servicios que se anuncian por mDNS / DNS-SD, como hace ES con Zeroconf. */
 private val announced =
@@ -129,18 +130,18 @@ fun LanScanDialog(onDismiss: () -> Unit, onPick: (LanHost) -> Unit) {
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Red local") },
+        title = { Text(tr("Red local")) },
         text = {
             Column {
                 Text(
-                    if (networks.isBlank()) "Conéctate a una red Wi-Fi para buscar equipos."
-                    else if (scanning) "Buscando servidores SMB, FTP, FTPS y SFTP en $networks…"
-                    else "Búsqueda terminada en $networks.")
+                    if (networks.isBlank()) tr("Conéctate a una red Wi-Fi para buscar equipos.")
+                    else if (scanning) tr("Buscando servidores SMB, FTP, FTPS y SFTP en {0}…", networks)
+                    else tr("Búsqueda terminada en {0}.", networks))
                 if (scanning)
                     LinearProgressIndicator(
                         progress = { progress }, modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
                 if (!scanning && found.isEmpty())
-                    Text("No se encontraron servidores.", Modifier.padding(top = 8.dp))
+                    Text(tr("No se encontraron servidores."), Modifier.padding(top = 8.dp))
                 LazyColumn(Modifier.heightIn(max = 360.dp)) {
                     items(found.sortedWith(compareBy({ it.address }, { it.port }))) { host ->
                         ListItem(
@@ -155,5 +156,5 @@ fun LanScanDialog(onDismiss: () -> Unit, onPick: (LanHost) -> Unit) {
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } })
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Cerrar")) } })
 }

@@ -23,6 +23,7 @@ import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.omaritoinforma.oiarchivos.data.tr
 
 /** Versión instalada de un paquete, o null si no está. */
 private fun installedVersion(ctx: Context, packageName: String): Long? =
@@ -77,7 +78,7 @@ fun CleanerScreen(vm: MainViewModel) {
                             }
                         }
                         .getOrElse {
-                            vm.toast(it.message ?: "No se pudo buscar")
+                            vm.toast(it.message ?: tr("No se pudo buscar"))
                             emptyList()
                         }
                 }
@@ -90,15 +91,14 @@ fun CleanerScreen(vm: MainViewModel) {
 
     val selected = items.orEmpty().filter { chosen[it.file.path] == true }
     val total = selected.sumOf { it.size } + if (cacheChosen) cacheSize else 0
-    ToolPage("Limpiar basura", vm) { pad ->
+    ToolPage(tr("Limpiar basura"), vm) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(16.dp)) {
             item {
                 Text(
-                    "Busca temporales, miniaturas guardadas, APK de apps ya instaladas y restos de apps " +
-                        "desinstaladas. Lo que elijas va a la papelera, así que se puede recuperar.")
+                    tr("Busca temporales, miniaturas guardadas, APK de apps ya instaladas y restos de apps desinstaladas. Lo que elijas va a la papelera, así que se puede recuperar."))
                 Spacer(Modifier.height(12.dp))
                 Button(onClick = ::scan, enabled = !scanning) {
-                    Text(if (items == null) "Buscar basura" else "Buscar otra vez")
+                    Text(if (items == null) tr("Buscar basura") else tr("Buscar otra vez"))
                 }
                 if (scanning) {
                     LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 12.dp))
@@ -109,12 +109,12 @@ fun CleanerScreen(vm: MainViewModel) {
             if (found != null && !scanning) {
                 item {
                     Text(
-                        "Se pueden liberar ${formatSize(total)}",
+                        tr("Se pueden liberar {0}", formatSize(total)),
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(vertical = 12.dp))
                     ListItem(
-                        headlineContent = { Text("Caché de OI Archivos") },
-                        supportingContent = { Text("Miniaturas y vistas previas · ${formatSize(cacheSize)}") },
+                        headlineContent = { Text(tr("Caché de OI Archivos")) },
+                        supportingContent = { Text(tr("Miniaturas y vistas previas · {0}", formatSize(cacheSize))) },
                         leadingContent = { Checkbox(cacheChosen, { cacheChosen = it }) })
                 }
                 JunkScanner.Kind.entries.forEach { kind ->
@@ -132,7 +132,7 @@ fun CleanerScreen(vm: MainViewModel) {
                             },
                             trailingContent = {
                                 TextButton(onClick = { open[kind] = open[kind] != true }) {
-                                    Text(if (open[kind] == true) "Ocultar" else "Ver")
+                                    Text(if (open[kind] == true) tr("Ocultar") else tr("Ver"))
                                 }
                             })
                     }
@@ -163,7 +163,7 @@ fun CleanerScreen(vm: MainViewModel) {
                         onClick = { confirm = true },
                         enabled = selected.isNotEmpty() || (cacheChosen && cacheSize > 0),
                         modifier = Modifier.padding(top = 16.dp)) {
-                            Text("Limpiar ${formatSize(total)}")
+                            Text(tr("Limpiar {0}", formatSize(total)))
                         }
                 }
             }
@@ -172,11 +172,11 @@ fun CleanerScreen(vm: MainViewModel) {
     if (confirm)
         AlertDialog(
             onDismissRequest = { confirm = false },
-            title = { Text("Limpiar basura") },
+            title = { Text(tr("Limpiar basura")) },
             text = {
                 Text(
-                    "${selected.size} elemento(s) irán a la papelera" +
-                        if (cacheChosen) " y se borrará la caché de la app." else ".")
+                    tr("{0} elemento(s) irán a la papelera", selected.size) +
+                        if (cacheChosen) tr(" y se borrará la caché de la app.") else ".")
             },
             confirmButton = {
                 TextButton(
@@ -186,8 +186,8 @@ fun CleanerScreen(vm: MainViewModel) {
                         if (selected.isNotEmpty()) vm.delete(selected.map { it.file.toItem() }, true)
                         items = null
                     }) {
-                        Text("Limpiar")
+                        Text(tr("Limpiar"))
                     }
             },
-            dismissButton = { TextButton(onClick = { confirm = false }) { Text("Cancelar") } })
+            dismissButton = { TextButton(onClick = { confirm = false }) { Text(tr("Cancelar")) } })
 }

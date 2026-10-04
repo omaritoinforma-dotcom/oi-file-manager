@@ -33,65 +33,88 @@ fun File.toItem(): FileItem {
 enum class ViewMode { LIST, DETAILS, GRID }
 
 /** Codificación de los nombres de archivo del servidor FTP del teléfono («Codificación» de ES). */
-enum class FtpEncoding(val label: String, private val charsetName: String) {
-    UTF8("UTF-8", "UTF-8"),
-    LATIN1("ISO-8859-1 (Europa occidental)", "ISO-8859-1"),
-    WINDOWS_1252("Windows-1252", "windows-1252"),
-    GBK("GBK (chino simplificado)", "GBK"),
-    SHIFT_JIS("Shift_JIS (japonés)", "Shift_JIS");
+enum class FtpEncoding(private val labelEs: String, private val charsetName: String) {
+    UTF8(trKey("UTF-8"), "UTF-8"),
+    LATIN1(trKey("ISO-8859-1 (Europa occidental)"), "ISO-8859-1"),
+    WINDOWS_1252(trKey("Windows-1252"), "windows-1252"),
+    GBK(trKey("GBK (chino simplificado)"), "GBK"),
+    SHIFT_JIS(trKey("Shift_JIS (japonés)"), "Shift_JIS");
+
+    val label: String
+        get() = tr(labelEs)
 
     val charset: java.nio.charset.Charset
         get() = runCatching { java.nio.charset.Charset.forName(charsetName) }.getOrDefault(Charsets.UTF_8)
 }
 
 /** Cómo se dibujan los iconos de carpeta («Estilo de carpetas» de los temas de ES). */
-enum class FolderStyle(val label: String) {
-    CLASSIC("Clásica (amarilla)"),
-    ACCENT("Color de la app"),
-    GREY("Gris")
+enum class FolderStyle(private val labelEs: String) {
+    CLASSIC(trKey("Clásica (amarilla)")),
+    ACCENT(trKey("Color de la app")),
+    GREY(trKey("Gris"));
+
+    val label: String
+        get() = tr(labelEs)
 }
 
 /** Orientación de la pantalla («Orientación de la pantalla» de ES). */
-enum class ScreenOrientation(val label: String) {
-    AUTO("Automática"),
-    PORTRAIT("Vertical"),
-    LANDSCAPE("Horizontal")
+enum class ScreenOrientation(private val labelEs: String) {
+    AUTO(trKey("Automática")),
+    PORTRAIT(trKey("Vertical")),
+    LANDSCAPE(trKey("Horizontal"));
+
+    val label: String
+        get() = tr(labelEs)
 }
 
-enum class SortBy(val label: String) { NAME("Nombre"), DATE("Fecha"), SIZE("Tamaño"), TYPE("Tipo") }
+enum class SortBy(private val labelEs: String) { NAME(trKey("Nombre")), DATE(trKey("Fecha")), SIZE(trKey("Tamaño")), TYPE(trKey("Tipo"));
 
-enum class ThemeMode(val label: String) { SYSTEM("Según el sistema"), LIGHT("Claro"), DARK("Oscuro") }
+    val label: String
+        get() = tr(labelEs)
+}
+
+enum class ThemeMode(private val labelEs: String) { SYSTEM(trKey("Según el sistema")), LIGHT(trKey("Claro")), DARK(trKey("Oscuro"));
+
+    val label: String
+        get() = tr(labelEs)
+}
 
 /** Color de la app («Temas» de ES). DYNAMIC usa los colores del fondo de pantalla (Android 12 o posterior). */
-enum class AccentColor(val label: String) {
-    DYNAMIC("Colores del sistema"),
-    BLUE("Azul"),
-    RED("Rojo"),
-    GREEN("Verde"),
-    ORANGE("Naranja"),
-    PURPLE("Morado"),
-    TEAL("Turquesa"),
-    PINK("Rosa")
+enum class AccentColor(private val labelEs: String) {
+    DYNAMIC(trKey("Colores del sistema")),
+    BLUE(trKey("Azul")),
+    RED(trKey("Rojo")),
+    GREEN(trKey("Verde")),
+    ORANGE(trKey("Naranja")),
+    PURPLE(trKey("Morado")),
+    TEAL(trKey("Turquesa")),
+    PINK(trKey("Rosa"));
+
+    val label: String
+        get() = tr(labelEs)
 }
 
 enum class Conflict { RENAME, OVERWRITE, SKIP }
 
-enum class FileCategory(val label: String) {
-    IMAGES("Imágenes"),
-    MUSIC("Música"),
-    VIDEOS("Videos"),
-    DOCUMENTS("Documentos"),
-    APKS("APK"),
-    ARCHIVES("Comprimidos"),
+enum class FileCategory(private val labelEs: String) {
+    IMAGES(trKey("Imágenes")),
+    MUSIC(trKey("Música")),
+    VIDEOS(trKey("Videos")),
+    DOCUMENTS(trKey("Documentos")),
+    APKS(trKey("APK")),
+    ARCHIVES(trKey("Comprimidos")),
 
     // Subcategorías de ES: libros electrónicos, capturas, grabaciones y Office separado.
-    EBOOKS("Libros"),
-    SCREENSHOTS("Capturas"),
-    RECORDINGS("Grabaciones"),
-    WORD("Word"),
-    EXCEL("Excel"),
-    POWERPOINT("PowerPoint"),
-    RECENT("Recientes"),
+    EBOOKS(trKey("Libros")),
+    SCREENSHOTS(trKey("Capturas")),
+    RECORDINGS(trKey("Grabaciones")),
+    WORD(trKey("Word")),
+    EXCEL(trKey("Excel")),
+    POWERPOINT(trKey("PowerPoint")),
+    RECENT(trKey("Recientes")),;
+
+    val label: String
+        get() = tr(labelEs)
 }
 
 sealed interface Location {

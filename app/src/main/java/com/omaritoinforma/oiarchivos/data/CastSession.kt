@@ -31,7 +31,7 @@ object CastSession {
     internal fun localAddressFor(host: InetAddress): String =
         DatagramSocket().use {
             it.connect(host, 9)
-            it.localAddress.hostAddress ?: throw java.io.IOException("Sin conexión con la TV")
+            it.localAddress.hostAddress ?: throw java.io.IOException(tr("Sin conexión con la TV"))
         }
 
     fun start(renderer: Dlna.Renderer, source: StreamServer.Source) {
@@ -48,7 +48,7 @@ object CastSession {
                 state.value = State(renderer, source.name, playing = true, busy = false)
                 follow(renderer)
             } catch (e: Exception) {
-                state.value = State(renderer, source.name, busy = false, error = e.message ?: "No se pudo enviar")
+                state.value = State(renderer, source.name, busy = false, error = e.message ?: tr("No se pudo enviar"))
             }
         }
     }
@@ -74,7 +74,7 @@ object CastSession {
                 action(current.renderer)
                 state.value = state.value?.let(update)?.copy(error = null)
             } catch (e: Exception) {
-                state.value = state.value?.copy(error = e.message ?: "La TV no respondió")
+                state.value = state.value?.copy(error = e.message ?: tr("La TV no respondió"))
             }
         }
     }

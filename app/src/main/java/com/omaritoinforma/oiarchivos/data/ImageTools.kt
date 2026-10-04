@@ -73,14 +73,14 @@ object ImageTools {
     fun open(file: File, maxPixels: Long): Bitmap {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         file.inputStream().use { BitmapFactory.decodeStream(it, null, bounds) }
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw IOException("No se pudo leer la imagen")
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) throw IOException(tr("No se pudo leer la imagen"))
         val options =
             BitmapFactory.Options().apply {
                 inSampleSize = ImageCrop.sampleSize(bounds.outWidth, bounds.outHeight, maxPixels)
             }
         val raw =
             file.inputStream().use { BitmapFactory.decodeStream(it, null, options) }
-                ?: throw IOException("No se pudo leer la imagen")
+                ?: throw IOException(tr("No se pudo leer la imagen"))
         val orientation =
             runCatching {
                     ExifInterface(file.path)
@@ -129,13 +129,13 @@ object ImageTools {
      * archivo temporal y se cambia de sitio al final: si algo falla, el original queda como estaba.
      */
     fun save(file: File, quarterTurns: Int, flip: Boolean, crop: CropBox, replace: Boolean): File {
-        if (replace && !canReplace(file)) throw IOException("Este formato no se puede sobrescribir: guarda una copia")
+        if (replace && !canReplace(file)) throw IOException(tr("Este formato no se puede sobrescribir: guarda una copia"))
         val source = open(file, MAX_PIXELS)
         val result =
             try {
                 transform(source, quarterTurns, flip, crop)
             } catch (e: OutOfMemoryError) {
-                throw IOException("La imagen es demasiado grande para editarla")
+                throw IOException(tr("La imagen es demasiado grande para editarla"))
             }
         val format = ImageFormat.forExtension(file.extension)
         val target = if (replace) file else copyTarget(file)
@@ -148,7 +148,7 @@ object ImageTools {
                     ImageFormat.WEBP -> webp() to 100
                 }
             FileOutputStream(temp).use { out ->
-                if (!result.compress(compress, quality, out)) throw IOException("No se pudo guardar la imagen")
+                if (!result.compress(compress, quality, out)) throw IOException(tr("No se pudo guardar la imagen"))
                 out.fd.sync()
             }
             SafeFiles.commit(temp, target, replace)

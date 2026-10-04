@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.omaritoinforma.oiarchivos.util.PathUtil
 import java.io.File
+import com.omaritoinforma.oiarchivos.data.tr
 
 /** Elegir una carpeta navegando o escribiendo su ruta (el «DirChoosePreference» de ES). */
 @Composable
@@ -53,7 +54,7 @@ fun FolderPickerDialog(
     val go = {
         val target = runCatching { File(typed.trim()).canonicalFile }.getOrNull()
         if (target != null && target.isDirectory) path = target.absolutePath
-        else error = "No existe esa carpeta"
+        else error = tr("No existe esa carpeta")
     }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -66,13 +67,13 @@ fun FolderPickerDialog(
                         typed = it
                         error = null
                     },
-                    label = { Text("Ruta") },
+                    label = { Text(tr("Ruta")) },
                     singleLine = true,
                     isError = error != null,
                     supportingText = { error?.let { Text(it) } },
                     trailingIcon = {
                         IconButton(onClick = go) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Ir")
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = tr("Ir"))
                         }
                     },
                     modifier = Modifier.fillMaxWidth())
@@ -81,12 +82,12 @@ fun FolderPickerDialog(
                         onClick = { File(path).parentFile?.let { path = it.absolutePath } },
                         enabled = File(path).parentFile != null) {
                             Icon(Icons.Filled.ArrowUpward, contentDescription = null)
-                            Text("Subir")
+                            Text(tr("Subir"))
                         }
                 }
                 if (folders.isEmpty())
                     Text(
-                        "Sin subcarpetas",
+                        tr("Sin subcarpetas"),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodySmall)
                 LazyColumn(Modifier.heightIn(max = 320.dp)) {
@@ -99,6 +100,6 @@ fun FolderPickerDialog(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { onPick(path) }) { Text("Elegir esta carpeta") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+        confirmButton = { TextButton(onClick = { onPick(path) }) { Text(tr("Elegir esta carpeta")) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } })
 }

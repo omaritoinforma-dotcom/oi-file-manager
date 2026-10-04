@@ -34,6 +34,7 @@ import com.omaritoinforma.oiarchivos.ui.MainViewModel
 import com.omaritoinforma.oiarchivos.util.formatSize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.omaritoinforma.oiarchivos.data.tr
 
 /** Analizador de apps: qué apps piden permisos delicados (ubicación, cámara, SMS…). */
 @Composable
@@ -46,7 +47,7 @@ fun AppAnalysisScreen(vm: MainViewModel) {
         apps = null
         apps = withContext(Dispatchers.IO) { runCatching { AppAnalysis.scan(ctx, includeSystem) }.getOrDefault(emptyList()) }
     }
-    ToolPage("Analizar apps", vm) { pad ->
+    ToolPage(tr("Analizar apps"), vm) { pad ->
         val list = apps
         if (list == null) LinearProgressIndicator(Modifier.padding(pad))
         else {
@@ -55,14 +56,14 @@ fun AppAnalysisScreen(vm: MainViewModel) {
             LazyColumn(Modifier.padding(pad)) {
                 item {
                     Text(
-                        "Qué apps piden permisos delicados. «Concedido» quiere decir que la app ya puede usarlo; «solicitado», que lo pide pero aún no se le dio. Se cambian en la información de cada app.",
+                        tr("Qué apps piden permisos delicados. «Concedido» quiere decir que la app ya puede usarlo; «solicitado», que lo pide pero aún no se le dio. Se cambian en la información de cada app."),
                         Modifier.padding(16.dp),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 item {
                     ListItem(
-                        headlineContent = { Text("Incluir apps del sistema") },
+                        headlineContent = { Text(tr("Incluir apps del sistema")) },
                         trailingContent = { Switch(includeSystem, { includeSystem = it }) })
                 }
                 item {
@@ -72,7 +73,7 @@ fun AppAnalysisScreen(vm: MainViewModel) {
                             FilterChip(
                                 group == null,
                                 onClick = { group = null },
-                                label = { Text("Todos (${list.count { it.groups.isNotEmpty() }})") })
+                                label = { Text(tr("Todos ({0})", list.count { it.groups.isNotEmpty() })) })
                             counts.forEach { (g, n) ->
                                 FilterChip(
                                     group == g,
@@ -82,7 +83,7 @@ fun AppAnalysisScreen(vm: MainViewModel) {
                         }
                 }
                 if (shown.isEmpty())
-                    item { Text("Ninguna app pide esto.", Modifier.padding(16.dp)) }
+                    item { Text(tr("Ninguna app pide esto."), Modifier.padding(16.dp)) }
                 items(shown, key = { it.packageName }) { app ->
                     ListItem(
                         headlineContent = { Text(app.label) },
@@ -104,10 +105,10 @@ fun AppAnalysisScreen(vm: MainViewModel) {
 }
 
 private fun describe(app: AppRisk): String = buildString {
-    if (app.granted.isNotEmpty()) append("Concedido: ").append(app.granted.joinToString(", ") { it.label })
+    if (app.granted.isNotEmpty()) append(tr("Concedido: ")).append(app.granted.joinToString(", ") { it.label })
     if (app.requested.isNotEmpty()) {
         if (isNotEmpty()) append("\n")
-        append("Solicitado: ").append(app.requested.joinToString(", ") { it.label })
+        append(tr("Solicitado: ")).append(app.requested.joinToString(", ") { it.label })
     }
-    append("\n${formatSize(app.apkSize)} · Android ${app.targetSdk}")
+    append(tr("\n{0} · Android {1}", formatSize(app.apkSize), app.targetSdk))
 }

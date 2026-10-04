@@ -14,7 +14,7 @@ object InstallNotice {
     /** Texto del aviso, o null si la app no pide nada delicado. */
     fun text(label: String, groups: Collection<SensitiveGroup>): String? =
         if (groups.isEmpty()) null
-        else "«$label» pide acceso a: ${groups.joinToString(", ") { it.label }}. Toca para revisar los permisos."
+        else tr("«{0}» pide acceso a: {1}. Toca para revisar los permisos.", label, groups.joinToString(", ") { it.label })
 
     /** Nombre de la app y permisos delicados que declara el APK, leídos sin instalarlo otra vez. */
     @Suppress("DEPRECATION")

@@ -46,13 +46,13 @@ object CloudAuth {
                     "https://oauth.yandex.com/authorize",
                     "https://oauth.yandex.com/token",
                     "cloud_api:disk.read cloud_api:disk.write")
-            else -> throw IOException("Este proveedor no usa este inicio de sesión")
+            else -> throw IOException(tr("Este proveedor no usa este inicio de sesión"))
         }
 
     fun request(service: AuthorizationService, c: Connection): Intent {
         if (c.clientId.isBlank())
             throw IOException(
-                "Falta registrar el identificador OAuth de OI Archivos para ${c.protocol.label}")
+                tr("Falta registrar el identificador OAuth de OI Archivos para {0}", c.protocol.label))
         val p = provider(c.protocol)
         val request =
             AuthorizationRequest.Builder(
@@ -81,7 +81,7 @@ object CloudAuth {
         completed: (Result<Connection>) -> Unit
     ) {
         if (intent == null) {
-            completed(Result.failure(IOException("Inicio de sesión cancelado")))
+            completed(Result.failure(IOException(tr("Inicio de sesión cancelado"))))
             return
         }
         val response = AuthorizationResponse.fromIntent(intent)
@@ -89,12 +89,12 @@ object CloudAuth {
         if (response == null) {
             completed(
                 Result.failure(
-                    IOException(error?.errorDescription ?: "Inicio de sesión cancelado")))
+                    IOException(error?.errorDescription ?: tr("Inicio de sesión cancelado"))))
             return
         }
         if (response.request.clientId != c.clientId ||
             response.request.redirectUri.toString() != REDIRECT) {
-            completed(Result.failure(IOException("Respuesta OAuth no válida")))
+            completed(Result.failure(IOException(tr("Respuesta OAuth no válida"))))
             return
         }
         val state = AuthState(response, error)
@@ -103,7 +103,7 @@ object CloudAuth {
             failure ->
             state.update(token, failure)
             if (token == null || token.accessToken.isNullOrBlank())
-                completed(Result.failure(IOException("No se pudo autorizar la cuenta")))
+                completed(Result.failure(IOException(tr("No se pudo autorizar la cuenta"))))
             else
                 completed(
                     runCatching {
@@ -129,7 +129,7 @@ object CloudAuth {
 
     fun googleFinish(ctx: Context, result: AuthorizationResult): Connection {
         val token =
-            result.accessToken ?: throw IOException("Google no devolvió un permiso de acceso")
+            result.accessToken ?: throw IOException(tr("Google no devolvió un permiso de acceso"))
         val email = result.toGoogleSignInAccount()?.email.orEmpty()
         val previous =
             ConnectionStore(ctx).load().firstOrNull {
@@ -177,8 +177,8 @@ object CloudAuth {
                     30,
                     TimeUnit.SECONDS)
             if (result.hasResolution())
-                throw IOException("Vuelve a autorizar Google Drive desde la pantalla de conexiones")
-            val token = result.accessToken ?: throw IOException("Vuelve a entrar en Google Drive")
+                throw IOException(tr("Vuelve a autorizar Google Drive desde la pantalla de conexiones"))
+            val token = result.accessToken ?: throw IOException(tr("Vuelve a entrar en Google Drive"))
             return save(
                 ctx,
                 c.copy(secret = token, expiresAt = System.currentTimeMillis() + 45 * 60 * 1000))
@@ -196,7 +196,7 @@ object CloudAuth {
             }
             if (!latch.await(45, TimeUnit.SECONDS) || failure != null || token.isNullOrBlank())
                 throw IOException(
-                    "No se pudo renovar la cuenta. Vuelve a iniciar sesión en ${c.protocol.label}")
+                    tr("No se pudo renovar la cuenta. Vuelve a iniciar sesión en {0}", c.protocol.label))
             return save(
                 ctx,
                 c.copy(

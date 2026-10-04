@@ -25,6 +25,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.omaritoinforma.oiarchivos.data.tr
 
 private class IncomingOffer(val offer: Nearby.Offer, val answer: CompletableFuture<Boolean>)
 
@@ -71,7 +72,7 @@ fun NearbyScreen(vm: MainViewModel) {
                         LanScanner.localNetworks().joinToString { it.first.hostAddress.orEmpty() }
                 }
                 .onFailure {
-                    receiveError = "No se pudo empezar a recibir: ${it.message}"
+                    receiveError = tr("No se pudo empezar a recibir: {0}", it.message)
                     receiving = false
                 }
         }
@@ -84,11 +85,11 @@ fun NearbyScreen(vm: MainViewModel) {
     val toSend = vm.nearbyFiles
     fun sendTo(peer: Nearby.Peer) {
         val files = toSend.map(::File)
-        vm.runTask("Enviando a ${peer.name}") { report ->
+        vm.runTask(tr("Enviando a {0}", peer.name)) { report ->
             if (Nearby.send(peer, myName, files, report)) {
                 withContext(Dispatchers.Main) { vm.nearbyFiles = emptyList() }
-                OperationResult("Enviado a ${peer.name}")
-            } else OperationResult("${peer.name} rechazó el envío")
+                OperationResult(tr("Enviado a {0}", peer.name))
+            } else OperationResult(tr("{0} rechazó el envío", peer.name))
         }
     }
     val peers = remember { mutableStateListOf<Nearby.Peer>() }
@@ -111,23 +112,23 @@ fun NearbyScreen(vm: MainViewModel) {
         searched = true
     }
 
-    ToolPage("Enviar a otro teléfono", vm) { pad ->
+    ToolPage(tr("Enviar a otro teléfono"), vm) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(16.dp)) {
             item {
-                Text("Recibir", style = MaterialTheme.typography.titleMedium)
+                Text(tr("Recibir"), style = MaterialTheme.typography.titleMedium)
                 Text(
-                    if (receiving) "Visible como «$myName» en $address. Deja esta pantalla abierta."
-                    else "El otro teléfono debe estar en la misma red Wi-Fi y tener OI Archivos.",
+                    if (receiving) tr("Visible como «{0}» en {1}. Deja esta pantalla abierta.", myName, address)
+                    else tr("El otro teléfono debe estar en la misma red Wi-Fi y tener OI Archivos."),
                     Modifier.padding(vertical = 8.dp))
                 receiveError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 Button(onClick = { receiving = !receiving }) {
-                    Text(if (receiving) "Dejar de recibir" else "Empezar a recibir")
+                    Text(if (receiving) tr("Dejar de recibir") else tr("Empezar a recibir"))
                 }
                 if (receiving && address.isNotEmpty()) {
                     // Código QR: el otro teléfono lo lee con su cámara y el enlace abre OI Archivos para enviar.
                     val link = NearbyLink.build(address.substringBefore(","), Nearby.PORT, myName)
                     Text(
-                        "O que el otro teléfono lea este código QR con su cámara:",
+                        tr("O que el otro teléfono lea este código QR con su cámara:"),
                         Modifier.padding(top = 12.dp))
                     QrImage(link, Modifier.padding(vertical = 8.dp).size(220.dp))
                     androidx.compose.foundation.text.selection.SelectionContainer {
@@ -136,28 +137,28 @@ fun NearbyScreen(vm: MainViewModel) {
                 }
                 if (received.isNotEmpty())
                     Text(
-                        "Recibidos en ${destination.absolutePath}: ${received.joinToString()}",
+                        tr("Recibidos en {0}: {1}", destination.absolutePath, received.joinToString()),
                         Modifier.padding(top = 8.dp))
             }
             item {
                 HorizontalDivider(Modifier.padding(vertical = 16.dp))
-                Text("Enviar", style = MaterialTheme.typography.titleMedium)
+                Text(tr("Enviar"), style = MaterialTheme.typography.titleMedium)
                 Text(
                     if (toSend.isEmpty())
-                        "Selecciona archivos en el explorador y usa Más → Enviar a otro teléfono."
+                        tr("Selecciona archivos en el explorador y usa Más → Enviar a otro teléfono.")
                     else
-                        "${toSend.size} archivo(s), ${formatSize(toSend.sumOf { File(it).length() })}",
+                        tr("{0} archivo(s), {1}", toSend.size, formatSize(toSend.sumOf { File(it).length() })),
                     Modifier.padding(vertical = 8.dp))
                 if (toSend.isNotEmpty())
                     Button(onClick = { searching = true }, enabled = !searching) {
-                        Text("Buscar teléfonos")
+                        Text(tr("Buscar teléfonos"))
                     }
                 if (searching)
                     LinearProgressIndicator(
                         progress = { progress }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
                 if (searched && !searching && peers.isEmpty())
                     Text(
-                        "No se encontró ningún teléfono recibiendo. En el otro, abre esta pantalla y toca Empezar a recibir.",
+                        tr("No se encontró ningún teléfono recibiendo. En el otro, abre esta pantalla y toca Empezar a recibir."),
                         Modifier.padding(top = 8.dp))
             }
             items(peers, key = { it.address }) { peer ->
@@ -173,13 +174,13 @@ fun NearbyScreen(vm: MainViewModel) {
     vm.qrPeer?.let { peer ->
         AlertDialog(
             onDismissRequest = { vm.qrPeer = null },
-            title = { Text("Enviar a «${peer.name}»") },
+            title = { Text(tr("Enviar a «{0}»", peer.name)) },
             text = {
                 Text(
                     if (toSend.isEmpty())
-                        "Primero selecciona archivos en el explorador y usa Más → Enviar a otro teléfono; luego vuelve a leer el código."
+                        tr("Primero selecciona archivos en el explorador y usa Más → Enviar a otro teléfono; luego vuelve a leer el código.")
                     else
-                        "${toSend.size} archivo(s), ${formatSize(toSend.sumOf { File(it).length() })}, a ${peer.address}. El otro teléfono tendrá que aceptarlos.")
+                        tr("{0} archivo(s), {1}, a {2}. El otro teléfono tendrá que aceptarlos.", toSend.size, formatSize(toSend.sumOf { File(it).length() }), peer.address))
             },
             confirmButton = {
                 TextButton(
@@ -188,20 +189,19 @@ fun NearbyScreen(vm: MainViewModel) {
                         sendTo(peer)
                     },
                     enabled = toSend.isNotEmpty()) {
-                        Text("Enviar")
+                        Text(tr("Enviar"))
                     }
             },
-            dismissButton = { TextButton(onClick = { vm.qrPeer = null }) { Text("Cancelar") } })
+            dismissButton = { TextButton(onClick = { vm.qrPeer = null }) { Text(tr("Cancelar")) } })
     }
 
     incoming?.let { pending ->
         AlertDialog(
             onDismissRequest = {},
-            title = { Text("Archivos entrantes") },
+            title = { Text(tr("Archivos entrantes")) },
             text = {
                 Text(
-                    "«${pending.offer.from}» quiere enviarte ${pending.offer.files.size} archivo(s), " +
-                        "${formatSize(pending.offer.bytes)}:\n" +
+                    tr("«{0}» quiere enviarte {1} archivo(s), {2}:\n", pending.offer.from, pending.offer.files.size, formatSize(pending.offer.bytes)) +
                         pending.offer.files.take(5).joinToString("\n") { it.name } +
                         if (pending.offer.files.size > 5) "\n…" else "")
             },
@@ -211,7 +211,7 @@ fun NearbyScreen(vm: MainViewModel) {
                         pending.answer.complete(true)
                         incoming = null
                     }) {
-                        Text("Aceptar")
+                        Text(tr("Aceptar"))
                     }
             },
             dismissButton = {
@@ -220,7 +220,7 @@ fun NearbyScreen(vm: MainViewModel) {
                         pending.answer.complete(false)
                         incoming = null
                     }) {
-                        Text("Rechazar")
+                        Text(tr("Rechazar"))
                     }
             })
     }
@@ -230,7 +230,7 @@ fun NearbyScreen(vm: MainViewModel) {
 @Composable
 private fun QrImage(text: String, modifier: Modifier) {
     val grid = remember(text) { NearbyLink.qr(text) }
-    androidx.compose.foundation.Canvas(modifier.semantics { contentDescription = "Código QR" }) {
+    androidx.compose.foundation.Canvas(modifier.semantics { contentDescription = tr("Código QR") }) {
         drawRect(androidx.compose.ui.graphics.Color.White)
         val cell = size.minDimension / grid.size
         grid.forEachIndexed { y, row ->

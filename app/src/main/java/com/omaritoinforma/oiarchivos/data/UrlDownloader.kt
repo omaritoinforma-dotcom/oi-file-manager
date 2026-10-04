@@ -60,7 +60,7 @@ object UrlDownloader {
 
     suspend fun download(url: String, folder: File, report: (OpProgress) -> Unit): File {
         problem(url)?.let { throw IOException(it) }
-        if (!folder.isDirectory && !folder.mkdirs()) throw IOException("No se pudo crear la carpeta de descargas")
+        if (!folder.isDirectory && !folder.mkdirs()) throw IOException(tr("No se pudo crear la carpeta de descargas"))
         val part = partFile(folder, url.trim())
         val validatorFile = validatorFile(part)
         val validator = validatorFile.takeIf { it.isFile }?.readText()?.trim().orEmpty()
@@ -74,10 +74,10 @@ object UrlDownloader {
             }.build()
         val tracker = Tracker("Descargando", report)
         client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IOException("El servidor respondió ${response.code}")
+            if (!response.isSuccessful) throw IOException(tr("El servidor respondió {0}", response.code))
             val resumed = response.code == 206 && already > 0
             val name = fileName(url, response.header("Content-Disposition"))
-            val body = response.body ?: throw IOException("Respuesta vacía")
+            val body = response.body ?: throw IOException(tr("Respuesta vacía"))
             val length = body.contentLength()
             tracker.current = name
             tracker.totalFiles = 1
@@ -102,7 +102,7 @@ object UrlDownloader {
                 out.fd.sync()
             }
             if (length >= 0 && part.length() != tracker.totalBytes)
-                throw IOException("Descarga incompleta; vuelve a intentarlo para continuar")
+                throw IOException(tr("Descarga incompleta; vuelve a intentarlo para continuar"))
             val target = FileOps.uniqueName(folder, name)
             SafeFiles.commit(part, target, replace = false)
             validatorFile.delete()

@@ -38,6 +38,7 @@ import com.omaritoinforma.oiarchivos.util.FileKind
 import com.omaritoinforma.oiarchivos.util.Kinds
 import com.omaritoinforma.oiarchivos.util.formatDate
 import com.omaritoinforma.oiarchivos.util.formatSize
+import com.omaritoinforma.oiarchivos.data.tr
 
 @Composable
 fun TrashScreen(vm: MainViewModel) {
@@ -46,11 +47,11 @@ fun TrashScreen(vm: MainViewModel) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Papelera") },
-                navigationIcon = { IconButton(onClick = vm::back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás") } },
+                title = { Text(tr("Papelera")) },
+                navigationIcon = { IconButton(onClick = vm::back) { Icon(Icons.AutoMirrored.Filled.ArrowBack, tr("Atrás")) } },
                 actions = {
                     if (vm.trash.isNotEmpty()) {
-                        IconButton(onClick = { confirmEmpty = true }) { Icon(Icons.Filled.DeleteSweep, "Vaciar papelera") }
+                        IconButton(onClick = { confirmEmpty = true }) { Icon(Icons.Filled.DeleteSweep, tr("Vaciar papelera")) }
                     }
                 },
             )
@@ -58,7 +59,7 @@ fun TrashScreen(vm: MainViewModel) {
     ) { padding ->
         if (vm.trash.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("La papelera está vacía", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(tr("La papelera está vacía"), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
             LazyColumn(Modifier.fillMaxSize().padding(padding)) {
@@ -69,16 +70,16 @@ fun TrashScreen(vm: MainViewModel) {
                         headlineContent = { Text(e.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         supportingContent = {
                             Text(
-                                "${e.originalPath}\n${formatDate(e.deletedAt)} · ${formatSize(e.size)}",
+                                tr("{0}\n{1} · {2}", e.originalPath, formatDate(e.deletedAt), formatSize(e.size)),
                                 maxLines = 3,
                                 overflow = TextOverflow.Ellipsis,
                             )
                         },
                         trailingContent = {
                             Row {
-                                IconButton(onClick = { vm.restore(e) }) { Icon(Icons.Filled.Restore, "Restaurar") }
+                                IconButton(onClick = { vm.restore(e) }) { Icon(Icons.Filled.Restore, tr("Restaurar")) }
                                 IconButton(onClick = { vm.deleteForever(e) }) {
-                                    Icon(Icons.Filled.DeleteForever, "Eliminar definitivamente", tint = MaterialTheme.colorScheme.error)
+                                    Icon(Icons.Filled.DeleteForever, tr("Eliminar definitivamente"), tint = MaterialTheme.colorScheme.error)
                                 }
                             }
                         },
@@ -90,15 +91,15 @@ fun TrashScreen(vm: MainViewModel) {
     if (confirmEmpty) {
         AlertDialog(
             onDismissRequest = { confirmEmpty = false },
-            title = { Text("Vaciar papelera") },
-            text = { Text("Se eliminarán definitivamente ${vm.trash.size} elemento(s). No se puede deshacer.") },
+            title = { Text(tr("Vaciar papelera")) },
+            text = { Text(tr("Se eliminarán definitivamente {0} elemento(s). No se puede deshacer.", vm.trash.size)) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmEmpty = false
                     vm.emptyTrash()
-                }) { Text("Vaciar", color = MaterialTheme.colorScheme.error) }
+                }) { Text(tr("Vaciar"), color = MaterialTheme.colorScheme.error) }
             },
-            dismissButton = { TextButton(onClick = { confirmEmpty = false }) { Text("Cancelar") } },
+            dismissButton = { TextButton(onClick = { confirmEmpty = false }) { Text(tr("Cancelar")) } },
         )
     }
 }

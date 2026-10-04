@@ -9,11 +9,11 @@ object StorageInfo {
     fun volumes(ctx: Context): List<StorageVolumeInfo> {
         val result = mutableListOf<StorageVolumeInfo>()
         val internal = Environment.getExternalStorageDirectory()
-        result += info("Almacenamiento interno", internal, removable = false)
+        result += info(tr("Almacenamiento interno"), internal, removable = false)
         val seen = mutableSetOf(internal.absolutePath)
         ctx.getExternalFilesDirs(null).filterNotNull().forEach { d ->
             val root = d.absolutePath.substringBefore("/Android/data")
-            if (seen.add(root) && File(root).canRead()) result += info("Tarjeta SD", File(root), removable = true)
+            if (seen.add(root) && File(root).canRead()) result += info(tr("Tarjeta SD"), File(root), removable = true)
         }
         return result
     }

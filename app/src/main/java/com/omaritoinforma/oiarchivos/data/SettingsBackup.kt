@@ -72,6 +72,7 @@ object SettingsBackup {
             "toolbar_show_name" to Kind.Flag,
             "show_select_button" to Kind.Flag,
             "screen_orientation" to choice(ScreenOrientation.entries.toTypedArray()),
+            "app_language" to choice(AppLanguage.entries.toTypedArray()),
             "large_layout" to Kind.Flag,
             "editor_highlight_limit_kb" to Kind.Number(10..5000),
             "pure_black" to Kind.Flag,
@@ -131,20 +132,20 @@ object SettingsBackup {
             try {
                 JSONObject(json)
             } catch (e: JSONException) {
-                throw IOException("El archivo no es una copia de ajustes")
+                throw IOException(tr("El archivo no es una copia de ajustes"))
             }
         if (root.optString("formato") != FORMAT)
-            throw IOException("El archivo no es una copia de ajustes de OI Archivos")
+            throw IOException(tr("El archivo no es una copia de ajustes de OI Archivos"))
         if (root.optInt("version", -1) !in 1..VERSION)
-            throw IOException("Copia de una versión más nueva de OI Archivos")
-        val settings = root.optJSONObject("ajustes") ?: throw IOException("La copia no tiene ajustes")
+            throw IOException(tr("Copia de una versión más nueva de OI Archivos"))
+        val settings = root.optJSONObject("ajustes") ?: throw IOException(tr("La copia no tiene ajustes"))
         val out = LinkedHashMap<String, Any>()
         for (key in settings.keys()) {
             val kind = keys[key] ?: continue
             val value = settings.get(key)
             // JSON no distingue números enteros pequeños de otros; se normalizan a Int.
             val normalized = if (kind is Kind.Number && value is Number) value.toInt() else value
-            if (!valid(kind, normalized)) throw IOException("Valor no válido en la copia: $key")
+            if (!valid(kind, normalized)) throw IOException(tr("Valor no válido en la copia: {0}", key))
             out[key] = normalized
         }
         return out

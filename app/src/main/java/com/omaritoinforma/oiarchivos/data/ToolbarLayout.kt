@@ -1,15 +1,18 @@
 package com.omaritoinforma.oiarchivos.data
 
 /** Acciones que se pueden poner como botón en la barra inferior al seleccionar («Barra de herramientas» de ES). */
-enum class ToolbarAction(val label: String) {
-    COPY("Copiar"),
-    CUT("Cortar"),
-    DELETE("Eliminar"),
-    RENAME("Renombrar"),
-    SHARE("Compartir"),
-    COMPRESS("Comprimir"),
-    PIN("Fijar arriba"),
-    PROPERTIES("Propiedades")
+enum class ToolbarAction(private val labelEs: String) {
+    COPY(trKey("Copiar")),
+    CUT(trKey("Cortar")),
+    DELETE(trKey("Eliminar")),
+    RENAME(trKey("Renombrar")),
+    SHARE(trKey("Compartir")),
+    COMPRESS(trKey("Comprimir")),
+    PIN(trKey("Fijar arriba")),
+    PROPERTIES(trKey("Propiedades"));
+
+    val label: String
+        get() = tr(labelEs)
 }
 
 /**

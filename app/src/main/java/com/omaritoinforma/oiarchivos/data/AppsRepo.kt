@@ -47,7 +47,7 @@ object AppsRepo {
     /** Guarda el APK (o el conjunto de APK divididos en un .apks) en [folder]. */
     suspend fun backup(app: AppInfo, folder: File): File {
         val dir = folder.apply { mkdirs() }
-        if (!dir.isDirectory) throw java.io.IOException("No se pudo crear la carpeta de copias")
+        if (!dir.isDirectory) throw java.io.IOException(tr("No se pudo crear la carpeta de copias"))
         val extension = if (app.splits.isEmpty()) "apk" else "apks"
         val safe =
             "${app.label}_${app.versionName}.$extension".replace(Regex("[\\\\/:*?\"<>|]"), "_")

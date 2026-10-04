@@ -114,13 +114,13 @@ object VideoOverlays {
         val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(path, options)
         if (options.outWidth <= 0 || options.outHeight <= 0)
-            throw IOException("No se pudo abrir la imagen")
+            throw IOException(tr("No se pudo abrir la imagen"))
         options.inSampleSize = 1
         while (maxOf(options.outWidth, options.outHeight) / options.inSampleSize > 1920) options
             .inSampleSize *= 2
         options.inJustDecodeBounds = false
         return BitmapFactory.decodeFile(path, options)
-            ?: throw IOException("No se pudo leer la imagen")
+            ?: throw IOException(tr("No se pudo leer la imagen"))
     }
 }
 

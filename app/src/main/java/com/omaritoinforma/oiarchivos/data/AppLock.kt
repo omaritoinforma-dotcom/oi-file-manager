@@ -27,7 +27,7 @@ object AppLock {
     private var leftAt = 0L
 
     fun encode(password: String, iterations: Int = ITERATIONS): String {
-        require(password.isNotEmpty()) { "La contraseña no puede estar vacía" }
+        require(password.isNotEmpty()) { tr("La contraseña no puede estar vacía") }
         val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
         val hash = derive(password, salt, iterations)
         val b64 = Base64.getEncoder()

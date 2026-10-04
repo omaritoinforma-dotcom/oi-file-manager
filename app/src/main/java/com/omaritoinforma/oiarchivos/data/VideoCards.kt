@@ -119,7 +119,7 @@ object VideoCards {
                 drawTitle(canvas, text.trim(), width, height, image.isNotBlank() || lightText(color))
             FileOutputStream(target).use {
                 if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
-                    throw IOException("No se pudo crear la intro o el outro")
+                    throw IOException(tr("No se pudo crear la intro o el outro"))
             }
         } finally {
             bitmap.recycle()

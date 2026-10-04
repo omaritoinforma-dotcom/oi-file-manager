@@ -64,7 +64,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la última pasada completa de `scri
 | Botón de ventanas (pestañas) en la barra («Mostrar el botón de Windows» de ES) | 🟡 | Ajustes → «Pantalla» → «Mostrar el botón de pestañas»: un botón con el número de pestañas abiertas que lista las pestañas para cambiar, cerrarlas o abrir otra, aunque solo haya una. Va en la copia de ajustes; comprobación en el emulador preparada (abre, suma una, cierra una) |
 | Tipos de documento elegibles («Document type setting» de ES) | 🟡 | Ajustes → «Documentos»: PDF, Word, hojas de cálculo, presentaciones, texto y libros electrónicos; al menos uno. Cambia lo que sale en la categoría Documentos. Va en la copia de ajustes; pruebas JVM y comprobación en el emulador preparada (el número de archivos baja al quitar el texto) |
 | Buscador en la pantalla de inicio («Show Search engine on Homepage» de ES) | 🟡 | Barra «Buscar archivos…» en Inicio que busca por nombre en todo el almacenamiento; se puede ocultar en Ajustes → «Pantalla de inicio». Comprobación en el emulador preparada |
-| Idioma dentro de la app | ❌ | Hoy sigue el idioma del sistema |
+| Idioma dentro de la app | 🟡 | Ajustes → Pantalla → Idioma: español, inglés o el del sistema (español si el teléfono está en español). Cambia al momento, sin reiniciar, y se guarda en la copia de ajustes. Los textos están en español en el código y un catálogo los traduce (1.280 textos, con datos como {0}); una prueba JVM comprueba que cada texto de la interfaz tiene su traducción. ES trae más idiomas; aquí, por ahora, español e inglés. Comprobación en el emulador preparada |
 | Contraseña para abrir la app | ✅ | Emulador Android 15: pide la contraseña al abrir, rechaza una incorrecta y desbloquea con la buena. Se guarda como hash PBKDF2 con sal (ES la guardaba cifrada de forma reversible) |
 | Contraseña para recursos de red | ✅ | Emulador Android 15: abrir una conexión y mostrar los ocultos piden la contraseña |
 | Copia y restauración de ajustes | ✅ | Emulador Android 15: se guarda el JSON (sin contraseña) y al restaurar vuelve el tema oscuro |
@@ -160,16 +160,15 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | Estado | Filas |
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 40 |
-| 🟡 Implementadas; su comprobación en el emulador está escrita y espera su pasada | 34 |
+| 🟡 Implementadas; su comprobación en el emulador está escrita y espera su pasada | 35 |
 | 🟠 Parciales | 2 |
-| ❌ Faltan | 9 |
+| ❌ Faltan | 8 |
 | **Total de filas** | **85** |
 
 **OI Archivos no cubre todavía el mínimo.** Lo que falta, por valor para el usuario:
 
-1. Idioma dentro de la app: sacar los textos a recursos y añadir al menos inglés.
-2. Enviar a la TV por Chromecast (DLNA ya está) y enviar entre teléfonos por punto de acceso Wi-Fi (misma Wi-Fi y código QR ya están).
-3. Lo que exige hardware, root o cuentas que el CI no tiene: Android TV por ADB, servidor OBEX, expulsar USB, punto de acceso propio, funciones root y nubes minoritarias.
+1. Enviar a la TV por Chromecast (DLNA ya está) y enviar entre teléfonos por punto de acceso Wi-Fi (misma Wi-Fi y código QR ya están).
+2. Lo que exige hardware, root o cuentas que el CI no tiene: Android TV por ADB, servidor OBEX, expulsar USB, punto de acceso propio, funciones root y nubes minoritarias.
 
 Las filas en 🟡 pasan a ✅ cuando las aprueba una pasada del emulador en el CI.
 

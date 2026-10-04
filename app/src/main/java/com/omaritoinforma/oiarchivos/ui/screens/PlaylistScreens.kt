@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
 import com.omaritoinforma.oiarchivos.ui.Screen
 import java.io.File
+import com.omaritoinforma.oiarchivos.data.tr
 
 /** Pide un nombre de lista (nueva o para renombrar). */
 @Composable
@@ -35,14 +36,14 @@ private fun PlaylistNameDialog(
         title = { Text(title) },
         text = {
             OutlinedTextField(
-                name, { name = it }, label = { Text("Nombre de la lista") }, singleLine = true)
+                name, { name = it }, label = { Text(tr("Nombre de la lista")) }, singleLine = true)
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) {
-                Text("Aceptar")
+                Text(tr("Aceptar"))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } })
 }
 
 /** «Añadir a lista de reproducción» desde la selección del explorador. */
@@ -51,7 +52,7 @@ fun AddToPlaylistDialog(vm: MainViewModel, paths: List<String>, onDismiss: () ->
     LaunchedEffect(Unit) { vm.refreshPlaylists() }
     var creating by remember { mutableStateOf(false) }
     if (creating) {
-        PlaylistNameDialog("Nueva lista", "", { creating = false }) { name ->
+        PlaylistNameDialog(tr("Nueva lista"), "", { creating = false }) { name ->
             if (vm.editPlaylists { vm.playlists.create(name) }) {
                 vm.addToPlaylist(name, paths)
                 onDismiss()
@@ -61,12 +62,12 @@ fun AddToPlaylistDialog(vm: MainViewModel, paths: List<String>, onDismiss: () ->
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Añadir a lista de reproducción") },
+        title = { Text(tr("Añadir a lista de reproducción")) },
         text = {
             LazyColumn {
                 item {
                     ListItem(
-                        headlineContent = { Text("Nueva lista…") },
+                        headlineContent = { Text(tr("Nueva lista…")) },
                         leadingContent = { Icon(Icons.AutoMirrored.Filled.QueueMusic, null) },
                         modifier = Modifier.clickable { creating = true })
                 }
@@ -81,7 +82,7 @@ fun AddToPlaylistDialog(vm: MainViewModel, paths: List<String>, onDismiss: () ->
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } })
+        confirmButton = { TextButton(onClick = onDismiss) { Text(tr("Cancelar")) } })
 }
 
 @Composable
@@ -89,17 +90,16 @@ fun PlaylistsScreen(vm: MainViewModel) {
     LaunchedEffect(Unit) { vm.refreshPlaylists() }
     var creating by remember { mutableStateOf(false) }
     if (creating)
-        PlaylistNameDialog("Nueva lista", "", { creating = false }) { name ->
+        PlaylistNameDialog(tr("Nueva lista"), "", { creating = false }) { name ->
             if (vm.editPlaylists { vm.playlists.create(name) }) creating = false
         }
     ToolPage(
-        "Listas de reproducción",
+        tr("Listas de reproducción"),
         vm,
-        actions = { TextButton(onClick = { creating = true }) { Text("Nueva") } }) { pad ->
+        actions = { TextButton(onClick = { creating = true }) { Text(tr("Nueva")) } }) { pad ->
             if (vm.playlistNames.isEmpty())
                 Text(
-                    "No hay listas. Selecciona canciones o vídeos en el explorador y usa " +
-                        "«Más» → «Añadir a lista de reproducción».",
+                    tr("No hay listas. Selecciona canciones o vídeos en el explorador y usa «Más» → «Añadir a lista de reproducción»."),
                     Modifier.padding(pad).padding(16.dp))
             else
                 LazyColumn(Modifier.padding(pad)) {
@@ -110,7 +110,7 @@ fun PlaylistsScreen(vm: MainViewModel) {
                             }
                         ListItem(
                             headlineContent = { Text(name) },
-                            supportingContent = { Text("$count pista(s)") },
+                            supportingContent = { Text(tr("{0} pista(s)", count)) },
                             leadingContent = { Icon(Icons.AutoMirrored.Filled.QueueMusic, null) },
                             modifier = Modifier.clickable { vm.goTo(Screen.Playlist(name)) })
                     }
@@ -132,7 +132,7 @@ fun PlaylistScreen(vm: MainViewModel, name: String) {
     var renaming by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
     if (renaming)
-        PlaylistNameDialog("Renombrar lista", name, { renaming = false }) { to ->
+        PlaylistNameDialog(tr("Renombrar lista"), name, { renaming = false }) { to ->
             if (vm.editPlaylists { vm.playlists.rename(name, to) }) {
                 renaming = false
                 vm.back()
@@ -142,19 +142,19 @@ fun PlaylistScreen(vm: MainViewModel, name: String) {
     if (deleting)
         AlertDialog(
             onDismissRequest = { deleting = false },
-            title = { Text("¿Eliminar la lista «$name»?") },
-            text = { Text("Los archivos no se borran, solo la lista.") },
+            title = { Text(tr("¿Eliminar la lista «{0}»?", name)) },
+            text = { Text(tr("Los archivos no se borran, solo la lista.")) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         deleting = false
-                        if (vm.editPlaylists("Lista eliminada") { vm.playlists.delete(name) })
+                        if (vm.editPlaylists(tr("Lista eliminada")) { vm.playlists.delete(name) })
                             vm.back()
                     }) {
-                        Text("Eliminar")
+                        Text(tr("Eliminar"))
                     }
             },
-            dismissButton = { TextButton(onClick = { deleting = false }) { Text("Cancelar") } })
+            dismissButton = { TextButton(onClick = { deleting = false }) { Text(tr("Cancelar")) } })
     val present = tracks.filter { File(it).isFile }
     ToolPage(
         name,
@@ -162,19 +162,19 @@ fun PlaylistScreen(vm: MainViewModel, name: String) {
         actions = {
             TextButton(
                 onClick = { vm.goTo(Screen.PlayPlaylist(name)) }, enabled = present.isNotEmpty()) {
-                    Text("Reproducir")
+                    Text(tr("Reproducir"))
                 }
             Box {
-                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Más") }
+                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, tr("Más")) }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     DropdownMenuItem(
-                        text = { Text("Renombrar") },
+                        text = { Text(tr("Renombrar")) },
                         onClick = {
                             menu = false
                             renaming = true
                         })
                     DropdownMenuItem(
-                        text = { Text("Eliminar lista") },
+                        text = { Text(tr("Eliminar lista")) },
                         onClick = {
                             menu = false
                             deleting = true
@@ -183,7 +183,7 @@ fun PlaylistScreen(vm: MainViewModel, name: String) {
             }
         }) { pad ->
             if (tracks.isEmpty())
-                Text("La lista está vacía.", Modifier.padding(pad).padding(16.dp))
+                Text(tr("La lista está vacía."), Modifier.padding(pad).padding(16.dp))
             else
                 LazyColumn(Modifier.padding(pad)) {
                     itemsIndexed(tracks) { index, path ->
@@ -192,23 +192,23 @@ fun PlaylistScreen(vm: MainViewModel, name: String) {
                         ListItem(
                             headlineContent = { Text(file.name) },
                             supportingContent = {
-                                Text(if (exists) file.parent.orEmpty() else "No está en el teléfono")
+                                Text(if (exists) file.parent.orEmpty() else tr("No está en el teléfono"))
                             },
                             trailingContent = {
                                 Row {
                                     IconButton(
                                         onClick = { change { vm.playlists.move(name, index, -1) } },
                                         enabled = index > 0) {
-                                            Icon(Icons.Filled.ArrowUpward, "Subir")
+                                            Icon(Icons.Filled.ArrowUpward, tr("Subir"))
                                         }
                                     IconButton(
                                         onClick = { change { vm.playlists.move(name, index, 1) } },
                                         enabled = index < tracks.lastIndex) {
-                                            Icon(Icons.Filled.ArrowDownward, "Bajar")
+                                            Icon(Icons.Filled.ArrowDownward, tr("Bajar"))
                                         }
                                     IconButton(
                                         onClick = { change { vm.playlists.remove(name, path) } }) {
-                                            Icon(Icons.Filled.Close, "Quitar")
+                                            Icon(Icons.Filled.Close, tr("Quitar"))
                                         }
                                 }
                             },

@@ -32,6 +32,7 @@ import java.nio.charset.Charset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.omaritoinforma.oiarchivos.data.tr
 
 @Composable
 fun EditorScreen(vm: MainViewModel, path: String) {
@@ -57,7 +58,7 @@ fun EditorScreen(vm: MainViewModel, path: String) {
         withContext(Dispatchers.IO) {
                 runCatching {
                     if (file.length() > 8L * 1024 * 1024)
-                        throw IllegalStateException("El editor permite archivos de hasta 8 MB")
+                        throw IllegalStateException(tr("El editor permite archivos de hasta 8 MB"))
                     file.readText(Charset.forName(encoding)) to file.lastModified()
                 }
             }
@@ -76,7 +77,7 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                     runCatching {
                         if (file.lastModified() != modifiedTime)
                             throw IllegalStateException(
-                                "El archivo cambió fuera del editor. Vuelve a abrirlo antes de guardar.")
+                                tr("El archivo cambió fuera del editor. Vuelve a abrirlo antes de guardar."))
                         SafeFiles.writeAtomic(file) {
                             it.writeText(snapshot, Charset.forName(encoding))
                         }
@@ -86,10 +87,10 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                 .onSuccess {
                     modifiedTime = it
                     original = snapshot
-                    vm.toast("Guardado")
+                    vm.toast(tr("Guardado"))
                     then()
                 }
-                .onFailure { vm.toast(it.message ?: "No se pudo guardar") }
+                .onFailure { vm.toast(it.message ?: tr("No se pudo guardar")) }
             saving = false
         }
     }
@@ -100,7 +101,7 @@ fun EditorScreen(vm: MainViewModel, path: String) {
             current.text.indexOf(find, current.selection.end, ignoreCase = true).let {
                 if (it < 0) current.text.indexOf(find, ignoreCase = true) else it
             }
-        if (pos < 0) vm.toast("No se encontró el texto")
+        if (pos < 0) vm.toast(tr("No se encontró el texto"))
         else value = current.copy(selection = TextRange(pos, pos + find.length))
     }
     // Cambios del menú y de la barra de símbolos sobre la selección actual.
@@ -130,33 +131,33 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                 title = { Text(file.name + if (modified) " •" else "") },
                 navigationIcon = {
                     IconButton(onClick = { leave() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, tr("Atrás"))
                     }
                 },
                 actions = {
-                    TextButton(onClick = { search = !search }) { Text("Buscar") }
+                    TextButton(onClick = { search = !search }) { Text(tr("Buscar")) }
                     IconButton(onClick = { save() }, enabled = modified && !saving) {
-                        Icon(Icons.Filled.Save, "Guardar")
+                        Icon(Icons.Filled.Save, tr("Guardar"))
                     }
                     Box {
                         IconButton(onClick = { moreMenu = true }, enabled = value != null && !saving) {
-                            Icon(Icons.Filled.MoreVert, "Más")
+                            Icon(Icons.Filled.MoreVert, tr("Más"))
                         }
                         DropdownMenu(moreMenu, { moreMenu = false }) {
                             DropdownMenuItem(
-                                text = { Text("Convertir a mayúsculas") },
+                                text = { Text(tr("Convertir a mayúsculas")) },
                                 onClick = {
                                     moreMenu = false
                                     change { t, a, b -> EditorText.changeCase(t, a, b, upper = true) }
                                 })
                             DropdownMenuItem(
-                                text = { Text("Convertir a minúsculas") },
+                                text = { Text(tr("Convertir a minúsculas")) },
                                 onClick = {
                                     moreMenu = false
                                     change { t, a, b -> EditorText.changeCase(t, a, b, upper = false) }
                                 })
                             DropdownMenuItem(
-                                text = { Text("Duplicar línea") },
+                                text = { Text(tr("Duplicar línea")) },
                                 onClick = {
                                     moreMenu = false
                                     change(EditorText::duplicateLines)
@@ -183,26 +184,26 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                             }
                         }
                     }
-                    TextButton(onClick = { font = (font - 1).coerceAtLeast(10) }) { Text("A−") }
-                    TextButton(onClick = { font = (font + 1).coerceAtMost(28) }) { Text("A+") }
+                    TextButton(onClick = { font = (font - 1).coerceAtLeast(10) }) { Text(tr("A−")) }
+                    TextButton(onClick = { font = (font + 1).coerceAtMost(28) }) { Text(tr("A+")) }
                     FilterChip(
-                        numbers, onClick = { numbers = !numbers }, label = { Text("Líneas") })
+                        numbers, onClick = { numbers = !numbers }, label = { Text(tr("Líneas")) })
                 }
                 if (search) {
                     OutlinedTextField(
                         find,
                         { find = it },
-                        label = { Text("Buscar") },
+                        label = { Text(tr("Buscar")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp))
                     OutlinedTextField(
                         replace,
                         { replace = it },
-                        label = { Text("Reemplazar con") },
+                        label = { Text(tr("Reemplazar con")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp))
                     Row {
-                        TextButton(onClick = { next() }) { Text("Siguiente") }
+                        TextButton(onClick = { next() }) { Text(tr("Siguiente")) }
                         TextButton(
                             onClick = {
                                 val current = value
@@ -223,7 +224,7 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                                     } else next()
                                 }
                             }) {
-                                Text("Reemplazar")
+                                Text(tr("Reemplazar"))
                             }
                         TextButton(
                             onClick = {
@@ -233,7 +234,7 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                                         TextFieldValue(
                                             current.text.replace(find, replace, ignoreCase = true))
                             }) {
-                                Text("Todos")
+                                Text(tr("Todos"))
                             }
                     }
                 }
@@ -319,7 +320,7 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                                                     vm.editorSpacesForTab.value, vm.editorTabSize.value))
                                         },
                                         enabled = !saving) {
-                                            Text("Tab")
+                                            Text(tr("Tab"))
                                         }
                                     EditorText.symbols(vm.editorSymbols.value).forEach { symbol ->
                                         TextButton(
@@ -331,7 +332,7 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                                     }
                                 }
                         Text(
-                            "$lineCount líneas · ${current.text.length} caracteres",
+                            tr("{0} líneas · {1} caracteres", lineCount, current.text.length),
                             Modifier.padding(8.dp),
                             style = MaterialTheme.typography.labelSmall)
                     }
@@ -341,15 +342,15 @@ fun EditorScreen(vm: MainViewModel, path: String) {
     if (confirm)
         AlertDialog(
             onDismissRequest = { confirm = false },
-            title = { Text("Cambios sin guardar") },
-            text = { Text("¿Guardar antes de salir?") },
+            title = { Text(tr("Cambios sin guardar")) },
+            text = { Text(tr("¿Guardar antes de salir?")) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         confirm = false
                         save { vm.back() }
                     }) {
-                        Text("Guardar")
+                        Text(tr("Guardar"))
                     }
             },
             dismissButton = {
@@ -359,7 +360,7 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                         original = value?.text.orEmpty()
                         vm.back()
                     }) {
-                        Text("Descartar")
+                        Text(tr("Descartar"))
                     }
             })
 }

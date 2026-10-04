@@ -29,11 +29,7 @@ object Dlna {
     private const val MAX_XML = 256 * 1024
 
     internal fun searchMessage() =
-        "M-SEARCH * HTTP/1.1\r\n" +
-            "HOST: $SSDP_ADDRESS:$SSDP_PORT\r\n" +
-            "MAN: \"ssdp:discover\"\r\n" +
-            "MX: 2\r\n" +
-            "ST: $RENDERER\r\n\r\n"
+        "M-SEARCH * HTTP/1.1\r\nHOST: $SSDP_ADDRESS:$SSDP_PORT\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\nST: $RENDERER\r\n\r\n"
 
     /** Dirección LOCATION de una respuesta SSDP, o null si no es válida. */
     internal fun location(response: String): String? =
@@ -94,8 +90,8 @@ object Dlna {
         val service =
             elements(root, "service").firstOrNull {
                 text(it, "serviceType")?.startsWith("urn:schemas-upnp-org:service:AVTransport:") == true
-            } ?: throw IOException("«$name» no admite reproducir archivos (sin AVTransport)")
-        val control = text(service, "controlURL") ?: throw IOException("Descripción incompleta")
+            } ?: throw IOException(tr("«{0}» no admite reproducir archivos (sin AVTransport)", name))
+        val control = text(service, "controlURL") ?: throw IOException(tr("Descripción incompleta"))
         val base = text(root, "URLBase")?.takeIf { it.isNotBlank() } ?: location
         return Renderer(name, location, URL(URL(base), control).toString(), URL(location).host)
     }
@@ -143,20 +139,11 @@ object Dlna {
                 mime.startsWith("image/") -> "object.item.imageItem.photo"
                 else -> "object.item"
             }
-        return "<DIDL-Lite xmlns=\"urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/\" " +
-            "xmlns:dc=\"http://purl.org/dc/elements/1.1/\" " +
-            "xmlns:upnp=\"urn:schemas-upnp-org:metadata-1-0/upnp/\">" +
-            "<item id=\"0\" parentID=\"-1\" restricted=\"1\">" +
-            "<dc:title>${escape(title)}</dc:title><upnp:class>$type</upnp:class>" +
-            "<res protocolInfo=\"http-get:*:${escape(mime)}:*\">${escape(url)}</res>" +
-            "</item></DIDL-Lite>"
+        return "<DIDL-Lite xmlns=\"urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:upnp=\"urn:schemas-upnp-org:metadata-1-0/upnp/\"><item id=\"0\" parentID=\"-1\" restricted=\"1\"><dc:title>${escape(title)}</dc:title><upnp:class>$type</upnp:class><res protocolInfo=\"http-get:*:${escape(mime)}:*\">${escape(url)}</res></item></DIDL-Lite>"
     }
 
     internal fun envelope(action: String, args: List<Pair<String, String>>) =
-        "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
-            "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" " +
-            "s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\"><s:Body>" +
-            "<u:$action xmlns:u=\"$AV_TRANSPORT\">" +
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" s:encodingStyle=\"http://schemas.xmlsoap.org/soap/encoding/\"><s:Body><u:$action xmlns:u=\"$AV_TRANSPORT\">" +
             args.joinToString("") { (key, value) -> "<$key>${escape(value)}</$key>" } +
             "</u:$action></s:Body></s:Envelope>"
 
@@ -181,7 +168,7 @@ object Dlna {
             val text = String(bytes, Charsets.UTF_8)
             if (code !in 200..299) {
                 val detail = runCatching { text(parse(text).documentElement, "errorDescription") }.getOrNull()
-                throw IOException("La TV respondió $code" + (detail?.let { ": $it" } ?: ""))
+                throw IOException(tr("La TV respondió {0}", code) + (detail?.let { ": $it" } ?: ""))
             }
             return text
         } finally {
@@ -196,7 +183,7 @@ object Dlna {
             val n = read(buffer)
             if (n < 0) break
             out.write(buffer, 0, n)
-            if (out.size() > limit) throw IOException("Respuesta demasiado grande")
+            if (out.size() > limit) throw IOException(tr("Respuesta demasiado grande"))
         }
         return out.toByteArray()
     }
@@ -210,7 +197,7 @@ object Dlna {
         runCatching { factory.setFeature("http://xml.org/sax/features/external-general-entities", false) }
         runCatching { factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false) }
         factory.isExpandEntityReferences = false
-        if ("<!DOCTYPE" in xml || "<!ENTITY" in xml) throw IOException("Descripción no válida")
+        if ("<!DOCTYPE" in xml || "<!ENTITY" in xml) throw IOException(tr("Descripción no válida"))
         return factory.newDocumentBuilder().parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
     }
 

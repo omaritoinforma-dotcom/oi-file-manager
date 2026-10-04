@@ -44,21 +44,21 @@ fun DocumentsScreen(vm: MainViewModel, uri: String) {
                     selected.clear()
                     error = null
                 }
-                .onFailure { error = "Acceso no disponible: ${it.message}" }
+                .onFailure { error = tr("Acceso no disponible: {0}", it.message) }
     }
     ToolPage(
-        dir?.name ?: "USB / documentos",
+        dir?.name ?: tr("USB / documentos"),
         vm,
-        actions = { TextButton(onClick = { refresh++ }) { Text("Actualizar") } }) { pad ->
+        actions = { TextButton(onClick = { refresh++ }) { Text(tr("Actualizar")) } }) { pad ->
             Column(Modifier.fillMaxSize().padding(pad)) {
                 Row {
                     TextButton(
                         onClick = { if (stack.size > 1) stack.removeAt(stack.lastIndex) },
                         enabled = stack.size > 1) {
-                            Text("Subir")
+                            Text(tr("Subir"))
                         }
                     TextButton(onClick = { creating = true }, enabled = dir?.canWrite() == true) {
-                        Text("Nueva carpeta")
+                        Text(tr("Nueva carpeta"))
                     }
                 }
                 error?.let {
@@ -68,7 +68,7 @@ fun DocumentsScreen(vm: MainViewModel, uri: String) {
                 if (clip != null && dir != null)
                     TextButton(
                         onClick = {
-                            vm.runTask("Copiando a USB / nube") { report ->
+                            vm.runTask(tr("Copiando a USB / nube")) { report ->
                                 suspend fun copy(source: File, parent: DocumentFile) {
                                     currentCoroutineContext().ensureActive()
                                     SafeFiles.requireRegular(source)
@@ -77,21 +77,21 @@ fun DocumentsScreen(vm: MainViewModel, uri: String) {
                                     if (source.isDirectory) {
                                         val child =
                                             parent.createDirectory(name)
-                                                ?: throw IOException("No se pudo crear la carpeta")
+                                                ?: throw IOException(tr("No se pudo crear la carpeta"))
                                         for (f in
                                             source.listFiles()
                                                 ?: throw IOException(
-                                                    "No se pudo leer el origen")) copy(f, child)
+                                                    tr("No se pudo leer el origen"))) copy(f, child)
                                     } else {
                                         val child =
                                             parent.createFile("application/octet-stream", name)
-                                                ?: throw IOException("No se pudo crear el archivo")
+                                                ?: throw IOException(tr("No se pudo crear el archivo"))
                                         try {
                                             source.inputStream().use { input ->
                                                 (ctx.contentResolver.openOutputStream(
                                                         child.uri, "wt")
                                                         ?: throw IOException(
-                                                            "No se puede escribir"))
+                                                            tr("No se puede escribir")))
                                                     .use { out ->
                                                         val buffer = ByteArray(131072)
                                                         var done = 0L
@@ -103,7 +103,7 @@ fun DocumentsScreen(vm: MainViewModel, uri: String) {
                                                             done += n
                                                             report(
                                                                 OpProgress(
-                                                                    "Copiando",
+                                                                    tr("Copiando"),
                                                                     source.name,
                                                                     done,
                                                                     source.length()))
@@ -122,13 +122,13 @@ fun DocumentsScreen(vm: MainViewModel, uri: String) {
                                     sources.forEach {
                                         if (!it.deleteRecursively())
                                             throw IOException(
-                                                "Copiado; no se pudo eliminar el original")
+                                                tr("Copiado; no se pudo eliminar el original"))
                                     }
                                 withContext(Dispatchers.Main) { vm.clipboard = null }
-                                OperationResult("Archivos copiados")
+                                OperationResult(tr("Archivos copiados"))
                             }
                         }) {
-                            Text("Pegar aquí desde el teléfono")
+                            Text(tr("Pegar aquí desde el teléfono"))
                         }
                 if (selected.isNotEmpty()) {
                     Row {
@@ -136,31 +136,31 @@ fun DocumentsScreen(vm: MainViewModel, uri: String) {
                             onClick = {
                                 val chosen = selected.values.toList()
                                 val folder = vm.downloadFolder.value
-                                vm.runTask("Importando documentos") { report ->
+                                vm.runTask(tr("Importando documentos")) { report ->
                                     val dest = File(folder).apply { mkdirs() }
                                     val outputs =
                                         chosen.map { importDocument(ctx, it, dest, report) }
-                                    OperationResult("Guardados en ${dest.absolutePath}", outputs)
+                                    OperationResult(tr("Guardados en {0}", dest.absolutePath), outputs)
                                 }
                             }) {
-                                Text("Copiar al teléfono")
+                                Text(tr("Copiar al teléfono"))
                             }
                         TextButton(
                             onClick = { rename = selected.values.singleOrNull() },
                             enabled = selected.size == 1) {
-                                Text("Renombrar")
+                                Text(tr("Renombrar"))
                             }
-                        TextButton(onClick = { deleting = true }) { Text("Eliminar") }
+                        TextButton(onClick = { deleting = true }) { Text(tr("Eliminar")) }
                     }
                 }
                 LazyColumn {
                     items(entries, key = { it.uri.toString() }) { entry ->
                         val key = entry.uri.toString()
                         ListItem(
-                            headlineContent = { Text(entry.name ?: "Archivo") },
+                            headlineContent = { Text(entry.name ?: tr("Archivo")) },
                             supportingContent = {
                                 Text(
-                                    if (entry.isDirectory) "Carpeta"
+                                    if (entry.isDirectory) tr("Carpeta")
                                     else formatSize(entry.length()))
                             },
                             leadingContent = {
@@ -172,7 +172,7 @@ fun DocumentsScreen(vm: MainViewModel, uri: String) {
                                 Modifier.clickable {
                                     if (entry.isDirectory) stack.add(entry)
                                     else {
-                                        vm.runTask("Abriendo documento") { report ->
+                                        vm.runTask(tr("Abriendo documento")) { report ->
                                             val dest =
                                                 File(ctx.cacheDir, "document-preview").apply {
                                                     mkdirs()
@@ -190,42 +190,42 @@ fun DocumentsScreen(vm: MainViewModel, uri: String) {
             }
         }
     if (creating)
-        RemoteNameDialog("Nueva carpeta", "", { creating = false }) { name ->
+        RemoteNameDialog(tr("Nueva carpeta"), "", { creating = false }) { name ->
             creating = false
-            vm.runTask("Creando carpeta") {
-                if (dir?.createDirectory(name) == null) throw IOException("No se pudo crear")
-                OperationResult("Carpeta creada")
+            vm.runTask(tr("Creando carpeta")) {
+                if (dir?.createDirectory(name) == null) throw IOException(tr("No se pudo crear"))
+                OperationResult(tr("Carpeta creada"))
             }
         }
     if (rename != null)
-        RemoteNameDialog("Renombrar", rename!!.name.orEmpty(), { rename = null }) { name ->
+        RemoteNameDialog(tr("Renombrar"), rename!!.name.orEmpty(), { rename = null }) { name ->
             val entry = rename!!
             rename = null
-            vm.runTask("Renombrando") {
-                if (!entry.renameTo(name)) throw IOException("No se pudo renombrar")
-                OperationResult("Renombrado")
+            vm.runTask(tr("Renombrando")) {
+                if (!entry.renameTo(name)) throw IOException(tr("No se pudo renombrar"))
+                OperationResult(tr("Renombrado"))
             }
         }
     if (deleting)
         AlertDialog(
             onDismissRequest = { deleting = false },
-            title = { Text("Eliminar documentos") },
-            text = { Text("El proveedor puede eliminar estos archivos definitivamente.") },
+            title = { Text(tr("Eliminar documentos")) },
+            text = { Text(tr("El proveedor puede eliminar estos archivos definitivamente.")) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         deleting = false
                         val chosen = selected.values.toList()
-                        vm.runTask("Eliminando documentos") {
+                        vm.runTask(tr("Eliminando documentos")) {
                             for (entry in chosen) if (!entry.delete())
-                                throw IOException("No se pudo eliminar ${entry.name}")
-                            OperationResult("Eliminados")
+                                throw IOException(tr("No se pudo eliminar {0}", entry.name))
+                            OperationResult(tr("Eliminados"))
                         }
                     }) {
-                        Text("Eliminar")
+                        Text(tr("Eliminar"))
                     }
             },
-            dismissButton = { TextButton(onClick = { deleting = false }) { Text("Cancelar") } })
+            dismissButton = { TextButton(onClick = { deleting = false }) { Text(tr("Cancelar")) } })
 }
 
 private fun uniqueDocumentName(parent: DocumentFile, name: String): String {
@@ -250,13 +250,13 @@ suspend fun importDocument(
     SafeFiles.requireName(name)
     val target = FileOps.uniqueName(dir, name)
     if (source.isDirectory) {
-        if (!target.mkdirs()) throw IOException("No se pudo crear el destino")
+        if (!target.mkdirs()) throw IOException(tr("No se pudo crear el destino"))
         for (child in source.listFiles()) importDocument(ctx, child, target, report)
     } else {
         val temp = File.createTempFile(".oi-doc-", ".tmp", dir)
         try {
             (ctx.contentResolver.openInputStream(source.uri)
-                    ?: throw IOException("No se pudo leer el documento"))
+                    ?: throw IOException(tr("No se pudo leer el documento")))
                 .use { input ->
                     temp.outputStream().use { out ->
                         val buffer = ByteArray(131072)
@@ -267,7 +267,7 @@ suspend fun importDocument(
                             if (n < 0) break
                             out.write(buffer, 0, n)
                             done += n
-                            report(OpProgress("Importando", name, done, source.length()))
+                            report(OpProgress(tr("Importando"), name, done, source.length()))
                         }
                     }
                 }

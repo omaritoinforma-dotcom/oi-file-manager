@@ -63,6 +63,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.omaritoinforma.oiarchivos.data.tr
 
 sealed interface Screen {
     data object Home : Screen
@@ -254,7 +255,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         currentTab?.selected?.clear()
         tabs.forEach { it.cache.clear() }
         refresh()
-        toast(if (pin) "Fijado arriba" else "Ya no está fijado")
+        toast(if (pin) tr("Fijado arriba") else tr("Ya no está fijado"))
     }
 
     // ---- Ajustes al estilo de ES ----
@@ -300,6 +301,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val toolbarShowName = PrefState({ prefs.toolbarShowName }, { prefs.toolbarShowName = it })
     val showSelectButton = PrefState({ prefs.showSelectButton }, { prefs.showSelectButton = it })
     val screenOrientation = PrefState({ prefs.screenOrientation }, { prefs.screenOrientation = it })
+    val appLanguage = PrefState({ prefs.appLanguage }, { prefs.appLanguage = it })
     val largeLayout = PrefState({ prefs.largeLayout }, { prefs.largeLayout = it })
     val editorHighlightLimit =
         PrefState({ prefs.editorHighlightLimitKb }, { prefs.editorHighlightLimitKb = it })
@@ -376,7 +378,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun syncUpload(edit: com.omaritoinforma.oiarchivos.data.RemoteSync.Edit, mode: com.omaritoinforma.oiarchivos.data.RemoteSync.Mode) {
         syncing = true
-        toast("Subiendo «${edit.name}» al servidor…")
+        toast(tr("Subiendo «{0}» al servidor…", edit.name))
         viewModelScope.launch {
             val result =
                 withContext(Dispatchers.IO) {
@@ -395,7 +397,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                             if (mode == com.omaritoinforma.oiarchivos.data.RemoteSync.Mode.COPY)
                                 remoteEdits.remove(edit.local)
                             else remoteEdits.put(outcome.edit)
-                            toast("«${outcome.edit.name}» actualizado en el servidor")
+                            toast(tr("«{0}» actualizado en el servidor", outcome.edit.name))
                             tabs.forEach { it.cache.clear() }
                         }
                         com.omaritoinforma.oiarchivos.data.RemoteSync.Outcome.Conflict ->
@@ -405,7 +407,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     // Si había más ediciones pendientes, sigue con la siguiente.
                     if (remoteConflict == null) checkRemoteEdits()
                 }
-                .onFailure { toast("No se pudo subir «${edit.name}»: ${it.message}") }
+                .onFailure { toast(tr("No se pudo subir «{0}»: {1}", edit.name, it.message)) }
         }
     }
 
@@ -448,16 +450,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             ctx.getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
                 as android.net.ConnectivityManager
         if (autoBackupWifiOnly.value && connectivity.isActiveNetworkMetered) {
-            toast("Conéctate a una Wi-Fi o desactiva «Solo con Wi-Fi»")
+            toast(tr("Conéctate a una Wi-Fi o desactiva «Solo con Wi-Fi»"))
             return
         }
-        runTask("Copia automática") { report ->
+        runTask(tr("Copia automática")) { report ->
             val outcome = com.omaritoinforma.oiarchivos.data.AutoBackup.run(ctx, report)
             withContext(Dispatchers.Main) { autoBackupLast.reload() }
             outcome.error?.let { throw java.io.IOException(it) }
             OperationResult(
-                if (outcome.uploaded == 0) "La copia ya estaba al día"
-                else "${outcome.uploaded} archivo(s) copiado(s)")
+                if (outcome.uploaded == 0) tr("La copia ya estaba al día")
+                else tr("{0} archivo(s) copiado(s)", outcome.uploaded))
         }
     }
 
@@ -509,6 +511,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             toolbarShowName,
             showSelectButton,
             screenOrientation,
+            appLanguage,
             largeLayout,
             editorHighlightLimit,
             newFilesNotify,
@@ -624,7 +627,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (intent.action == android.content.Intent.ACTION_VIEW &&
             intent.data?.scheme == com.omaritoinforma.oiarchivos.data.NearbyLink.SCHEME) {
             val peer = com.omaritoinforma.oiarchivos.data.NearbyLink.parse(intent.data.toString())
-            if (peer == null) toast("El código QR no es de un teléfono de tu red local")
+            if (peer == null) toast(tr("El código QR no es de un teléfono de tu red local"))
             else {
                 qrPeer = peer
                 goTo(Screen.Nearby)
@@ -661,14 +664,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 listOfNotNull(
                     intent.getParcelableExtra<android.net.Uri>(android.content.Intent.EXTRA_STREAM))
         val text = intent.getCharSequenceExtra(android.content.Intent.EXTRA_TEXT)?.toString()
-        runTask("Guardando contenido compartido") { report ->
+        runTask(tr("Guardando contenido compartido")) { report ->
             val dest = File(PathUtil.internalRoot, "Download/Compartido con OI").apply { mkdirs() }
             val out = ArrayList<File>()
             for (uri in streams) {
                 currentCoroutineContext().ensureActive()
                 val document =
                     androidx.documentfile.provider.DocumentFile.fromSingleUri(ctx, uri)
-                        ?: throw java.io.IOException("No se pudo abrir el archivo compartido")
+                        ?: throw java.io.IOException(tr("No se pudo abrir el archivo compartido"))
                 out +=
                     com.omaritoinforma.oiarchivos.ui.screens.importDocument(
                         ctx, document, dest, report)
@@ -679,7 +682,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 SafeFiles.writeAtomic(target) { it.writeText(text) }
                 out += target
             }
-            OperationResult("Guardado en Descargas/Compartido con OI (${out.size})", out)
+            OperationResult(tr("Guardado en Descargas/Compartido con OI ({0})", out.size), out)
         }
     }
 
@@ -726,8 +729,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             currentTab?.selected?.clear()
             afterQuickChange(done + items.map { it.file })
             toast(
-                failed?.let { "${done.size} oculto(s). $it" }
-                    ?: "${done.size} oculto(s): se ven en la «Lista de ocultos»")
+                failed?.let { tr("{0} oculto(s). {1}", done.size, it) }
+                    ?: tr("{0} oculto(s): se ven en la «Lista de ocultos»", done.size))
         }
     }
 
@@ -746,17 +749,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             prefs.hiddenItems = prefs.hiddenItems - removed.map { it.absolutePath }.toSet()
             currentTab?.selected?.clear()
             afterQuickChange(shown + files)
-            toast(failed?.let { "${shown.size} visible(s). $it" } ?: "${shown.size} visible(s) otra vez")
+            toast(failed?.let { tr("{0} visible(s). {1}", shown.size, it) } ?: tr("{0} visible(s) otra vez", shown.size))
         }
     }
 
     fun goTo(s: Screen) {
         if (s == Screen.HiddenList && AppLock.needsHidden(prefs)) {
-            requestUnlock("Lista de ocultos") { goTo(s) }
+            requestUnlock(tr("Lista de ocultos")) { goTo(s) }
             return
         }
         if (s is Screen.Remote && needsNetworkUnlock(s.id)) {
-            requestUnlock("Conexiones de red") { goTo(s) }
+            requestUnlock(tr("Conexiones de red")) { goTo(s) }
             return
         }
         if (s == Screen.Home) {
@@ -877,7 +880,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         move: Boolean,
         planned: () -> Unit = {}
     ) {
-        durable(if (move) "Moviendo" else "Descargando") {
+        durable(if (move) tr("Moviendo") else tr("Descargando")) {
             com.omaritoinforma.oiarchivos.data.RemoteFiles.connect(connection).use { fs ->
                 com.omaritoinforma.oiarchivos.data.DurableRemote.createDownload(
                     TransferService.jobsDirectory(ctx),
@@ -899,7 +902,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         parent: String,
         move: Boolean
     ) {
-        durable(if (move) "Moviendo" else "Subiendo") {
+        durable(if (move) tr("Moviendo") else tr("Subiendo")) {
             com.omaritoinforma.oiarchivos.data.DurableRemote.createUpload(
                     TransferService.jobsDirectory(ctx),
                     connection,
@@ -917,9 +920,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     ) {
         try {
             if (!TransferService.submitDurable(ctx, title, plan))
-                toast("Espera a que termine la operación actual")
+                toast(tr("Espera a que termine la operación actual"))
         } catch (e: Exception) {
-            toast(e.message ?: "No se pudo iniciar la operación")
+            toast(e.message ?: tr("No se pudo iniciar la operación"))
         }
     }
 
@@ -932,9 +935,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         if (it == item.name) "$it.descifrado" else it
                     }
                 else item.name + ".oienc")
-        runTask(if (decrypt) "Descifrando" else "Cifrando") { report ->
+        runTask(if (decrypt) tr("Descifrando") else tr("Cifrando")) { report ->
             CryptoTools.transform(item.file, target, password.toCharArray(), decrypt, report)
-            OperationResult("Creado «${target.name}». El original se conserva.", listOf(target))
+            OperationResult(tr("Creado «{0}». El original se conserva.", target.name), listOf(target))
         }
     }
 
@@ -1035,7 +1038,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                                 }
                             }
                         if (list == null) {
-                            toast("No se puede leer esta carpeta")
+                            toast(tr("No se puede leer esta carpeta"))
                             tab.items.clear()
                         } else {
                             val sorted = sorted(list, loc)
@@ -1075,7 +1078,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val t = currentTab ?: return
         val idx = t.items.indices.filter { t.selected.containsKey(t.items[it].path) }
         if (idx.size < 2) {
-            toast("Marca el primero y el último elemento del rango")
+            toast(tr("Marca el primero y el último elemento del rango"))
             return
         }
         for (i in idx.first()..idx.last()) t.items[i].let { t.selected[it.path] = it }
@@ -1122,13 +1125,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Buscar entre los ocultos pide la misma contraseña que mostrarlos («Proteger los archivos ocultos»). */
     fun allowHiddenSearch(onAllowed: () -> Unit) {
         if (showHidden || !AppLock.needsHidden(prefs)) onAllowed()
-        else requestUnlock("Archivos ocultos", onAllowed)
+        else requestUnlock(tr("Archivos ocultos"), onAllowed)
     }
 
     fun toggleHidden() {
         // Mostrar los ocultos puede requerir la contraseña («Protección de la lista de ocultos»).
         if (!showHidden && AppLock.needsHidden(prefs)) {
-            requestUnlock("Archivos ocultos") { toggleHidden() }
+            requestUnlock(tr("Archivos ocultos")) { toggleHidden() }
             return
         }
         showHidden = !showHidden
@@ -1144,9 +1147,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 .onSuccess {
                     backgroundVersion++
                     backgroundImage.value = true
-                    toast("Fondo cambiado")
+                    toast(tr("Fondo cambiado"))
                 }
-                .onFailure { toast(it.message ?: "No se pudo usar esa imagen") }
+                .onFailure { toast(it.message ?: tr("No se pudo usar esa imagen")) }
         }
     }
 
@@ -1190,9 +1193,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun nameError(name: String): String? =
         when {
-            name.isBlank() -> "El nombre no puede estar vacío"
-            !SafeFiles.validName(name.trim()) -> "Nombre de archivo no válido"
-            name.trim() == "." || name.trim() == ".." -> "Nombre no válido"
+            name.isBlank() -> tr("El nombre no puede estar vacío")
+            !SafeFiles.validName(name.trim()) -> tr("Nombre de archivo no válido")
+            name.trim() == "." || name.trim() == ".." -> tr("Nombre no válido")
             else -> null
         }
 
@@ -1204,11 +1207,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
         val f = File(dir, name.trim())
         if (f.exists()) {
-            toast("Ya existe «${f.name}»")
+            toast(tr("Ya existe «{0}»", f.name))
             return
         }
         val ok = runCatching { if (folder) f.mkdir() else f.createNewFile() }.getOrDefault(false)
-        toast(if (ok) "Creado «${f.name}»" else "No se pudo crear «${f.name}»")
+        toast(if (ok) tr("Creado «{0}»", f.name) else tr("No se pudo crear «{0}»", f.name))
         if (ok) afterQuickChange(listOf(f))
     }
 
@@ -1220,7 +1223,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val target = File(item.file.parentFile, newName.trim())
         if (target.name == item.name) return
         if (target.exists() && !target.name.equals(item.name, ignoreCase = true)) {
-            toast("Ya existe «${target.name}»")
+            toast(tr("Ya existe «{0}»", target.name))
             return
         }
         if (item.file.renameTo(target)) {
@@ -1237,17 +1240,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             currentTab?.selected?.clear()
             afterQuickChange(listOf(item.file, target))
         } else {
-            toast("No se pudo renombrar")
+            toast(tr("No se pudo renombrar"))
         }
     }
 
     fun batchRename(items: List<FileItem>, rules: RenameRules) {
-        runOp("Renombrando") { report ->
+        runOp(tr("Renombrando")) { report ->
             var done = 0
             var skipped = 0
             val changed = ArrayList<File>()
             for ((i, it) in items.withIndex()) {
-                report(OpProgress("Renombrando", it.name, doneFiles = i, totalFiles = items.size))
+                report(OpProgress(tr("Renombrando"), it.name, doneFiles = i, totalFiles = items.size))
                 val newName = rules.apply(it.name, i, it.isDirectory)
                 val target = File(it.file.parentFile, newName)
                 if (newName == it.name || newName.isBlank() || newName.contains('/')) {
@@ -1263,7 +1266,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             OpResult(
-                "Renombrados: $done" + (if (skipped > 0) " · omitidos: $skipped" else ""), changed)
+                tr("Renombrados: {0}", done) + (if (skipped > 0) tr(" · omitidos: {0}", skipped) else ""), changed)
         }
     }
 
@@ -1275,7 +1278,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         t.selected.clear()
         t.selectMode = false
         toast(
-            "${paths.size} elemento(s) listos para ${if (move) "mover" else "copiar"}. Ve al destino y toca «Pegar aquí».")
+            if (move) tr("{0} elemento(s) listos para mover. Ve al destino y toca «Pegar aquí».", paths.size)
+            else tr("{0} elemento(s) listos para copiar. Ve al destino y toca «Pegar aquí».", paths.size))
     }
 
     /** «Poner como tono»; si falta el permiso de ajustes del sistema, abre la pantalla para darlo. */
@@ -1294,7 +1298,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun editPlaylists(done: String? = null, change: () -> Unit): Boolean {
         val ok =
             runCatching(change)
-                .onFailure { toast(it.message ?: "No se pudo cambiar la lista") }
+                .onFailure { toast(it.message ?: tr("No se pudo cambiar la lista")) }
                 .isSuccess
         if (ok && done != null) toast(done)
         refreshPlaylists()
@@ -1306,22 +1310,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (editPlaylists { added = playlists.add(name, paths) }) {
             clearSelection()
             toast(
-                if (added == 0) "Ya estaban en «${name.trim()}»"
-                else "$added añadido(s) a «${name.trim()}»")
+                if (added == 0) tr("Ya estaban en «{0}»", name.trim())
+                else tr("{0} añadido(s) a «{1}»", added, name.trim()))
         }
     }
 
     fun setRingtone(file: File, kind: com.omaritoinforma.oiarchivos.util.Ringtones.Kind) {
         val tones = com.omaritoinforma.oiarchivos.util.Ringtones
         if (!tones.canWrite(ctx)) {
-            toast("Permite a OI Archivos cambiar los ajustes del sistema y vuelve a intentarlo")
+            toast(tr("Permite a OI Archivos cambiar los ajustes del sistema y vuelve a intentarlo"))
             runCatching { tones.askPermission(ctx) }
             return
         }
         viewModelScope.launch {
             runCatching { tones.set(ctx, file, kind) }
-                .onSuccess { toast("«${file.name}» es ahora el ${kind.label.lowercase()}") }
-                .onFailure { toast(it.message ?: "No se pudo poner como tono") }
+                .onSuccess { toast(tr("«{0}» es ahora el {1}", file.name, kind.label.lowercase())) }
+                .onFailure { toast(it.message ?: tr("No se pudo poner como tono")) }
         }
     }
 
@@ -1334,7 +1338,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         clipboard = Clipboard((clip.paths + paths).distinct(), clip.move)
         t.selected.clear()
         t.selectMode = false
-        toast("En el portapapeles: ${clipboard!!.paths.size} elemento(s)")
+        toast(tr("En el portapapeles: {0} elemento(s)", clipboard!!.paths.size))
     }
 
     fun removeFromClipboard(path: String) {
@@ -1353,7 +1357,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val dest = File(path)
         val sources = clip.paths.map(::File).filter { it.exists() }
         if (sources.isEmpty()) {
-            toast("Los archivos del portapapeles ya no existen")
+            toast(tr("Los archivos del portapapeles ya no existen"))
             clipboard = null
             return
         }
@@ -1384,20 +1388,20 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         }
                     if (!TransferService.submitDurable(ctx, job))
                         toast(
-                            "Transferencia guardada en la cola. Abre Transferencias para iniciarla.")
+                            tr("Transferencia guardada en la cola. Abre Transferencias para iniciarla."))
                 }
-                .onFailure { toast(it.message ?: "No se pudo preparar la copia") }
+                .onFailure { toast(it.message ?: tr("No se pudo preparar la copia")) }
         }
     }
 
     fun delete(items: List<FileItem>, toTrash: Boolean) {
         val files = items.map { it.file }
-        runOp(if (toTrash) "Moviendo a la papelera" else "Eliminando") { report ->
+        runOp(if (toTrash) tr("Moviendo a la papelera") else tr("Eliminando")) { report ->
             val failed = FileOps.deleteAll(files, toTrash, report)
             val ok = files.size - failed
             val msg = buildString {
-                append(if (toTrash) "Enviados a la papelera: $ok" else "Eliminados: $ok")
-                if (failed > 0) append(" · fallaron: $failed")
+                append(if (toTrash) tr("Enviados a la papelera: {0}", ok) else tr("Eliminados: {0}", ok))
+                if (failed > 0) append(tr(" · fallaron: {0}", failed))
             }
             OpResult(msg, files)
         }
@@ -1427,18 +1431,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
         val target = FileOps.uniqueName(dir, clean)
         compressionLevel.value = level
-        runOp("Comprimiendo") { report ->
+        runOp(tr("Comprimiendo")) { report ->
             ArchiveTools.compress(items.map { it.file }, target, password, level, report)
-            OpResult("Creado «${target.name}»", listOf(target))
+            OpResult(tr("Creado «{0}»", target.name), listOf(target))
         }
     }
 
     fun extract(item: FileItem, password: String = "") {
         val parent = item.file.parentFile ?: return
         val dest = FileOps.uniqueName(parent, item.name.substringBeforeLast('.'))
-        runOp("Extrayendo") { report ->
+        runOp(tr("Extrayendo")) { report ->
             val n = ArchiveTools.extract(item.file, dest, password, report)
-            OpResult("Extraídos $n archivos en «${dest.name}»", listOf(dest))
+            OpResult(tr("Extraídos {0} archivos en «{1}»", n, dest.name), listOf(dest))
         }
     }
 
@@ -1460,9 +1464,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun runTask(title: String, block: suspend ((OpProgress) -> Unit) -> OperationResult) {
         try {
             if (!TransferService.submit(ctx, title, block))
-                toast("Espera a que termine la operación actual")
+                toast(tr("Espera a que termine la operación actual"))
         } catch (e: Exception) {
-            toast(e.message ?: "No se pudo iniciar la operación")
+            toast(e.message ?: tr("No se pudo iniciar la operación"))
         }
     }
 
@@ -1499,15 +1503,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun backupApps(list: List<AppInfo>) {
         if (list.isEmpty()) return
-        runOp("Respaldando apps") { report ->
+        runOp(tr("Respaldando apps")) { report ->
             val out = ArrayList<File>()
             for ((i, a) in list.withIndex()) {
                 currentCoroutineContext().ensureActive()
                 report(
-                    OpProgress("Respaldando apps", a.label, doneFiles = i, totalFiles = list.size))
+                    OpProgress(tr("Respaldando apps"), a.label, doneFiles = i, totalFiles = list.size))
                 runCatching { AppsRepo.backup(a, File(appBackupFolder.value)) }.onSuccess { out += it }
             }
-            OpResult("APK guardados en «${PathUtil.displayName(appBackupFolder.value)}» (${out.size} de ${list.size})", out)
+            OpResult(tr("APK guardados en «{0}» ({1} de {2})", PathUtil.displayName(appBackupFolder.value), out.size, list.size), out)
         }
     }
 
@@ -1517,7 +1521,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun installApks(files: List<File>) {
         if (files.isEmpty()) return
         if (!ctx.packageManager.canRequestPackageInstalls()) {
-            toast("Permite a OI Archivos instalar apps y vuelve a intentarlo")
+            toast(tr("Permite a OI Archivos instalar apps y vuelve a intentarlo"))
             runCatching {
                 ctx.startActivity(
                     android.content.Intent(
@@ -1529,8 +1533,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
         if (AppInstaller.start(ctx, files.map { AppInstaller.Install(it) })) {
             clearSelection()
-            toast("Instalando ${files.size} APK: confirma cada uno")
-        } else toast("Espera a que termine la tanda de instalación en curso")
+            toast(tr("Instalando {0} APK: confirma cada uno", files.size))
+        } else toast(tr("Espera a que termine la tanda de instalación en curso"))
     }
 
     /**
@@ -1540,29 +1544,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun uninstallApps(list: List<AppInfo>) {
         val user = list.filter { !it.isSystem }
         if (user.isEmpty()) {
-            toast("Las apps del sistema no se pueden desinstalar sin root")
+            toast(tr("Las apps del sistema no se pueden desinstalar sin root"))
             return
         }
         if (AppInstaller.busy) {
-            toast("Espera a que termine la tanda en curso")
+            toast(tr("Espera a que termine la tanda en curso"))
             return
         }
         val jobs = user.map { AppInstaller.Uninstall(it.packageName, it.label) }
         val skipped = list.size - user.size
         val start = {
             AppInstaller.start(ctx, jobs)
-            if (skipped > 0) toast("Se omiten $skipped app(s) del sistema")
+            if (skipped > 0) toast(tr("Se omiten {0} app(s) del sistema", skipped))
         }
         if (!backupBeforeUninstall.value) return start()
         val folder = File(appBackupFolder.value)
-        runTask("Copia antes de desinstalar") { report ->
+        runTask(tr("Copia antes de desinstalar")) { report ->
             val copies = ArrayList<File>()
             for ((i, app) in user.withIndex()) {
-                report(OpProgress("Copia antes de desinstalar", app.label, doneFiles = i, totalFiles = user.size))
+                report(OpProgress(tr("Copia antes de desinstalar"), app.label, doneFiles = i, totalFiles = user.size))
                 copies += AppsRepo.backup(app, folder)
             }
             withContext(Dispatchers.Main) { start() }
-            OperationResult("Copias guardadas: ${copies.size}", copies)
+            OperationResult(tr("Copias guardadas: {0}", copies.size), copies)
         }
     }
 
@@ -1572,15 +1576,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         // limpiar las carpetas que deja la app. Android pide confirmar igual que con ACTION_DELETE.
         val startUninstall = {
             if (!AppInstaller.start(ctx, listOf(AppInstaller.Uninstall(app.packageName, app.label))))
-                toast("Espera a que termine la tanda en curso")
+                toast(tr("Espera a que termine la tanda en curso"))
         }
         if (!backupBeforeUninstall.value) return startUninstall()
         val folder = File(appBackupFolder.value)
-        runTask("Copia antes de desinstalar") { report ->
-            report(OpProgress("Copia antes de desinstalar", app.label))
+        runTask(tr("Copia antes de desinstalar")) { report ->
+            report(OpProgress(tr("Copia antes de desinstalar"), app.label))
             val copy = AppsRepo.backup(app, folder)
             withContext(Dispatchers.Main) { startUninstall() }
-            OperationResult("Copia guardada: ${copy.name}", listOf(copy))
+            OperationResult(tr("Copia guardada: {0}", copy.name), listOf(copy))
         }
     }
 
@@ -1616,12 +1620,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearCache(onDone: (Long) -> Unit) {
         if (TransferService.isBusy) {
-            toast("Espera a que termine la operación actual")
+            toast(tr("Espera a que termine la operación actual"))
             return
         }
         viewModelScope.launch {
             val freed = withContext(Dispatchers.IO) { CacheCleaner.clear(ctx) }
-            toast("Caché eliminada: ${com.omaritoinforma.oiarchivos.util.formatSize(freed)}")
+            toast(tr("Caché eliminada: {0}", com.omaritoinforma.oiarchivos.util.formatSize(freed)))
             onDone(freed)
         }
     }
@@ -1676,7 +1680,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Crea la contraseña (si aún no hay) y activa una protección. */
     fun enableLock(option: PrefState<Boolean>, newPassword: String? = null): String? {
         if (!hasPassword) {
-            if (newPassword.isNullOrEmpty()) return "Escribe una contraseña"
+            if (newPassword.isNullOrEmpty()) return tr("Escribe una contraseña")
             prefs.lockHash = AppLock.encode(newPassword)
             hasPassword = true
             AppLock.unlock(prefs, newPassword)
@@ -1687,7 +1691,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Desactiva una protección si [password] es correcta; sin protecciones se borra la contraseña. */
     fun disableLock(option: PrefState<Boolean>, password: String): String? {
-        if (!AppLock.matches(password, prefs.lockHash)) return "Contraseña incorrecta"
+        if (!AppLock.matches(password, prefs.lockHash)) return tr("Contraseña incorrecta")
         option.value = false
         if (!AppLock.anyEnabled(prefs)) removePassword()
         return null
@@ -1695,17 +1699,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Como en ES: una contraseña nueva vacía quita la contraseña y todas las protecciones. */
     fun changePassword(old: String, new: String, confirm: String): String? {
-        if (!AppLock.matches(old, prefs.lockHash)) return "La contraseña actual no es correcta"
-        if (new != confirm) return "Las contraseñas nuevas no coinciden"
+        if (!AppLock.matches(old, prefs.lockHash)) return tr("La contraseña actual no es correcta")
+        if (new != confirm) return tr("Las contraseñas nuevas no coinciden")
         if (new.isEmpty()) {
             lockStart.value = false
             lockNetwork.value = false
             lockHidden.value = false
             removePassword()
-            toast("Contraseña quitada; ya no hay protecciones")
+            toast(tr("Contraseña quitada; ya no hay protecciones"))
         } else {
             prefs.lockHash = AppLock.encode(new)
-            toast("Contraseña cambiada")
+            toast(tr("Contraseña cambiada"))
         }
         return null
     }
@@ -1719,13 +1723,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Guarda los ajustes (sin contraseña ni conexiones) en [folder]. */
     fun exportSettings(folder: File) {
-        runTask("Copia de ajustes") {
+        runTask(tr("Copia de ajustes")) {
             val target = File(folder, com.omaritoinforma.oiarchivos.data.SettingsBackup.FILE_NAME)
             if (!folder.isDirectory && !folder.mkdirs())
-                throw java.io.IOException("No se pudo crear la carpeta")
+                throw java.io.IOException(tr("No se pudo crear la carpeta"))
             val json = com.omaritoinforma.oiarchivos.data.SettingsBackup.export(prefs.snapshot())
             SafeFiles.writeAtomic(target) { it.writeText(json) }
-            OperationResult("Ajustes guardados en ${target.absolutePath}", listOf(target))
+            OperationResult(tr("Ajustes guardados en {0}", target.absolutePath), listOf(target))
         }
     }
 
@@ -1742,9 +1746,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 .onSuccess { values ->
                     prefs.restore(values)
                     reloadSettings()
-                    toast("Ajustes restaurados (${values.size})")
+                    toast(tr("Ajustes restaurados ({0})", values.size))
                 }
-                .onFailure { toast(it.message ?: "No se pudo leer la copia") }
+                .onFailure { toast(it.message ?: tr("No se pudo leer la copia")) }
         }
     }
 
@@ -1796,15 +1800,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun deleteForever(e: RecycleBin.Entry) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) { RecycleBin.deleteForever(e) }
-            toast("Eliminado definitivamente")
+            toast(tr("Eliminado definitivamente"))
             loadTrash()
         }
     }
 
     fun emptyTrash() {
-        runOp("Vaciando papelera", onDone = { loadTrash() }) {
+        runOp(tr("Vaciando papelera"), onDone = { loadTrash() }) {
             RecycleBin.empty()
-            OpResult("Papelera vaciada")
+            OpResult(tr("Papelera vaciada"))
         }
     }
 }

@@ -26,13 +26,16 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /** Tipos de archivo que avisa el «Registrador» de archivos nuevos (como «Formato del nuevo archivo» de ES). */
-enum class NewFileKind(val label: String, val kinds: Set<FileKind>) {
-    IMAGES("Imágenes", setOf(FileKind.IMAGE)),
-    VIDEOS("Vídeos", setOf(FileKind.VIDEO)),
-    AUDIO("Música", setOf(FileKind.AUDIO)),
-    DOCUMENTS("Documentos", setOf(FileKind.DOC, FileKind.PDF, FileKind.TEXT)),
-    APK("APK", setOf(FileKind.APK)),
-    ARCHIVES("Comprimidos", setOf(FileKind.ARCHIVE))
+enum class NewFileKind(private val labelEs: String, val kinds: Set<FileKind>) {
+    IMAGES(trKey("Imágenes"), setOf(FileKind.IMAGE)),
+    VIDEOS(trKey("Vídeos"), setOf(FileKind.VIDEO)),
+    AUDIO(trKey("Música"), setOf(FileKind.AUDIO)),
+    DOCUMENTS(trKey("Documentos"), setOf(FileKind.DOC, FileKind.PDF, FileKind.TEXT)),
+    APK(trKey("APK"), setOf(FileKind.APK)),
+    ARCHIVES(trKey("Comprimidos"), setOf(FileKind.ARCHIVE));
+
+    val label: String
+        get() = tr(labelEs)
 }
 
 /**
@@ -164,7 +167,7 @@ object StorageWatch {
     private fun channel(ctx: Context) {
         (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
             .createNotificationChannel(
-                NotificationChannel(CHANNEL, "Avisos de almacenamiento", NotificationManager.IMPORTANCE_DEFAULT))
+                NotificationChannel(CHANNEL, tr("Avisos de almacenamiento"), NotificationManager.IMPORTANCE_DEFAULT))
     }
 
     private fun open(ctx: Context, request: Int, extra: Pair<String, String>): PendingIntent =
@@ -184,13 +187,13 @@ object StorageWatch {
 
     fun notifyLowSpace(ctx: Context, free: Long, total: Long) {
         channel(ctx)
-        val text = "Quedan ${formatSize(free)} libres de ${formatSize(total)}. Toca para limpiar basura."
+        val text = tr("Quedan {0} libres de {1}. Toca para limpiar basura.", formatSize(free), formatSize(total))
         notify(
             ctx,
             LOW_SPACE_ID,
             NotificationCompat.Builder(ctx, CHANNEL)
                 .setSmallIcon(android.R.drawable.stat_notify_error)
-                .setContentTitle("Espacio insuficiente")
+                .setContentTitle(tr("Espacio insuficiente"))
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setContentIntent(open(ctx, 30, "screen" to "cleaner"))
@@ -206,7 +209,7 @@ object StorageWatch {
             InstallNotice.NOTIFICATION_BASE + (packageName.hashCode() and 0xFFF),
             NotificationCompat.Builder(ctx, CHANNEL)
                 .setSmallIcon(android.R.drawable.stat_notify_error)
-                .setContentTitle("Permisos de una app nueva")
+                .setContentTitle(tr("Permisos de una app nueva"))
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setContentIntent(open(ctx, 40 + (packageName.hashCode() and 0xFF), "screen" to "permissions"))
@@ -222,7 +225,7 @@ object StorageWatch {
             .filter { it.total > 0 }
             .map {
                 val used = ((it.total - it.free).coerceAtLeast(0) * 100 / it.total).toInt()
-                "${it.name}: ${formatSize(it.free)} libres de ${formatSize(it.total)} ($used % usado)"
+                tr("{0}: {1} libres de {2} ({3} % usado)", it.name, formatSize(it.free), formatSize(it.total), used)
             }
 
     /** Notificación fija con el uso del almacenamiento, o la quita si el ajuste está apagado. */
@@ -236,15 +239,15 @@ object StorageWatch {
         if (lines.isEmpty()) return
         // Silenciosa: es información permanente, no un aviso que moleste.
         manager.createNotificationChannel(
-            NotificationChannel("almacenamiento", "Uso del almacenamiento", NotificationManager.IMPORTANCE_LOW))
-        val style = NotificationCompat.InboxStyle().setBigContentTitle("Almacenamiento")
+            NotificationChannel("almacenamiento", tr("Uso del almacenamiento"), NotificationManager.IMPORTANCE_LOW))
+        val style = NotificationCompat.InboxStyle().setBigContentTitle(tr("Almacenamiento"))
         lines.forEach { style.addLine(it) }
         notify(
             ctx,
             STORAGE_ID,
             NotificationCompat.Builder(ctx, "almacenamiento")
                 .setSmallIcon(android.R.drawable.stat_notify_sync_noanim)
-                .setContentTitle("Almacenamiento")
+                .setContentTitle(tr("Almacenamiento"))
                 .setContentText(lines.first())
                 .setStyle(style)
                 .setContentIntent(open(ctx, 32, "screen" to "cleaner"))
@@ -261,7 +264,7 @@ object StorageWatch {
             NewFilesReport.NOTIFICATION_ID,
             NotificationCompat.Builder(ctx, CHANNEL)
                 .setSmallIcon(android.R.drawable.stat_sys_download_done)
-                .setContentTitle("Informe de archivos nuevos")
+                .setContentTitle(tr("Informe de archivos nuevos"))
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setContentIntent(open(ctx, 33, "screen" to "recent"))

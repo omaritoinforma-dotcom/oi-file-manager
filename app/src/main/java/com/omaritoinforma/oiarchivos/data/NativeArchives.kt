@@ -28,27 +28,27 @@ object NativeArchives {
         val seen = hashSetOf<String>()
         fun finish() {
             if (fields.isEmpty()) return
-            val name = fields["Path"] ?: throw IOException("Listado del comprimido no válido")
+            val name = fields["Path"] ?: throw IOException(tr("Listado del comprimido no válido"))
             // Reject ambiguous line-delimited names, links, and all traversal before starting
             // writes.
             if (name.any { it.code < 32 } ||
                 fields["Symbolic Link"]?.isNotEmpty() == true ||
                 fields["Hard Link"]?.isNotEmpty() == true ||
                 fields["Attributes"]?.contains("lrwx") == true)
-                throw IOException("Enlaces y nombres especiales no se extraen")
+                throw IOException(tr("Enlaces y nombres especiales no se extraen"))
             SafeFiles.archiveTarget(
                 File(System.getProperty("java.io.tmpdir") ?: "/tmp", "oi-check"), name)
             if (!seen.add(name.replace('\\', '/').trimEnd('/')))
-                throw IOException("Entrada repetida en el comprimido")
+                throw IOException(tr("Entrada repetida en el comprimido"))
             val size = fields["Size"]?.toLongOrNull() ?: 0L
             if (size < 0 || size > ArchiveTools.MAX_BYTES)
-                throw IOException("Entrada demasiado grande")
+                throw IOException(tr("Entrada demasiado grande"))
             result +=
                 ArchiveEntry(
                     name,
                     size,
                     fields["Folder"] == "+" || fields["Attributes"]?.startsWith("D") == true)
-            if (result.size > 100000) throw IOException("Demasiadas entradas en el comprimido")
+            if (result.size > 100000) throw IOException(tr("Demasiadas entradas en el comprimido"))
             fields = linkedMapOf()
         }
         for (line in text.lineSequence()) {
@@ -57,10 +57,10 @@ object NativeArchives {
                 continue
             }
             val split = line.indexOf(" = ")
-            if (split < 1) throw IOException("Nombre de archivo o listado no compatible")
+            if (split < 1) throw IOException(tr("Nombre de archivo o listado no compatible"))
             val key = line.substring(0, split)
             if (fields.put(key, line.substring(split + 3)) != null)
-                throw IOException("Listado ambiguo en el comprimido")
+                throw IOException(tr("Listado ambiguo en el comprimido"))
         }
         finish()
         return result
@@ -103,17 +103,17 @@ object NativeArchives {
         report: (OpProgress) -> Unit,
         level: CompressionLevel = CompressionLevel.NORMAL
     ) = coroutineScope {
-        if (sources.isEmpty()) throw IOException("Selecciona archivos para comprimir")
+        if (sources.isEmpty()) throw IOException(tr("Selecciona archivos para comprimir"))
         val parent =
-            sources.first().canonicalFile.parentFile ?: throw IOException("Carpeta no válida")
+            sources.first().canonicalFile.parentFile ?: throw IOException(tr("Carpeta no válida"))
         if (sources.any { it.canonicalFile.parentFile != parent })
-            throw IOException("Para crear un 7z, selecciona archivos de la misma carpeta")
+            throw IOException(tr("Para crear un 7z, selecciona archivos de la misma carpeta"))
         for (root in sources) {
             SafeFiles.requireRegular(root)
             for (entry in SafeFiles.walk(root)) {
                 ensureActive()
                 if (entry.canonicalFile == target.canonicalFile)
-                    throw IOException("El comprimido no puede incluirse a sí mismo")
+                    throw IOException(tr("El comprimido no puede incluirse a sí mismo"))
             }
         }
         val temp = File.createTempFile(".oi-7z-", ".7z", target.parentFile)
@@ -127,7 +127,7 @@ object NativeArchives {
             if (password.isNotEmpty()) args += listOf("-mhe=on", "-p$password")
             args += listOf("--", temp.absolutePath)
             args += sources.map { it.name }
-            report(OpProgress("Comprimiendo 7z", sources.first().name))
+            report(OpProgress(tr("Comprimiendo 7z"), sources.first().name))
             start(args, parent).use { process ->
                 val cancel =
                     launch(Dispatchers.IO) {
@@ -147,7 +147,7 @@ object NativeArchives {
             }
             ensureActive()
             SafeFiles.commit(temp, target, false)
-            report(OpProgress("7z creado", target.name, 1, 1))
+            report(OpProgress(tr("7z creado"), target.name, 1, 1))
         } finally {
             temp.delete()
         }
@@ -156,7 +156,7 @@ object NativeArchives {
     private fun start(arguments: List<String>, directory: File? = null): Running {
         val exe =
             executable?.takeIf { it.canExecute() }
-                ?: throw IOException("El motor de comprimidos no está instalado")
+                ?: throw IOException(tr("El motor de comprimidos no está instalado"))
         return Running(
             ProcessBuilder(listOf(exe.absolutePath) + arguments).directory(directory).start())
     }
@@ -200,7 +200,7 @@ object NativeArchives {
                 val n = stdout.read(buffer)
                 if (n < 0) break
                 if (out.size() > limit - n)
-                    throw IOException("Listado del comprimido demasiado grande")
+                    throw IOException(tr("Listado del comprimido demasiado grande"))
                 out.write(buffer, 0, n)
             }
             return out.toString("UTF-8")
@@ -209,12 +209,12 @@ object NativeArchives {
         fun check() {
             if (!process.waitFor(30, TimeUnit.SECONDS)) {
                 process.destroyForcibly()
-                throw IOException("El motor de comprimidos no respondió")
+                throw IOException(tr("El motor de comprimidos no respondió"))
             }
             stderr.join(1000)
             if (process.exitValue() != 0)
                 throw IOException(
-                    "No se pudo leer o crear el comprimido. Comprueba su integridad y contraseña.")
+                    tr("No se pudo leer o crear el comprimido. Comprueba su integridad y contraseña."))
         }
 
         override fun close() {

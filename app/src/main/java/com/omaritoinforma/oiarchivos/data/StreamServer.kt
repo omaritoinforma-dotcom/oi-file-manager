@@ -105,14 +105,14 @@ object StreamServer {
         val (from, to) = spec.split('-', limit = 2).let { it[0].trim() to it.getOrElse(1) { "" }.trim() }
         return when {
             from.isEmpty() -> {
-                val suffix = to.toLongOrNull() ?: throw IllegalArgumentException("Rango no válido")
-                if (suffix <= 0) throw IllegalArgumentException("Rango no válido")
+                val suffix = to.toLongOrNull() ?: throw IllegalArgumentException(tr("Rango no válido"))
+                if (suffix <= 0) throw IllegalArgumentException(tr("Rango no válido"))
                 maxOf(0L, size - suffix) until size
             }
             else -> {
-                val start = from.toLongOrNull() ?: throw IllegalArgumentException("Rango no válido")
+                val start = from.toLongOrNull() ?: throw IllegalArgumentException(tr("Rango no válido"))
                 val end = if (to.isEmpty()) size - 1 else minOf(to.toLongOrNull() ?: -1, size - 1)
-                if (start >= size || end < start) throw IllegalArgumentException("Rango no válido")
+                if (start >= size || end < start) throw IllegalArgumentException(tr("Rango no válido"))
                 start..end
             }
         }
@@ -131,7 +131,7 @@ object StreamServer {
             while (left > 0) {
                 val skipped = input.skip(left)
                 if (skipped > 0) left -= skipped
-                else if (input.read() < 0) throw IOException("El archivo es más corto de lo esperado")
+                else if (input.read() < 0) throw IOException(tr("El archivo es más corto de lo esperado"))
                 else left--
             }
         } catch (e: Exception) {

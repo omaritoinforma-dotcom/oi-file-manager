@@ -94,6 +94,7 @@ import com.omaritoinforma.oiarchivos.data.OpProgress
 import com.omaritoinforma.oiarchivos.data.DrawerEntry
 import com.omaritoinforma.oiarchivos.data.DrawerLayout
 import com.omaritoinforma.oiarchivos.data.toItem
+import com.omaritoinforma.oiarchivos.data.tr
 import com.omaritoinforma.oiarchivos.ui.components.LocalPinned
 import com.omaritoinforma.oiarchivos.ui.components.LocalFolderStyle
 import com.omaritoinforma.oiarchivos.ui.components.LocalThumbnails
@@ -214,7 +215,7 @@ private fun LockScreen(vm: MainViewModel) {
     var error by remember { mutableStateOf<String?>(null) }
     val unlock = {
         if (!vm.unlock(password)) {
-            error = "Contraseña incorrecta"
+            error = tr("Contraseña incorrecta")
             password = ""
         }
     }
@@ -230,12 +231,12 @@ private fun LockScreen(vm: MainViewModel) {
             tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(24.dp))
         Text(
-            "OI Archivos está protegido",
+            tr("OI Archivos está protegido"),
             style = MaterialTheme.typography.headlineSmall,
             textAlign = TextAlign.Center)
         Spacer(Modifier.height(8.dp))
         Text(
-            "Escribe la contraseña para continuar.",
+            tr("Escribe la contraseña para continuar."),
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.height(24.dp))
@@ -245,7 +246,7 @@ private fun LockScreen(vm: MainViewModel) {
                 password = it
                 error = null
             },
-            label = { Text("Contraseña") },
+            label = { Text(tr("Contraseña")) },
             singleLine = true,
             isError = error != null,
             supportingText = { error?.let { Text(it) } },
@@ -255,7 +256,7 @@ private fun LockScreen(vm: MainViewModel) {
             keyboardActions = KeyboardActions(onDone = { unlock() }),
             modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(16.dp))
-        Button(onClick = unlock, enabled = password.isNotEmpty()) { Text("Desbloquear") }
+        Button(onClick = unlock, enabled = password.isNotEmpty()) { Text(tr("Desbloquear")) }
     }
 }
 
@@ -266,17 +267,17 @@ private fun UnlockDialog(vm: MainViewModel, request: MainViewModel.UnlockRequest
     var error by remember(request) { mutableStateOf<String?>(null) }
     val confirm = {
         if (!vm.unlock(password)) {
-            error = "Contraseña incorrecta"
+            error = tr("Contraseña incorrecta")
             password = ""
         }
     }
     AlertDialog(
         onDismissRequest = vm::dismissUnlock,
         icon = { Icon(Icons.Filled.Lock, contentDescription = null) },
-        title = { Text("Contraseña") },
+        title = { Text(tr("Contraseña")) },
         text = {
             Column {
-                Text("«${request.reason}» está protegido con contraseña.")
+                Text(tr("«{0}» está protegido con contraseña.", request.reason))
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(
                     value = password,
@@ -284,7 +285,7 @@ private fun UnlockDialog(vm: MainViewModel, request: MainViewModel.UnlockRequest
                         password = it
                         error = null
                     },
-                    label = { Text("Contraseña") },
+                    label = { Text(tr("Contraseña")) },
                     singleLine = true,
                     isError = error != null,
                     supportingText = { error?.let { Text(it) } },
@@ -293,9 +294,9 @@ private fun UnlockDialog(vm: MainViewModel, request: MainViewModel.UnlockRequest
             }
         },
         confirmButton = {
-            TextButton(onClick = confirm, enabled = password.isNotEmpty()) { Text("Aceptar") }
+            TextButton(onClick = confirm, enabled = password.isNotEmpty()) { Text(tr("Aceptar")) }
         },
-        dismissButton = { TextButton(onClick = vm::dismissUnlock) { Text("Cancelar") } })
+        dismissButton = { TextButton(onClick = vm::dismissUnlock) { Text(tr("Cancelar")) } })
 }
 
 @Composable
@@ -317,14 +318,13 @@ private fun PermissionScreen(vm: MainViewModel) {
             tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(24.dp))
         Text(
-            "OI Archivos necesita acceso a tus archivos",
+            tr("OI Archivos necesita acceso a tus archivos"),
             style = MaterialTheme.typography.headlineSmall,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            "Para explorar, copiar, mover y organizar todo tu almacenamiento, concede el permiso " +
-                "«Acceso a todos los archivos». Las conexiones de red solo se usan cuando tú las activas.",
+            tr("Para explorar, copiar, mover y organizar todo tu almacenamiento, concede el permiso «Acceso a todos los archivos». Las conexiones de red solo se usan cuando tú las activas."),
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -345,7 +345,7 @@ private fun PermissionScreen(vm: MainViewModel) {
                         } catch (e2: Exception) {
                             Toast.makeText(
                                     ctx,
-                                    "Abre Ajustes > Apps > OI Archivos > Permisos",
+                                    tr("Abre Ajustes > Apps > OI Archivos > Permisos"),
                                     Toast.LENGTH_LONG)
                                 .show()
                         }
@@ -358,7 +358,7 @@ private fun PermissionScreen(vm: MainViewModel) {
                     )
                 }
             }) {
-                Text("Conceder permiso")
+                Text(tr("Conceder permiso"))
             }
     }
 }
@@ -372,7 +372,7 @@ private fun AppDrawer(vm: MainViewModel, close: () -> Unit) {
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(start = 28.dp, top = 24.dp, bottom = 16.dp),
             )
-            DrawerItem("Inicio", Icons.Filled.Home, vm.screen == Screen.Home) {
+            DrawerItem(tr("Inicio"), Icons.Filled.Home, vm.screen == Screen.Home) {
                 vm.goHome()
                 close()
             }
@@ -390,7 +390,7 @@ private fun AppDrawer(vm: MainViewModel, close: () -> Unit) {
             if (vm.bookmarks.isNotEmpty()) {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
                 Text(
-                    "Marcadores",
+                    tr("Marcadores"),
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(horizontal = 28.dp, vertical = 8.dp),
                 )
@@ -402,12 +402,12 @@ private fun AppDrawer(vm: MainViewModel, close: () -> Unit) {
                 }
             }
             HorizontalDivider(Modifier.padding(vertical = 8.dp, horizontal = 16.dp))
-            DrawerItem("Ajustes", Icons.Filled.Settings, vm.screen == Screen.Settings) {
+            DrawerItem(tr("Ajustes"), Icons.Filled.Settings, vm.screen == Screen.Settings) {
                 vm.goTo(Screen.Settings)
                 close()
             }
             val activity = LocalContext.current as? android.app.Activity
-            DrawerItem("Salir", Icons.AutoMirrored.Filled.ExitToApp) {
+            DrawerItem(tr("Salir"), Icons.AutoMirrored.Filled.ExitToApp) {
                 close()
                 vm.exit()
                 activity?.finishAndRemoveTask()
@@ -517,10 +517,10 @@ private fun Overlays(vm: MainViewModel) {
     vm.remoteConflict?.let { edit ->
         AlertDialog(
             onDismissRequest = { vm.resolveRemoteConflict(null) },
-            title = { Text("«${edit.name}» cambió en el servidor") },
+            title = { Text(tr("«{0}» cambió en el servidor", edit.name)) },
             text = {
                 Text(
-                    "Mientras lo editabas, el archivo cambió en el servidor. ¿Qué hago con tu versión?")
+                    tr("Mientras lo editabas, el archivo cambió en el servidor. ¿Qué hago con tu versión?"))
             },
             confirmButton = {
                 Column(horizontalAlignment = Alignment.End) {
@@ -529,20 +529,20 @@ private fun Overlays(vm: MainViewModel) {
                             vm.resolveRemoteConflict(
                                 com.omaritoinforma.oiarchivos.data.RemoteSync.Mode.OVERWRITE)
                         }) {
-                            Text("Sustituir el del servidor")
+                            Text(tr("Sustituir el del servidor"))
                         }
                     TextButton(
                         onClick = {
                             vm.resolveRemoteConflict(
                                 com.omaritoinforma.oiarchivos.data.RemoteSync.Mode.COPY)
                         }) {
-                            Text("Subir como copia")
+                            Text(tr("Subir como copia"))
                         }
                 }
             },
             dismissButton = {
                 TextButton(onClick = { vm.resolveRemoteConflict(null) }) {
-                    Text("Descartar mis cambios")
+                    Text(tr("Descartar mis cambios"))
                 }
             })
     }
@@ -550,23 +550,23 @@ private fun Overlays(vm: MainViewModel) {
     vm.pendingPaste?.let { p ->
         AlertDialog(
             onDismissRequest = { vm.resolvePaste(null) },
-            title = { Text("Ya existen elementos con ese nombre") },
+            title = { Text(tr("Ya existen elementos con ese nombre")) },
             text = {
                 Text(
-                    "${p.conflicts} de ${p.sources.size} elemento(s) ya existen en la carpeta de destino. ¿Qué quieres hacer?")
+                    tr("{0} de {1} elemento(s) ya existen en la carpeta de destino. ¿Qué quieres hacer?", p.conflicts, p.sources.size))
             },
             confirmButton = {
                 Column(horizontalAlignment = Alignment.End) {
                     TextButton(onClick = { vm.resolvePaste(Conflict.RENAME) }) {
-                        Text("Conservar ambos (renombrar)")
+                        Text(tr("Conservar ambos (renombrar)"))
                     }
                     TextButton(onClick = { vm.resolvePaste(Conflict.OVERWRITE) }) {
-                        Text("Reemplazar / combinar")
+                        Text(tr("Reemplazar / combinar"))
                     }
                     TextButton(onClick = { vm.resolvePaste(Conflict.SKIP) }) {
-                        Text("Omitir los que existen")
+                        Text(tr("Omitir los que existen"))
                     }
-                    TextButton(onClick = { vm.resolvePaste(null) }) { Text("Cancelar") }
+                    TextButton(onClick = { vm.resolvePaste(null) }) { Text(tr("Cancelar")) }
                 }
             },
         )
@@ -584,7 +584,7 @@ private fun ProgressDialog(
     AlertDialog(
         onDismissRequest = {},
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
-        title = { Text(p.title + if (paused) " · En pausa" else "") },
+        title = { Text(p.title + if (paused) tr(" · En pausa") else "") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (p.current.isNotEmpty())
@@ -603,15 +603,15 @@ private fun ProgressDialog(
                 }
                 if (p.totalFiles > 0) {
                     Text(
-                        "${p.doneFiles} de ${p.totalFiles} archivos",
+                        tr("{0} de {1} archivos", p.doneFiles, p.totalFiles),
                         style = MaterialTheme.typography.bodySmall)
                 }
                 if (p.totalBytes > 0) {
                     val remaining =
                         if (p.bytesPerSec > 0) (p.totalBytes - p.doneBytes) / p.bytesPerSec else -1
                     Text(
-                        "${formatSize(p.doneBytes)} de ${formatSize(p.totalBytes)} · ${formatSize(p.bytesPerSec)}/s" +
-                            (if (remaining >= 0) " · faltan ${formatEta(remaining)}" else ""),
+                        tr("{0} de {1} · {2}/s", formatSize(p.doneBytes), formatSize(p.totalBytes), formatSize(p.bytesPerSec)) +
+                            (if (remaining >= 0) tr(" · faltan {0}", formatEta(remaining)) else ""),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -620,12 +620,12 @@ private fun ProgressDialog(
         confirmButton = {
             Column {
                 onPause?.let {
-                    TextButton(onClick = it) { Text(if (paused) "Reanudar" else "Pausar") }
+                    TextButton(onClick = it) { Text(if (paused) tr("Reanudar") else tr("Pausar")) }
                 }
-                TextButton(onClick = onHide) { Text("Continuar navegando") }
+                TextButton(onClick = onHide) { Text(tr("Continuar navegando")) }
             }
         },
-        dismissButton = { TextButton(onClick = onCancel) { Text("Cancelar") } },
+        dismissButton = { TextButton(onClick = onCancel) { Text(tr("Cancelar")) } },
     )
 }
 
@@ -650,12 +650,12 @@ private fun LeftoverFoldersDialog(vm: MainViewModel) {
     }
     AlertDialog(
         onDismissRequest = { next() },
-        title = { Text("Carpetas que dejó «${current.label}»") },
+        title = { Text(tr("Carpetas que dejó «{0}»", current.label)) },
         text = {
             Column {
                 Text(
-                    if (vm.useTrash) "Se moverán a la papelera, de donde se pueden recuperar."
-                    else "La papelera está desactivada: se borrarán.")
+                    if (vm.useTrash) tr("Se moverán a la papelera, de donde se pueden recuperar.")
+                    else tr("La papelera está desactivada: se borrarán."))
                 current.folders.forEach { folder ->
                     Row(
                         Modifier.fillMaxWidth()
@@ -678,8 +678,8 @@ private fun LeftoverFoldersDialog(vm: MainViewModel) {
                     next()
                 },
                 enabled = chosen.isNotEmpty()) {
-                    Text(if (vm.useTrash) "Mover a la papelera" else "Borrar")
+                    Text(if (vm.useTrash) tr("Mover a la papelera") else tr("Borrar"))
                 }
         },
-        dismissButton = { TextButton(onClick = { next() }) { Text("Dejarlas") } })
+        dismissButton = { TextButton(onClick = { next() }) { Text(tr("Dejarlas")) } })
 }

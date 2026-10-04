@@ -17,16 +17,16 @@ object HiddenFiles {
     fun shownName(hidden: String): String? = if (hidden.length > 1 && hidden.startsWith(".")) hidden.substring(1) else null
 
     /** Oculta [file] y devuelve su nueva ruta. Nunca sustituye algo que ya exista. */
-    fun hide(file: File): File = rename(file, hiddenName(file.name) ?: throw IOException("«${file.name}» ya está oculto"))
+    fun hide(file: File): File = rename(file, hiddenName(file.name) ?: throw IOException(tr("«{0}» ya está oculto", file.name)))
 
     /** Devuelve a [file] su nombre sin punto. */
-    fun show(file: File): File = rename(file, shownName(file.name) ?: throw IOException("«${file.name}» no está oculto con un punto"))
+    fun show(file: File): File = rename(file, shownName(file.name) ?: throw IOException(tr("«{0}» no está oculto con un punto", file.name)))
 
     private fun rename(file: File, name: String): File {
-        val parent = file.parentFile ?: throw IOException("No se puede cambiar el nombre de ${file.path}")
+        val parent = file.parentFile ?: throw IOException(tr("No se puede cambiar el nombre de {0}", file.path))
         val target = File(parent, name)
-        if (target.exists()) throw IOException("Ya existe «$name» en la carpeta")
-        if (!file.renameTo(target)) throw IOException("No se pudo renombrar «${file.name}»")
+        if (target.exists()) throw IOException(tr("Ya existe «{0}» en la carpeta", name))
+        if (!file.renameTo(target)) throw IOException(tr("No se pudo renombrar «{0}»", file.name))
         return target
     }
 }

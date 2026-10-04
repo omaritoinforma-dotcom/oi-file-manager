@@ -56,7 +56,7 @@ object NewFilesReport {
         val parts =
             report.perKind.map { (kind, n) -> "$n ${kind.label.lowercase()}" } +
                 (if (report.others > 0) listOf("${report.others} otros") else emptyList())
-        val head = if (report.total == 1) "1 archivo nuevo" else "${report.total} archivos nuevos"
+        val head = if (report.total == 1) tr("1 archivo nuevo") else tr("{0} archivos nuevos", report.total)
         return "$head (${formatSize(report.bytes)}): ${parts.joinToString(", ")}"
     }
 

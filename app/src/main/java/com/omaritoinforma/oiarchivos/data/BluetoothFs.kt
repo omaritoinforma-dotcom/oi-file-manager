@@ -29,11 +29,11 @@ internal class BluetoothFs(connection: Connection, ctx: Context) : RemoteFs {
         if (Build.VERSION.SDK_INT >= 31 &&
             ctx.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) !=
                 PackageManager.PERMISSION_GRANTED)
-            throw IOException("Concede el permiso de dispositivos cercanos para usar Bluetooth")
+            throw IOException(tr("Concede el permiso de dispositivos cercanos para usar Bluetooth"))
         val adapter =
             (ctx.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
-                ?: throw IOException("Este dispositivo no tiene Bluetooth")
-        if (!adapter.isEnabled) throw IOException("Activa Bluetooth en los ajustes de Android")
+                ?: throw IOException(tr("Este dispositivo no tiene Bluetooth"))
+        if (!adapter.isEnabled) throw IOException(tr("Activa Bluetooth en los ajustes de Android"))
         socket =
             adapter
                 .getRemoteDevice(connection.host)
@@ -67,9 +67,9 @@ internal class BluetoothFs(connection: Connection, ctx: Context) : RemoteFs {
                     0x80,
                     byteArrayOf(0x10, 0, 0x20, 0) + ObexCodec.bytes(0x46, target),
                     connecting = true)
-            if (reply.size < 7) throw IOException("Respuesta Bluetooth incompleta")
+            if (reply.size < 7) throw IOException(tr("Respuesta Bluetooth incompleta"))
             val remoteMtu = ObexCodec.ushort(reply, 5)
-            if (remoteMtu < 255) throw IOException("Tamaño de paquete OBEX no válido")
+            if (remoteMtu < 255) throw IOException(tr("Tamaño de paquete OBEX no válido"))
             mtu = remoteMtu.coerceAtMost(32768)
             ObexCodec.headers(reply, 7)
                 .firstOrNull { it.first == 0xcb }
@@ -77,7 +77,7 @@ internal class BluetoothFs(connection: Connection, ctx: Context) : RemoteFs {
         } catch (e: Exception) {
             socket.close()
             throw IOException(
-                "No se pudo abrir el explorador Bluetooth. El equipo remoto debe ofrecer OBEX FTP y autorizar la conexión.",
+                tr("No se pudo abrir el explorador Bluetooth. El equipo remoto debe ofrecer OBEX FTP y autorizar la conexión."),
                 e)
         } finally {
             executor.shutdownNow()
@@ -88,7 +88,7 @@ internal class BluetoothFs(connection: Connection, ctx: Context) : RemoteFs {
         val body = if (connecting || op == 0x85) headers else connectionId + headers
         val packet = ObexCodec.packet(op, body)
         if (!connecting && packet.size > mtu)
-            throw IOException("Paquete Bluetooth demasiado grande")
+            throw IOException(tr("Paquete Bluetooth demasiado grande"))
         output.write(packet)
         output.flush()
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30)
@@ -98,33 +98,33 @@ internal class BluetoothFs(connection: Connection, ctx: Context) : RemoteFs {
             while (position < count) {
                 if (System.nanoTime() > deadline || Thread.currentThread().isInterrupted) {
                     socket.close()
-                    throw IOException("El equipo Bluetooth no respondió a tiempo")
+                    throw IOException(tr("El equipo Bluetooth no respondió a tiempo"))
                 }
                 if (input.available() == 0) {
                     Thread.sleep(10)
                     continue
                 }
                 val n = input.read(bytes, position, minOf(count - position, input.available()))
-                if (n < 0) throw EOFException("Se cerró la conexión Bluetooth")
+                if (n < 0) throw EOFException(tr("Se cerró la conexión Bluetooth"))
                 position += n
             }
             return bytes
         }
         val prefix = readBytes(3)
         val length = ObexCodec.ushort(prefix, 1)
-        if (length !in 3..65535) throw IOException("Respuesta OBEX no válida")
+        if (length !in 3..65535) throw IOException(tr("Respuesta OBEX no válida"))
         val reply = prefix + readBytes(length - 3)
         val status = reply[0].toInt() and 255
         if (status != 0x90 && status != 0xa0)
             throw IOException(
-                "El equipo Bluetooth rechazó la operación (OBEX ${status.toString(16)})")
+                tr("El equipo Bluetooth rechazó la operación (OBEX {0})", status.toString(16)))
         return reply
     }
 
     private fun cd(path: String, create: Boolean = false) {
         exchange(0x85, byteArrayOf(2, 0) + connectionId + ObexCodec.name(""))
         val parts = path.split('/').filter { it.isNotEmpty() }
-        if (parts.size > 128) throw IOException("Ruta Bluetooth demasiado profunda")
+        if (parts.size > 128) throw IOException(tr("Ruta Bluetooth demasiado profunda"))
         for ((i, part) in parts.withIndex()) {
             SafeFiles.requireName(part)
             val flags = if (create && i == parts.lastIndex) 0 else 2
@@ -178,13 +178,13 @@ internal class BluetoothFs(connection: Connection, ctx: Context) : RemoteFs {
                     if (n < 0) break
                     out.write(buffer, 0, n)
                     if (out.size() > 8 * 1024 * 1024)
-                        throw IOException("Listado Bluetooth demasiado grande")
+                        throw IOException(tr("Listado Bluetooth demasiado grande"))
                 }
                 out.toByteArray()
             }
         // OBEX folder listings may contain the standard external DTD. Never process it or entities.
         if (String(data, Charsets.UTF_8).contains("<!ENTITY", ignoreCase = true))
-            throw IOException("Listado Bluetooth no válido")
+            throw IOException(tr("Listado Bluetooth no válido"))
         val xml = Xml.newPullParser()
         xml.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
         xml.setInput(ByteArrayInputStream(data), "UTF-8")
@@ -199,7 +199,7 @@ internal class BluetoothFs(connection: Connection, ctx: Context) : RemoteFs {
                         name,
                         xml.name == "folder",
                         xml.getAttributeValue(null, "size")?.toLongOrNull() ?: -1)
-                if (result.size > 50000) throw IOException("Demasiados archivos Bluetooth")
+                if (result.size > 50000) throw IOException(tr("Demasiados archivos Bluetooth"))
             }
         }
         return result
@@ -225,7 +225,7 @@ internal class BluetoothFs(connection: Connection, ctx: Context) : RemoteFs {
                 else ByteArray(0)
             val capacity = mtu - 3 - connectionId.size - metadata.size - 3
             if (capacity < 1)
-                throw IOException("El nombre supera el tamaño de paquete del equipo Bluetooth")
+                throw IOException(tr("El nombre supera el tamaño de paquete del equipo Bluetooth"))
             val buffer = ByteArray(capacity)
             val n = input.read(buffer)
             if (n == 0) continue
@@ -240,7 +240,7 @@ internal class BluetoothFs(connection: Connection, ctx: Context) : RemoteFs {
                             if (final) ByteArray(0) else buffer.copyOf(n)))
             if (final) {
                 if ((reply[0].toInt() and 255) != 0xa0)
-                    throw IOException("Subida Bluetooth incompleta")
+                    throw IOException(tr("Subida Bluetooth incompleta"))
                 break
             }
         }
@@ -274,13 +274,13 @@ internal class BluetoothFs(connection: Connection, ctx: Context) : RemoteFs {
 
 internal object ObexCodec {
     fun ushort(data: ByteArray, offset: Int): Int {
-        if (offset < 0 || offset + 1 >= data.size) throw IOException("Paquete OBEX incompleto")
+        if (offset < 0 || offset + 1 >= data.size) throw IOException(tr("Paquete OBEX incompleto"))
         return ((data[offset].toInt() and 255) shl 8) or (data[offset + 1].toInt() and 255)
     }
 
     fun packet(op: Int, body: ByteArray): ByteArray {
         val size = body.size + 3
-        if (size > 65535) throw IOException("Paquete OBEX demasiado grande")
+        if (size > 65535) throw IOException(tr("Paquete OBEX demasiado grande"))
         return byteArrayOf(op.toByte(), (size shr 8).toByte(), size.toByte()) + body
     }
 
@@ -291,7 +291,7 @@ internal object ObexCodec {
 
     fun headers(packet: ByteArray, start: Int): List<Pair<Int, ByteArray>> {
         if (start < 3 || start > packet.size || ushort(packet, 1) != packet.size)
-            throw IOException("Paquete OBEX no válido")
+            throw IOException(tr("Paquete OBEX no válido"))
         val result = mutableListOf<Pair<Int, ByteArray>>()
         var offset = start
         while (offset < packet.size) {
@@ -299,12 +299,12 @@ internal object ObexCodec {
             val variable = (id and 0xc0) < 0x80
             val length =
                 if (variable) {
-                    if (offset + 3 > packet.size) throw IOException("Cabecera OBEX incompleta")
+                    if (offset + 3 > packet.size) throw IOException(tr("Cabecera OBEX incompleta"))
                     ushort(packet, offset + 1)
                 } else if ((id and 0xc0) == 0x80) 2 else 5
             val headerSize = if (variable) 3 else 1
             if (length < headerSize || offset + length > packet.size)
-                throw IOException("Cabecera OBEX no válida")
+                throw IOException(tr("Cabecera OBEX no válida"))
             result += id to packet.copyOfRange(offset + headerSize, offset + length)
             offset += length
         }

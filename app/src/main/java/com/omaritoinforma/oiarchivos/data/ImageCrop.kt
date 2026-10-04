@@ -4,13 +4,16 @@ import kotlin.math.max
 import kotlin.math.min
 
 /** Proporciones del recuadro de recorte (como las de ES: libre, cuadrado, 4:3, 16:9…). */
-enum class CropAspect(val label: String, val ratio: Float?) {
-    FREE("Libre", null),
-    SQUARE("1:1", 1f),
-    LANDSCAPE_4_3("4:3", 4f / 3f),
-    PORTRAIT_3_4("3:4", 3f / 4f),
-    LANDSCAPE_16_9("16:9", 16f / 9f),
-    PORTRAIT_9_16("9:16", 9f / 16f)
+enum class CropAspect(private val labelEs: String, val ratio: Float?) {
+    FREE(trKey("Libre"), null),
+    SQUARE(trKey("1:1"), 1f),
+    LANDSCAPE_4_3(trKey("4:3"), 4f / 3f),
+    PORTRAIT_3_4(trKey("3:4"), 3f / 4f),
+    LANDSCAPE_16_9(trKey("16:9"), 16f / 9f),
+    PORTRAIT_9_16(trKey("9:16"), 9f / 16f);
+
+    val label: String
+        get() = tr(labelEs)
 }
 
 /** Esquina del recuadro que se arrastra. */

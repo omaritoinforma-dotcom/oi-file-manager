@@ -18,15 +18,18 @@ data class SpaceAnalysis(
 )
 
 /** Tipos que se pueden elegir al buscar (como el «Tipo» de la búsqueda avanzada de ES). */
-enum class SearchKind(val label: String, val kinds: Set<FileKind>) {
-    FOLDERS("Carpetas", setOf(FileKind.FOLDER)),
-    IMAGES("Imágenes", setOf(FileKind.IMAGE)),
-    VIDEOS("Vídeos", setOf(FileKind.VIDEO)),
-    AUDIO("Música", setOf(FileKind.AUDIO)),
-    DOCUMENTS("Documentos", setOf(FileKind.DOC, FileKind.PDF)),
-    TEXT("Texto y código", setOf(FileKind.TEXT, FileKind.CODE)),
-    ARCHIVES("Comprimidos", setOf(FileKind.ARCHIVE)),
-    APK("APK", setOf(FileKind.APK))
+enum class SearchKind(private val labelEs: String, val kinds: Set<FileKind>) {
+    FOLDERS(trKey("Carpetas"), setOf(FileKind.FOLDER)),
+    IMAGES(trKey("Imágenes"), setOf(FileKind.IMAGE)),
+    VIDEOS(trKey("Vídeos"), setOf(FileKind.VIDEO)),
+    AUDIO(trKey("Música"), setOf(FileKind.AUDIO)),
+    DOCUMENTS(trKey("Documentos"), setOf(FileKind.DOC, FileKind.PDF)),
+    TEXT(trKey("Texto y código"), setOf(FileKind.TEXT, FileKind.CODE)),
+    ARCHIVES(trKey("Comprimidos"), setOf(FileKind.ARCHIVE)),
+    APK(trKey("APK"), setOf(FileKind.APK));
+
+    val label: String
+        get() = tr(labelEs)
 }
 
 data class SearchFilter(
@@ -83,7 +86,7 @@ object AnalysisTools {
             if (f.extension.lowercase() in setOf("tmp", "temp", "bak") || f.length() == 0L)
                 candidates += f
             if (files.size % 100 == 0)
-                report(OpProgress("Analizando espacio", f.name, doneFiles = files.size))
+                report(OpProgress(tr("Analizando espacio"), f.name, doneFiles = files.size))
         }
         val dupes = ArrayList<List<File>>()
         if (duplicates) {
@@ -96,7 +99,7 @@ object AnalysisTools {
             val hashes = HashMap<String, MutableList<File>>()
             for (group in groups) for (file in group) {
                 currentCoroutineContext().ensureActive()
-                report(OpProgress("Buscando duplicados", file.name))
+                report(OpProgress(tr("Buscando duplicados"), file.name))
                 val hash = digest(file)
                 hashes.getOrPut(hash) { ArrayList() }.add(file)
             }
@@ -136,7 +139,7 @@ object AnalysisTools {
         for (f in SafeFiles.walk(root, skipHidden = !filter.hidden, recursive = filter.subfolders)) {
             currentCoroutineContext().ensureActive()
             if (f == root) continue
-            if (++checked % 200 == 0) report(OpProgress("Buscando", f.name, doneFiles = checked))
+            if (++checked % 200 == 0) report(OpProgress(tr("Buscando"), f.name, doneFiles = checked))
             if (!filter.accepts(f)) continue
             if (filter.text.isNotEmpty()) {
                 if (!f.isFile || f.length() > 8L * 1024 * 1024) continue

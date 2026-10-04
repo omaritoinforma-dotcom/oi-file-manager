@@ -11,14 +11,19 @@ import java.io.IOException
 import kotlin.coroutines.resume
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
+import com.omaritoinforma.oiarchivos.data.tr
+import com.omaritoinforma.oiarchivos.data.trKey
 
 /** «Poner como tono» de ES: tono de llamada, de notificación o de alarma. */
 object Ringtones {
-    enum class Kind(val label: String, val type: Int) {
-        CALL("Tono de llamada", RingtoneManager.TYPE_RINGTONE),
-        NOTIFICATION("Sonido de notificación", RingtoneManager.TYPE_NOTIFICATION),
-        ALARM("Sonido de alarma", RingtoneManager.TYPE_ALARM)
-    }
+    enum class Kind(private val labelEs: String, val type: Int) {
+        CALL(trKey("Tono de llamada"), RingtoneManager.TYPE_RINGTONE),
+        NOTIFICATION(trKey("Sonido de notificación"), RingtoneManager.TYPE_NOTIFICATION),
+        ALARM(trKey("Sonido de alarma"), RingtoneManager.TYPE_ALARM);
+
+    val label: String
+        get() = tr(labelEs)
+}
 
     /** Android pide un permiso especial para cambiar los ajustes del sistema. */
     fun canWrite(ctx: Context) = Settings.System.canWrite(ctx)
@@ -37,10 +42,10 @@ object Ringtones {
                     done.resume(uri)
                 }
             }
-        } ?: throw IOException("Android no reconoce «${file.name}» como audio")
+        } ?: throw IOException(tr("Android no reconoce «{0}» como audio", file.name))
 
     suspend fun set(ctx: Context, file: File, kind: Kind) {
-        if (!canWrite(ctx)) throw IOException("Falta el permiso para cambiar los ajustes del sistema")
+        if (!canWrite(ctx)) throw IOException(tr("Falta el permiso para cambiar los ajustes del sistema"))
         RingtoneManager.setActualDefaultRingtoneUri(ctx, kind.type, mediaUri(ctx, file))
     }
 }

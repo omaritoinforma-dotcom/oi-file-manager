@@ -92,6 +92,7 @@ import com.omaritoinforma.oiarchivos.ui.components.SectionTitle
 import com.omaritoinforma.oiarchivos.util.PathUtil
 import com.omaritoinforma.oiarchivos.util.formatSize
 import kotlin.math.roundToInt
+import com.omaritoinforma.oiarchivos.data.tr
 
 private data class Tile(
     val label: String,
@@ -108,11 +109,11 @@ fun HomeScreen(vm: MainViewModel, openDrawer: () -> Unit) {
             TopAppBar(
                 title = { Text("OI Archivos") },
                 navigationIcon = {
-                    IconButton(onClick = openDrawer) { Icon(Icons.Filled.Menu, "Menú") }
+                    IconButton(onClick = openDrawer) { Icon(Icons.Filled.Menu, tr("Menú")) }
                 },
                 actions = {
                     IconButton(onClick = { vm.goTo(Screen.Settings) }) {
-                        Icon(Icons.Filled.Settings, "Ajustes")
+                        Icon(Icons.Filled.Settings, tr("Ajustes"))
                     }
                 },
             )
@@ -143,12 +144,12 @@ fun HomeScreen(vm: MainViewModel, openDrawer: () -> Unit) {
                     OutlinedTextField(
                         value = query,
                         onValueChange = { query = it },
-                        placeholder = { Text("Buscar archivos…") },
+                        placeholder = { Text(tr("Buscar archivos…")) },
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Filled.Search, null) },
                         trailingIcon = {
                             IconButton(onClick = go) {
-                                Icon(Icons.Filled.Search, "Buscar en todo el almacenamiento")
+                                Icon(Icons.Filled.Search, tr("Buscar en todo el almacenamiento"))
                             }
                         },
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -160,7 +161,7 @@ fun HomeScreen(vm: MainViewModel, openDrawer: () -> Unit) {
             if (sections.isEmpty())
                 item {
                     Text(
-                        "Inicio está vacío. Para volver a mostrar algo: Ajustes → Pantalla de inicio.",
+                        tr("Inicio está vacío. Para volver a mostrar algo: Ajustes → Pantalla de inicio."),
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             sections.forEach { section ->
@@ -172,20 +173,20 @@ fun HomeScreen(vm: MainViewModel, openDrawer: () -> Unit) {
                     HomeSection.CATEGORIES -> {
                         val tiles = categoryTiles(vm, vm.homeHiddenTiles.value)
                         if (tiles.isNotEmpty()) {
-                            item(key = "title:cat") { SectionTitle("Categorías") }
+                            item(key = "title:cat") { SectionTitle(tr("Categorías")) }
                             item(key = "tiles:cat") { TileGrid(tiles) }
                         }
                     }
                     HomeSection.QUICK -> {
                         val tiles = quickTiles(vm, vm.homeHiddenTiles.value)
                         if (tiles.isNotEmpty()) {
-                            item(key = "title:quick") { SectionTitle("Accesos rápidos") }
+                            item(key = "title:quick") { SectionTitle(tr("Accesos rápidos")) }
                             item(key = "tiles:quick") { TileGrid(tiles) }
                         }
                     }
                     HomeSection.NEW_FILES ->
                         if (newFiles.isNotEmpty()) {
-                            item(key = "title:new") { SectionTitle("Archivos nuevos") }
+                            item(key = "title:new") { SectionTitle(tr("Archivos nuevos")) }
                             items(newFiles, key = { "new:" + it.path }) { f ->
                                 ListItem(
                                     headlineContent = {
@@ -211,7 +212,7 @@ fun HomeScreen(vm: MainViewModel, openDrawer: () -> Unit) {
                         }
                     HomeSection.BOOKMARKS ->
                         if (vm.bookmarks.isNotEmpty()) {
-                            item(key = "title:bm") { SectionTitle("Marcadores") }
+                            item(key = "title:bm") { SectionTitle(tr("Marcadores")) }
                             items(vm.bookmarks.toList(), key = { "bm:$it" }) { b ->
                                 ListItem(
                                     headlineContent = { Text(PathUtil.displayName(b)) },
@@ -226,7 +227,7 @@ fun HomeScreen(vm: MainViewModel, openDrawer: () -> Unit) {
                                     },
                                     trailingContent = {
                                         IconButton(onClick = { vm.toggleBookmark(b) }) {
-                                            Icon(Icons.Filled.Close, "Quitar marcador")
+                                            Icon(Icons.Filled.Close, tr("Quitar marcador"))
                                         }
                                     },
                                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -359,7 +360,7 @@ private fun StorageCard(v: StorageVolumeInfo, onClick: () -> Unit) {
                 Column(Modifier.weight(1f)) {
                     Text(v.name, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "${formatSize(v.free)} libres de ${formatSize(v.total)}",
+                        tr("{0} libres de {1}", formatSize(v.free), formatSize(v.total)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

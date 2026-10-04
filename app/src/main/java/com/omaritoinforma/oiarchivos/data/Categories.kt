@@ -8,13 +8,16 @@ import java.io.File
  * Qué tipos de archivo entran en la categoría «Documentos» («Document type setting» de ES). Cada uno
  * agrupa las extensiones que se reconocen juntas.
  */
-enum class DocumentType(val label: String, val extensions: List<String>) {
-    PDF("PDF", listOf("pdf")),
-    WORD("Word y texto enriquecido", listOf("doc", "docx", "odt", "rtf")),
-    EXCEL("Hojas de cálculo", listOf("xls", "xlsx", "ods", "csv")),
-    POWERPOINT("Presentaciones", listOf("ppt", "pptx", "odp")),
-    TEXT("Texto (.txt y .md)", listOf("txt", "md")),
-    EBOOK("Libros electrónicos (.epub)", listOf("epub"));
+enum class DocumentType(private val labelEs: String, val extensions: List<String>) {
+    PDF(trKey("PDF"), listOf("pdf")),
+    WORD(trKey("Word y texto enriquecido"), listOf("doc", "docx", "odt", "rtf")),
+    EXCEL(trKey("Hojas de cálculo"), listOf("xls", "xlsx", "ods", "csv")),
+    POWERPOINT(trKey("Presentaciones"), listOf("ppt", "pptx", "odp")),
+    TEXT(trKey("Texto (.txt y .md)"), listOf("txt", "md")),
+    EBOOK(trKey("Libros electrónicos (.epub)"), listOf("epub"));
+
+    val label: String
+        get() = tr(labelEs)
 
     companion object {
         val all: Set<DocumentType> = entries.toSet()

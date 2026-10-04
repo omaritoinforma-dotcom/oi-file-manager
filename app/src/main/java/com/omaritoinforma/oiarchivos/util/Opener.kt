@@ -10,16 +10,21 @@ import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import java.io.File
+import com.omaritoinforma.oiarchivos.data.tr
+import com.omaritoinforma.oiarchivos.data.trKey
 
 /** «Abrir como» de ES: abrir un archivo como si fuera de otro tipo, sea cual sea su extensión. */
-enum class OpenAs(val label: String, val mime: String?) {
+enum class OpenAs(private val labelEs: String, val mime: String?) {
     /** Se abre en el editor de texto de OI Archivos. */
-    TEXT("Texto (editor de OI Archivos)", null),
-    IMAGE("Imagen", "image/*"),
-    AUDIO("Audio", "audio/*"),
-    VIDEO("Vídeo", "video/*"),
-    PDF("PDF", "application/pdf"),
-    ANY("Cualquier tipo", "*/*")
+    TEXT(trKey("Texto (editor de OI Archivos)"), null),
+    IMAGE(trKey("Imagen"), "image/*"),
+    AUDIO(trKey("Audio"), "audio/*"),
+    VIDEO(trKey("Vídeo"), "video/*"),
+    PDF(trKey("PDF"), "application/pdf"),
+    ANY(trKey("Cualquier tipo"), "*/*");
+
+    val label: String
+        get() = tr(labelEs)
 }
 
 /** Abrir, compartir e instalar archivos con otras apps. */
@@ -38,9 +43,9 @@ object Opener {
             ctx.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (e: ActivityNotFoundException) {
             if (!chooser) open(ctx, f, chooser = true, mimeType = "*/*")
-            else Toast.makeText(ctx, "No hay ninguna app para abrir este archivo", Toast.LENGTH_SHORT).show()
+            else Toast.makeText(ctx, tr("No hay ninguna app para abrir este archivo"), Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
-            Toast.makeText(ctx, "No se pudo abrir: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(ctx, tr("No se pudo abrir: {0}", e.message), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -58,7 +63,7 @@ object Opener {
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             ctx.startActivity(Intent.createChooser(intent, "Compartir").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (e: Exception) {
-            Toast.makeText(ctx, "No se pudo compartir: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(ctx, tr("No se pudo compartir: {0}", e.message), Toast.LENGTH_SHORT).show()
         }
     }
 

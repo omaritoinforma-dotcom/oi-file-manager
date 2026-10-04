@@ -55,9 +55,9 @@ private constructor(
     override val title
         get() =
             when {
-                move -> "Moviendo"
-                upload -> "Subiendo"
-                else -> "Descargando"
+                move -> tr("Moviendo")
+                upload -> tr("Subiendo")
+                else -> tr("Descargando")
             }
 
     override val destination
@@ -122,7 +122,7 @@ private constructor(
             try {
                 connector(connectionId)
             } catch (e: NoSuchElementException) {
-                throw IOException("La conexión «$label» ya no existe")
+                throw IOException(tr("La conexión «{0}» ya no existe", label))
             }
         val changed = fs.use { if (upload) runUpload(it, tracker) else runDownload(it, tracker) }
         journal.delete()
@@ -140,7 +140,7 @@ private constructor(
                 file.canonicalPath != path ||
                 !path.startsWith(root + File.separator)
         )
-            throw IOException("La ruta de destino cambió desde que se inició la transferencia")
+            throw IOException(tr("La ruta de destino cambió desde que se inició la transferencia"))
         return file
     }
 
@@ -152,7 +152,7 @@ private constructor(
             if (entry.directory) {
                 val dir = checkedLocal(entry.local)
                 if (!dir.isDirectory && !dir.mkdirs())
-                    throw IOException("No se pudo crear ${dir.name}")
+                    throw IOException(tr("No se pudo crear {0}", dir.name))
                 if (entry.phase < DONE) {
                     entry.phase = DONE
                     save()
@@ -168,7 +168,7 @@ private constructor(
             }
             val part = partial(index)
             if (java.nio.file.Files.isSymbolicLink(part.toPath()))
-                throw IOException("El archivo parcial fue sustituido por un enlace")
+                throw IOException(tr("El archivo parcial fue sustituido por un enlace"))
             if (entry.phase == READY && !part.isFile) {
                 // El proceso pudo morir entre el renombrado y el guardado del registro.
                 val stored = checkedLocal(entry.local)
@@ -180,7 +180,7 @@ private constructor(
             if (entry.phase == PENDING || entry.phase == ACTIVE) {
                 val parent = checkedLocal(entry.local).parentFile!!
                 if (!parent.isDirectory && !parent.mkdirs())
-                    throw IOException("No se pudo crear el destino")
+                    throw IOException(tr("No se pudo crear el destino"))
                 if (entry.phase == PENDING) {
                     entry.phase = ACTIVE
                     save()
@@ -228,7 +228,7 @@ private constructor(
         if (offset > 0) {
             val current = fs.list(entry.remoteParent).firstOrNull { it.path == entry.remote }
             if (current == null || current.directory)
-                throw IOException("El archivo remoto ya no existe: ${entry.name}")
+                throw IOException(tr("El archivo remoto ya no existe: {0}", entry.name))
             // Si cambió el tamaño, el archivo del servidor cambió y no se reutiliza lo descargado.
             input = if (current.size == entry.size) fs.readFrom(entry.remote, offset) else null
             if (input == null) offset = 0
@@ -255,8 +255,8 @@ private constructor(
         }
         if (entry.size >= 0 && done != entry.size)
             throw IOException(
-                if (done < entry.size) "Descarga incompleta: ${entry.name}"
-                else "El archivo remoto cambió durante la transferencia: ${entry.name}"
+                if (done < entry.size) tr("Descarga incompleta: {0}", entry.name)
+                else tr("El archivo remoto cambió durante la transferencia: {0}", entry.name)
             )
     }
 
@@ -285,7 +285,7 @@ private constructor(
                 !entry.directory &&
                     (source.length() != entry.size || source.lastModified() != entry.modified)
         )
-            throw IOException("El original cambió: ${source.name}. Se conserva sin borrar.")
+            throw IOException(tr("El original cambió: {0}. Se conserva sin borrar.", source.name))
         return source
     }
 
@@ -293,7 +293,7 @@ private constructor(
         for (entry in entries) {
             currentCoroutineContext().ensureActive()
             val parentPath = if (entry.parent < 0) root else entries[entry.parent].remote
-            if (parentPath.isEmpty()) throw IOException("Registro de transferencia no válido")
+            if (parentPath.isEmpty()) throw IOException(tr("Registro de transferencia no válido"))
             tracker.current = entry.name
             if (entry.phase == PENDING) {
                 checkSource(entry)
@@ -345,7 +345,7 @@ private constructor(
                 val stored =
                     fs.list(parentPath).firstOrNull { !it.directory && it.name == entry.name }
                 if (stored != null && stored.size >= 0 && stored.size != entry.size)
-                    throw IOException("El servidor guardó un tamaño distinto: ${entry.name}")
+                    throw IOException(tr("El servidor guardó un tamaño distinto: {0}", entry.name))
                 entry.phase = STORED
                 save()
             } else tracker.addBytes(entry.size)
@@ -357,7 +357,7 @@ private constructor(
                         currentCoroutineContext().ensureActive()
                         if (!source.delete())
                             throw IOException(
-                                "Subido, pero no se pudo borrar el original: ${source.name}"
+                                tr("Subido, pero no se pudo borrar el original: {0}", source.name)
                             )
                     }
                 }
@@ -392,7 +392,7 @@ private constructor(
 
         private fun prepare(directory: File) {
             if (!directory.isDirectory && !directory.mkdirs())
-                throw IOException("No se pudo guardar la transferencia")
+                throw IOException(tr("No se pudo guardar la transferencia"))
         }
 
         /** Recorre el árbol remoto una vez y registra cada archivo antes de copiar el primer byte. */
@@ -407,9 +407,9 @@ private constructor(
             connector: (String) -> RemoteFs,
         ): DurableRemote {
             prepare(directory)
-            if (sources.isEmpty()) throw IOException("Selecciona al menos un archivo")
+            if (sources.isEmpty()) throw IOException(tr("Selecciona al menos un archivo"))
             if (!destination.isDirectory && !destination.mkdirs())
-                throw IOException("Destino no válido")
+                throw IOException(tr("Destino no válido"))
             val dest = destination.canonicalFile
             val entries = ArrayList<Entry>()
             val reserved = hashSetOf<String>()
@@ -422,7 +422,7 @@ private constructor(
             ) {
                 currentCoroutineContext().ensureActive()
                 SafeFiles.requireName(entry.name)
-                if (depth > 128) throw IOException("La carpeta remota supera 128 niveles")
+                if (depth > 128) throw IOException(tr("La carpeta remota supera 128 niveles"))
                 entries +=
                     Entry(
                         target.path,
@@ -435,7 +435,7 @@ private constructor(
                         0,
                     )
                 if (entries.size > LIMIT)
-                    throw IOException("Selecciona menos de 100.000 elementos por transferencia")
+                    throw IOException(tr("Selecciona menos de 100.000 elementos por transferencia"))
                 if (entry.directory) {
                     val self = entries.lastIndex
                     for (child in fs.list(entry.path)) plan(
@@ -482,13 +482,13 @@ private constructor(
         ): DurableRemote {
             prepare(directory)
             val roots = sources.distinctBy { it.canonicalPath }
-            if (roots.isEmpty()) throw IOException("Selecciona al menos un archivo")
+            if (roots.isEmpty()) throw IOException(tr("Selecciona al menos un archivo"))
             val entries = ArrayList<Entry>()
             fun plan(source: File, parentIndex: Int, depth: Int) {
-                if (depth > 128) throw IOException("La carpeta supera 128 niveles")
+                if (depth > 128) throw IOException(tr("La carpeta supera 128 niveles"))
                 SafeFiles.requireRegular(source)
                 if (!source.isFile && !source.isDirectory)
-                    throw IOException("No se suben archivos especiales: ${source.name}")
+                    throw IOException(tr("No se suben archivos especiales: {0}", source.name))
                 val src = source.canonicalFile
                 entries +=
                     Entry(
@@ -502,11 +502,11 @@ private constructor(
                         src.lastModified(),
                     )
                 if (entries.size > LIMIT)
-                    throw IOException("Selecciona menos de 100.000 elementos por transferencia")
+                    throw IOException(tr("Selecciona menos de 100.000 elementos por transferencia"))
                 if (src.isDirectory) {
                     val self = entries.lastIndex
                     for (child in
-                        src.listFiles() ?: throw IOException("No se pudo leer ${src.name}")) {
+                        src.listFiles() ?: throw IOException(tr("No se pudo leer {0}", src.name))) {
                         if (!java.nio.file.Files.isSymbolicLink(child.toPath()))
                             plan(child, self, depth + 1)
                     }
@@ -536,20 +536,20 @@ private constructor(
 
         fun load(file: File, connector: (String) -> RemoteFs): DurableRemote {
             if (file.length() > 64 * 1024 * 1024)
-                throw IOException("Registro de transferencia demasiado grande")
+                throw IOException(tr("Registro de transferencia demasiado grande"))
             DataInputStream(file.inputStream().buffered()).use { input ->
                 if (input.readUTF() != MAGIC)
-                    throw IOException("Registro de transferencia no válido")
+                    throw IOException(tr("Registro de transferencia no válido"))
                 val id = input.readUTF()
                 if (UUID.fromString(id).toString() + ".rjob" != file.name)
-                    throw IOException("Identificador de transferencia no válido")
+                    throw IOException(tr("Identificador de transferencia no válido"))
                 val upload = input.readBoolean()
                 val move = input.readBoolean()
                 val connectionId = input.readUTF()
                 val label = input.readUTF()
                 val root = input.readUTF()
                 val size = input.readInt()
-                if (size !in 0..LIMIT) throw IOException("Registro no válido")
+                if (size !in 0..LIMIT) throw IOException(tr("Registro no válido"))
                 val entries =
                     MutableList(size) {
                         Entry(
@@ -571,7 +571,7 @@ private constructor(
                             e.parent >= 0 && !entries[e.parent].directory
                     }
                 )
-                    throw IOException("Registro de transferencia no válido")
+                    throw IOException(tr("Registro de transferencia no válido"))
                 return DurableRemote(
                     id,
                     upload,

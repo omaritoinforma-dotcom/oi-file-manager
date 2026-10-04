@@ -5,10 +5,13 @@ import android.content.Context
 import com.omaritoinforma.oiarchivos.util.PathUtil
 
 /** Qué se muestra al abrir la app («Elegir la ventana por defecto» de ES). */
-enum class StartWindow(val label: String) {
-    HOME("Inicio (categorías)"),
-    HOME_FOLDER("Carpeta de inicio"),
-    LAST_FOLDER("Última carpeta abierta")
+enum class StartWindow(private val labelEs: String) {
+    HOME(trKey("Inicio (categorías)")),
+    HOME_FOLDER(trKey("Carpeta de inicio")),
+    LAST_FOLDER(trKey("Última carpeta abierta"));
+
+    val label: String
+        get() = tr(labelEs)
 }
 
 class Prefs(context: Context) {
@@ -343,6 +346,11 @@ class Prefs(context: Context) {
     var screenOrientation: ScreenOrientation
         get() = enumOr(sp.getString("screen_orientation", null), ScreenOrientation.AUTO)
         set(v) = sp.edit().putString("screen_orientation", v.name).apply()
+
+    /** Idioma de la app. Por omisión, español (el idioma en el que está escrita). */
+    var appLanguage: AppLanguage
+        get() = enumOr(sp.getString("app_language", null), AppLanguage.SPANISH)
+        set(v) = sp.edit().putString("app_language", v.name).apply()
 
     /** «Large layout»: todo un poco más grande. */
     var largeLayout: Boolean

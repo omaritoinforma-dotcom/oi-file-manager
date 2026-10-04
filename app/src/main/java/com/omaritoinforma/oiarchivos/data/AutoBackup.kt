@@ -28,10 +28,13 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 /** Qué copia la copia automática («Copia de seguridad automática» de ES). */
-enum class BackupKind(val label: String, val kinds: Set<FileKind>, val folders: List<String>) {
-    PHOTOS("Fotos", setOf(FileKind.IMAGE), listOf("DCIM", "Pictures")),
-    VIDEOS("Vídeos", setOf(FileKind.VIDEO), listOf("DCIM", "Movies", "Pictures")),
-    MUSIC("Música", setOf(FileKind.AUDIO), listOf("Music"))
+enum class BackupKind(private val labelEs: String, val kinds: Set<FileKind>, val folders: List<String>) {
+    PHOTOS(trKey("Fotos"), setOf(FileKind.IMAGE), listOf("DCIM", "Pictures")),
+    VIDEOS(trKey("Vídeos"), setOf(FileKind.VIDEO), listOf("DCIM", "Movies", "Pictures")),
+    MUSIC(trKey("Música"), setOf(FileKind.AUDIO), listOf("Music"));
+
+    val label: String
+        get() = tr(labelEs)
 }
 
 /**
@@ -101,9 +104,9 @@ object AutoBackup {
     /** Carpeta de destino limpia: segmentos sin «.», «..» ni barras invertidas. */
     fun checkFolder(folder: String): List<String> {
         val parts = folder.split('/').map { it.trim() }.filter { it.isNotEmpty() }
-        if (parts.isEmpty()) throw IOException("Escribe la carpeta de destino")
+        if (parts.isEmpty()) throw IOException(tr("Escribe la carpeta de destino"))
         if (parts.any { it == "." || it == ".." || '\\' in it })
-            throw IOException("La carpeta de destino no puede tener «.», «..» ni «\\»")
+            throw IOException(tr("La carpeta de destino no puede tener «.», «..» ni «\\»"))
         return parts
     }
 
@@ -128,20 +131,20 @@ object AutoBackup {
         val target = File(ctx.filesDir, INDEX_FILE)
         val tmp = File(ctx.filesDir, "$INDEX_FILE.tmp")
         tmp.writeText(json.toString())
-        if (!tmp.renameTo(target)) throw IOException("No se pudo guardar el índice de la copia")
+        if (!tmp.renameTo(target)) throw IOException(tr("No se pudo guardar el índice de la copia"))
     }
 
     // ---- Copia ----
 
     /** Hace la copia ahora. Nunca hay dos a la vez. */
     suspend fun run(ctx: Context, report: (OpProgress) -> Unit): Outcome {
-        if (!running.compareAndSet(false, true)) return Outcome(0, "ya hay una copia en marcha")
+        if (!running.compareAndSet(false, true)) return Outcome(0, tr("ya hay una copia en marcha"))
         var uploaded = 0
         try {
             val prefs = Prefs(ctx)
             val connection =
                 ConnectionStore(ctx).load().firstOrNull { it.id == prefs.autoBackupConnection }
-                    ?: throw IOException("Elige el destino de la copia")
+                    ?: throw IOException(tr("Elige el destino de la copia"))
             val parts = checkFolder(prefs.autoBackupFolder)
             val destination = connection.id + "|" + parts.joinToString("/")
             val index = loadIndex(ctx, destination)
@@ -175,7 +178,7 @@ object AutoBackup {
                                 currentCoroutineContext().ensureActive()
                                 val local = File(up.file.path)
                                 if (!local.isFile) continue
-                                report(OpProgress("Copia automática", local.name, doneFiles = i, totalFiles = uploads.size))
+                                report(OpProgress(tr("Copia automática"), local.name, doneFiles = i, totalFiles = uploads.size))
                                 val dir = ensure(base, up.remote.split('/').dropLast(1))
                                 val name = up.remote.substringAfterLast('/')
                                 // Una versión anterior del mismo archivo se sustituye.
@@ -214,10 +217,10 @@ object AutoBackup {
         Prefs(ctx).autoBackupLast =
             when {
                 outcome.error != null ->
-                    "$time: error (${outcome.error})" +
-                        (if (outcome.uploaded > 0) "; ${outcome.uploaded} copiado(s) antes" else "")
-                outcome.uploaded == 0 -> "$time: todo estaba copiado"
-                else -> "$time: ${outcome.uploaded} archivo(s) copiado(s) en «$destination»"
+                    tr("{0}: error ({1})", time, outcome.error) +
+                        (if (outcome.uploaded > 0) tr("; {0} copiado(s) antes", outcome.uploaded) else "")
+                outcome.uploaded == 0 -> tr("{0}: todo estaba copiado", time)
+                else -> tr("{0}: {1} archivo(s) copiado(s) en «{2}»", time, outcome.uploaded, destination)
             }
     }
 
@@ -267,7 +270,7 @@ object AutoBackup {
         if (outcome.uploaded == 0 && outcome.error == null) return
         val manager = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         manager.createNotificationChannel(
-            NotificationChannel(CHANNEL, "Copia automática", NotificationManager.IMPORTANCE_LOW))
+            NotificationChannel(CHANNEL, tr("Copia automática"), NotificationManager.IMPORTANCE_LOW))
         val text = Prefs(ctx).autoBackupLast
         runCatching {
             manager.notify(
@@ -276,7 +279,7 @@ object AutoBackup {
                     .setSmallIcon(
                         if (outcome.error != null) android.R.drawable.stat_notify_error
                         else android.R.drawable.stat_sys_upload_done)
-                    .setContentTitle(if (outcome.error != null) "Copia automática: error" else "Copia automática")
+                    .setContentTitle(if (outcome.error != null) tr("Copia automática: error") else tr("Copia automática"))
                     .setContentText(text)
                     .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                     .setAutoCancel(true)

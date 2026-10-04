@@ -9,12 +9,13 @@ import android.graphics.drawable.Icon
 import com.omaritoinforma.oiarchivos.MainActivity
 import com.omaritoinforma.oiarchivos.R
 import java.io.File
+import com.omaritoinforma.oiarchivos.data.tr
 
 object FolderActions {
     fun pin(ctx: Context, path: String) {
         val manager = ctx.getSystemService(ShortcutManager::class.java)
         if (!manager.isRequestPinShortcutSupported)
-            throw IllegalStateException("El lanzador no permite fijar accesos directos")
+            throw IllegalStateException(tr("El lanzador no permite fijar accesos directos"))
         val shortcut =
             ShortcutInfo.Builder(ctx, "folder-" + path.hashCode())
                 .setShortLabel(PathUtil.displayName(path).take(40))
@@ -25,7 +26,7 @@ object FolderActions {
                         .putExtra("folder", path))
                 .build()
         if (!manager.requestPinShortcut(shortcut, null))
-            throw IllegalStateException("No se pudo solicitar el acceso directo")
+            throw IllegalStateException(tr("No se pudo solicitar el acceso directo"))
     }
 
     fun wallpaper(ctx: Context, file: File) {

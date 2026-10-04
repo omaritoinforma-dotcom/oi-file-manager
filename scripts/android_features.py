@@ -3379,6 +3379,58 @@ def clean_leftover_folders():
         sh("rm", "-rf", q(leftover), q(other), check=False)
 
 
+def restore_spanish():
+    """Deja la app en español aunque la comprobación del idioma haya fallado a medias."""
+    for _ in range(3):
+        try:
+            ui.launch()
+            tree = wait_any("Categorías", "Menú", "Categories", "Menu", timeout=60)
+            if nodes("Categorías", tree) or nodes("Menú", tree):
+                return
+            tap("Menu")
+            wait("Settings")
+            tap("Settings")
+            tap(find("Display").get("text"))
+            tap("Español")
+            wait("Idioma:", timeout=30)
+            return
+        except Exception:
+            traceback.print_exc()
+    raise AssertionError("No se pudo volver a poner la app en español")
+
+
+@check("idioma-de-la-app-ingles-y-vuelta")
+def app_language():
+    settings("Pantalla")
+    wait("Idioma:")
+    tap("English")
+    try:
+        # Al cambiar el idioma la pantalla se vuelve a crear y sigue en Ajustes → Pantalla, ya en inglés.
+        wait("Language:", timeout=30)
+        wait("Screen orientation:")
+        assert not nodes("Idioma:", hierarchy()), "Siguen textos en español"
+        evidence("idioma-ingles-ajustes")
+        adb("shell", "input", "keyevent", "4")
+        wait("Display")
+        wait("Security")
+        adb("shell", "input", "keyevent", "4")
+        # Inicio y el menú lateral (sus nombres vienen de listas fijas que se traducen al mostrarse).
+        wait("Categories", timeout=30)
+        tap("Menu")
+        wait("Settings")
+        wait("Trash")
+        evidence("idioma-ingles-menu")
+        # Tras reiniciar la app sigue en inglés: el idioma se aplica al arrancar el proceso.
+        ui.launch()
+        tree = wait_any("Categories", "Menu", "Categorías", "Menú", timeout=60)
+        assert not (nodes("Categorías", tree) or nodes("Menú", tree)), "Al reiniciar volvió al español"
+    finally:
+        restore_spanish()
+    settings("Pantalla")
+    wait("Idioma:")
+    wait("Orientación de la pantalla:")
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()

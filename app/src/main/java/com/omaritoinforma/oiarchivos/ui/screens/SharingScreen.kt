@@ -20,6 +20,7 @@ import com.omaritoinforma.oiarchivos.data.ShareService
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
 import com.omaritoinforma.oiarchivos.util.Opener
 import com.omaritoinforma.oiarchivos.util.PathUtil
+import com.omaritoinforma.oiarchivos.data.tr
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -31,16 +32,16 @@ fun SharingScreen(vm: MainViewModel) {
     var port by remember { mutableStateOf(vm.ftpPort.value.takeIf { it != 0 }?.toString().orEmpty()) }
     val portNumber = port.toIntOrNull()
     val portInvalid = port.isNotBlank() && (portNumber == null || portNumber !in 1024..65535)
-    ToolPage("Compartir por red", vm) { pad ->
+    ToolPage(tr("Compartir por red"), vm) { pad ->
         Column(
             Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
-                    "Conecta el teléfono y la computadora a la misma red. Solo se comparte la carpeta que elijas.")
+                    tr("Conecta el teléfono y la computadora a la misma red. Solo se comparte la carpeta que elijas."))
                 OutlinedTextField(
                     root,
                     { root = it },
-                    label = { Text("Carpeta a compartir") },
+                    label = { Text(tr("Carpeta a compartir")) },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = state == null)
                 if (state == null) {
@@ -52,11 +53,11 @@ fun SharingScreen(vm: MainViewModel) {
                             val n = port.toIntOrNull()
                             vm.ftpPort.value = if (n != null && n in 1024..65535) n else 0
                         },
-                        label = { Text("Puerto FTP (vacío: automático)") },
+                        label = { Text(tr("Puerto FTP (vacío: automático)")) },
                         supportingText = {
                             Text(
-                                if (portInvalid) "Un número de 1024 a 65535"
-                                else "Si lo fijas, el PC puede guardar la conexión")
+                                if (portInvalid) tr("Un número de 1024 a 65535")
+                                else tr("Si lo fijas, el PC puede guardar la conexión"))
                         },
                         isError = portInvalid,
                         singleLine = true,
@@ -70,11 +71,11 @@ fun SharingScreen(vm: MainViewModel) {
                             password = it
                             if (ShareService.ftpPasswordValid(it)) vm.ftpPassword.value = it
                         },
-                        label = { Text("Contraseña FTP fija (opcional)") },
+                        label = { Text(tr("Contraseña FTP fija (opcional)")) },
                         supportingText = {
                             Text(
-                                if (passwordInvalid) "De 8 a 64 caracteres, sin espacios"
-                                else "Vacía: se genera una nueva en cada inicio. El usuario es «oi»")
+                                if (passwordInvalid) tr("De 8 a 64 caracteres, sin espacios")
+                                else tr("Vacía: se genera una nueva en cada inicio. El usuario es «oi»"))
                         },
                         isError = passwordInvalid,
                         singleLine = true,
@@ -88,10 +89,10 @@ fun SharingScreen(vm: MainViewModel) {
                                 onValueChange = { vm.ftpStopOnExit.value = it }),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("Detener el servidor al salir de la app", Modifier.weight(1f))
+                            Text(tr("Detener el servidor al salir de la app"), Modifier.weight(1f))
                             Switch(vm.ftpStopOnExit.value, null)
                         }
-                    Text("Codificación de los nombres en FTP", style = MaterialTheme.typography.labelLarge)
+                    Text(tr("Codificación de los nombres en FTP"), style = MaterialTheme.typography.labelLarge)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FtpEncoding.entries.forEach { option ->
                             FilterChip(
@@ -106,7 +107,7 @@ fun SharingScreen(vm: MainViewModel) {
                                 runCatching { ShareService.start(ctx, root, "HTTP") }
                                     .onFailure { vm.toast(it.message.orEmpty()) }
                             }) {
-                                Text("Navegador / Wi-Fi")
+                                Text(tr("Navegador / Wi-Fi"))
                             }
                         Spacer(Modifier.width(8.dp))
                         Button(
@@ -115,26 +116,26 @@ fun SharingScreen(vm: MainViewModel) {
                                 runCatching { ShareService.start(ctx, root, "FTP") }
                                     .onFailure { vm.toast(it.message.orEmpty()) }
                             }) {
-                                Text("Servidor FTP")
+                                Text(tr("Servidor FTP"))
                             }
                     }
                 }
                 state?.let { s ->
                     SelectionContainer {
                         Text(
-                            "Dirección: ${s.url}\nUsuario: ${s.user}\nContraseña: ${s.password}\nCarpeta: ${s.root}")
+                            tr("Dirección: {0}\nUsuario: {1}\nContraseña: {2}\nCarpeta: {3}", s.url, s.user, s.password, s.root))
                     }
                     TextButton(
                         onClick = {
                             Opener.copyText(
-                                ctx, "${s.url}\nUsuario: ${s.user}\nContraseña: ${s.password}")
+                                ctx, tr("{0}\nUsuario: {1}\nContraseña: {2}", s.url, s.user, s.password))
                         }) {
-                            Text("Copiar datos")
+                            Text(tr("Copiar datos"))
                         }
-                    Button(onClick = { ShareService.stop(ctx) }) { Text("Detener servidor") }
+                    Button(onClick = { ShareService.stop(ctx) }) { Text(tr("Detener servidor")) }
                 }
                 Text(
-                    "HTTP y FTP de esta pantalla no cifran el tráfico. Úsalos en una red de confianza. Se genera una contraseña nueva en cada inicio.")
+                    tr("HTTP y FTP de esta pantalla no cifran el tráfico. Úsalos en una red de confianza. Se genera una contraseña nueva en cada inicio."))
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
     }

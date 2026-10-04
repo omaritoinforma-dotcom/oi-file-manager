@@ -23,7 +23,7 @@ import kotlinx.coroutines.withContext
 fun DualPaneScreen(vm: MainViewModel, initial: String) {
     var left by rememberSaveable { mutableStateOf(initial) }
     var right by rememberSaveable { mutableStateOf(PathUtil.internalRoot) }
-    ToolPage("Doble panel", vm) { pad ->
+    ToolPage(tr("Doble panel"), vm) { pad ->
         Row(Modifier.fillMaxSize().padding(pad)) {
             Pane(vm, left, { left = it }, Modifier.weight(1f))
             VerticalDivider()
@@ -43,7 +43,7 @@ private fun Pane(vm: MainViewModel, path: String, navigate: (String) -> Unit, mo
         withContext(Dispatchers.IO) {
                 runCatching {
                     FileRepo.list(File(path), vm.showHidden)
-                        ?: throw java.io.IOException("Carpeta no disponible")
+                        ?: throw java.io.IOException(tr("Carpeta no disponible"))
                 }
             }
             .onSuccess {
@@ -54,23 +54,23 @@ private fun Pane(vm: MainViewModel, path: String, navigate: (String) -> Unit, mo
     }
     Column(modifier.then(fileDropTarget { dropped = it })) {
         Text(path, Modifier.padding(8.dp), maxLines = 2, overflow = TextOverflow.Ellipsis)
-        TextButton(onClick = { File(path).parent?.let(navigate) }) { Text("Subir") }
+        TextButton(onClick = { File(path).parent?.let(navigate) }) { Text(tr("Subir")) }
         if (vm.clipboard != null)
-            TextButton(onClick = { vm.pasteInto(path) }) { Text("Pegar aquí") }
+            TextButton(onClick = { vm.pasteInto(path) }) { Text(tr("Pegar aquí")) }
         if (selection.isNotEmpty()) {
             TextButton(
                 onClick = {
                     vm.clipboard = Clipboard(selection.keys.toList(), false)
                     selection.clear()
                 }) {
-                    Text("Copiar")
+                    Text(tr("Copiar"))
                 }
             TextButton(
                 onClick = {
                     vm.clipboard = Clipboard(selection.keys.toList(), true)
                     selection.clear()
                 }) {
-                    Text("Cortar")
+                    Text(tr("Cortar"))
                 }
         }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -97,13 +97,13 @@ private fun Pane(vm: MainViewModel, path: String, navigate: (String) -> Unit, mo
         }
     }
     dropped?.let { paths ->
-        AlertDialog(onDismissRequest = { dropped = null }, title = { Text("${paths.size} elementos") },
-            text = { Text("Destino: $path") },
+        AlertDialog(onDismissRequest = { dropped = null }, title = { Text(tr("{0} elementos", paths.size)) },
+            text = { Text(tr("Destino: {0}", path)) },
             confirmButton = {
                 Row {
-                    TextButton(onClick = { vm.clipboard = Clipboard(paths, false); vm.pasteInto(path); dropped = null }) { Text("Copiar aquí") }
-                    TextButton(onClick = { vm.clipboard = Clipboard(paths, true); vm.pasteInto(path); dropped = null }) { Text("Mover aquí") }
+                    TextButton(onClick = { vm.clipboard = Clipboard(paths, false); vm.pasteInto(path); dropped = null }) { Text(tr("Copiar aquí")) }
+                    TextButton(onClick = { vm.clipboard = Clipboard(paths, true); vm.pasteInto(path); dropped = null }) { Text(tr("Mover aquí")) }
                 }
-            }, dismissButton = { TextButton(onClick = { dropped = null }) { Text("Cancelar") } })
+            }, dismissButton = { TextButton(onClick = { dropped = null }) { Text(tr("Cancelar")) } })
     }
 }

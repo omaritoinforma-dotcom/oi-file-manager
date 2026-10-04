@@ -1,0 +1,1287 @@
+# Traducción al inglés de los textos de OI Archivos.
+# Una línea por texto: «español<TAB>inglés». \n, \t y \\ van escapados; {0}, {1}… son los datos.
+# La prueba I18nCatalogTest comprueba que cada tr("…") del código está aquí y que no sobra nada.
+Idioma del sistema	System language
+Idioma:	Language:
+Configura las claves de tu aplicación Baidu	Set up your Baidu app keys
+Baidu no pudo iniciar la autorización	Baidu couldn't start the authorization
+Dirección de autorización no válida	Invalid authorization address
+Baidu rechazó la autorización. Vuelve a entrar.	Baidu rejected the authorization. Sign in again.
+El código de Baidu caducó. Vuelve a entrar.	The Baidu code expired. Sign in again.
+Baidu no devolvió el acceso a los archivos	Baidu didn't grant access to the files
+Completa la cuenta y las claves de tu aplicación SugarSync	Fill in the account and your SugarSync app keys
+SugarSync no devolvió la autorización	SugarSync didn't return the authorization
+SugarSync no devolvió la cuenta	SugarSync didn't return the account
+Caducidad de SugarSync no válida	Invalid SugarSync expiration
+Vuelve a entrar en Baidu	Sign in to Baidu again
+Proveedor de autorización no válido	Invalid authorization provider
+Respuesta del proveedor demasiado grande	The provider's response is too large
+Baidu rechazó la operación ({0})	Baidu rejected the operation ({0})
+Baidu no completó la operación	Baidu didn't complete the operation
+La carpeta supera 50.000 elementos	The folder has more than 50,000 items
+El archivo ya no existe	The file no longer exists
+Descarga de Baidu no válida	Invalid Baidu download
+Tamaño de subida no válido	Invalid upload size
+El archivo cambió durante la subida	The file changed during the upload
+Respuesta de subida no válida	Invalid upload response
+Baidu devolvió una suma de comprobación distinta	Baidu returned a different checksum
+La carpeta supera 50.000 elementos o no admite paginación	The folder has more than 50,000 items or doesn't support paging
+Abre una carpeta de SugarSync antes de crear archivos	Open a SugarSync folder before creating files
+El destino ya existe	The destination already exists
+SugarSync no devolvió el archivo creado	SugarSync didn't return the created file
+Respuesta de SugarSync no válida	Invalid SugarSync response
+Dirección de SugarSync no válida	Invalid SugarSync address
+Carpetas	Folders
+Imágenes	Images
+Vídeos	Videos
+Música	Music
+Documentos	Documents
+Texto y código	Text and code
+Comprimidos	Archives
+APK	APK
+Analizando espacio	Analyzing space
+Buscando duplicados	Looking for duplicates
+Buscando	Searching
+Ubicación	Location
+Cámara	Camera
+Micrófono	Microphone
+Contactos	Contacts
+SMS	SMS
+Teléfono y llamadas	Phone and calls
+Calendario	Calendar
+Salud y actividad	Health and activity
+Archivos y multimedia	Files and media
+Dispositivos cercanos	Nearby devices
+Sobre otras apps, instalar y ver apps	Draw over other apps, install and see apps
+Instaladas	Installed
+Desinstaladas	Uninstalled
+no es un APK válido	isn't a valid APK
+Android no pidió confirmación	Android didn't ask for confirmation
+bloqueado por el sistema	blocked by the system
+choca con una app ya instalada	conflicts with an app that's already installed
+no es compatible con este teléfono	isn't compatible with this phone
+APK no válido	Invalid APK
+no hay espacio suficiente	not enough space
+La contraseña no puede estar vacía	The password can't be empty
+No se pudo crear la carpeta de copias	Couldn't create the backup folder
+Sin compresión	No compression
+Rápida	Fast
+Normal	Normal
+Máxima	Maximum
+La contraseña de creación está disponible para ZIP	The creation password is available for ZIP
+Comprimiendo	Compressing
+El ZIP no puede incluirse a sí mismo	The ZIP can't include itself
+El comprimido no puede incluirse a sí mismo	The archive can't include itself
+La carpeta de extracción debe ser nueva	The extraction folder must be new
+Extrayendo	Extracting
+Demasiadas entradas en el comprimido	Too many entries in the archive
+No hay espacio suficiente para extraer	Not enough space to extract
+No se pudo crear {0}	Couldn't create {0}
+Entrada repetida: {0}	Repeated entry: {0}
+No se pudo crear la carpeta	Couldn't create the folder
+Este ZIP necesita una contraseña	This ZIP needs a password
+El comprimido supera el límite de extracción	The archive exceeds the extraction limit
+Entrada 7z no admitida	Unsupported 7z entry
+El motor RAR no está instalado	The RAR engine isn't installed
+Enlaces y archivos especiales no se extraen	Links and special files aren't extracted
+Entrada TAR no compatible	Unsupported TAR entry
+Formato no compatible	Unsupported format
+Fotos	Photos
+Escribe la carpeta de destino	Type the destination folder
+La carpeta de destino no puede tener «.», «..» ni «\\»	The destination folder can't contain “.”, “..” or “\\”
+No se pudo guardar el índice de la copia	Couldn't save the backup index
+ya hay una copia en marcha	a backup is already running
+Elige el destino de la copia	Choose the backup destination
+Copia automática	Auto backup
+{0}: error ({1})	{0}: error ({1})
+; {0} copiado(s) antes	; {0} copied before
+{0}: todo estaba copiado	{0}: everything was already backed up
+{0}: {1} archivo(s) copiado(s) en «{2}»	{0}: {1} file(s) backed up to “{2}”
+Copia automática: error	Auto backup: error
+No existe la imagen	The image doesn't exist
+No se pudo guardar el fondo	Couldn't save the background
+Concede el permiso de dispositivos cercanos para usar Bluetooth	Grant the nearby devices permission to use Bluetooth
+Este dispositivo no tiene Bluetooth	This device doesn't have Bluetooth
+Activa Bluetooth en los ajustes de Android	Turn on Bluetooth in Android settings
+Respuesta Bluetooth incompleta	Incomplete Bluetooth response
+Tamaño de paquete OBEX no válido	Invalid OBEX packet size
+No se pudo abrir el explorador Bluetooth. El equipo remoto debe ofrecer OBEX FTP y autorizar la conexión.	Couldn't open the Bluetooth browser. The remote device must offer OBEX FTP and authorize the connection.
+Paquete Bluetooth demasiado grande	Bluetooth packet too large
+El equipo Bluetooth no respondió a tiempo	The Bluetooth device didn't respond in time
+Se cerró la conexión Bluetooth	The Bluetooth connection was closed
+Respuesta OBEX no válida	Invalid OBEX response
+El equipo Bluetooth rechazó la operación (OBEX {0})	The Bluetooth device rejected the operation (OBEX {0})
+Ruta Bluetooth demasiado profunda	Bluetooth path too deep
+Listado Bluetooth demasiado grande	Bluetooth listing too large
+Listado Bluetooth no válido	Invalid Bluetooth listing
+Demasiados archivos Bluetooth	Too many Bluetooth files
+El nombre supera el tamaño de paquete del equipo Bluetooth	The name exceeds the Bluetooth device's packet size
+Subida Bluetooth incompleta	Incomplete Bluetooth upload
+Paquete OBEX incompleto	Incomplete OBEX packet
+Paquete OBEX demasiado grande	OBEX packet too large
+Paquete OBEX no válido	Invalid OBEX packet
+Cabecera OBEX incompleta	Incomplete OBEX header
+Cabecera OBEX no válida	Invalid OBEX header
+Sin conexión con la TV	No connection to the TV
+No se pudo enviar	Couldn't send
+La TV no respondió	The TV didn't respond
+PDF	PDF
+Word y texto enriquecido	Word and rich text
+Hojas de cálculo	Spreadsheets
+Presentaciones	Presentations
+Texto (.txt y .md)	Text (.txt and .md)
+Libros electrónicos (.epub)	E-books (.epub)
+Este proveedor no usa este inicio de sesión	This provider doesn't use this sign-in
+Falta registrar el identificador OAuth de OI Archivos para {0}	The OI Archivos OAuth client ID for {0} isn't registered yet
+Inicio de sesión cancelado	Sign-in cancelled
+Respuesta OAuth no válida	Invalid OAuth response
+No se pudo autorizar la cuenta	Couldn't authorize the account
+Google no devolvió un permiso de acceso	Google didn't grant an access permission
+Vuelve a autorizar Google Drive desde la pantalla de conexiones	Authorize Google Drive again from the connections screen
+Vuelve a entrar en Google Drive	Sign in to Google Drive again
+No se pudo renovar la cuenta. Vuelve a iniciar sesión en {0}	Couldn't renew the account. Sign in to {0} again
+Respuesta inesperada de OneDrive	Unexpected response from OneDrive
+Proveedor no compatible	Unsupported provider
+Google no permite exportar este tipo de documento	Google doesn't allow exporting this type of document
+OneDrive no devolvió una descarga	OneDrive didn't return a download
+Descarga de OneDrive sin HTTPS	OneDrive download without HTTPS
+No se pudo iniciar la subida	Couldn't start the upload
+Destino de subida inesperado	Unexpected upload destination
+Subida sin HTTPS	Upload without HTTPS
+OneDrive no confirmó la subida	OneDrive didn't confirm the upload
+Escribe una contraseña	Type a password
+No es un archivo cifrado compatible de OI Archivos	It isn't a compatible OI Archivos encrypted file
+Archivo demasiado grande	File too large
+Archivo cifrado dañado	Damaged encrypted file
+Longitud no válida	Invalid length
+Datos adicionales después del final	Extra data after the end
+Descifrando	Decrypting
+Cifrando	Encrypting
+«{0}» no admite reproducir archivos (sin AVTransport)	“{0}” can't play files (no AVTransport)
+Descripción incompleta	Incomplete description
+La TV respondió {0}	The TV responded {0}
+Respuesta demasiado grande	Response too large
+Descripción no válida	Invalid description
+Descargas	Downloads
+Raíz del sistema	System root
+Papelera	Trash
+Aplicaciones	Apps
+Red, nube y USB	Network, cloud and USB
+Analizar espacio	Analyze space
+Listas de reproducción	Playlists
+Limpiar basura	Clean junk
+Transferencias	Transfers
+Historial	History
+Lista de ocultos	Hidden list
+Root con Magisk	Root with Magisk
+Moviendo	Moving
+Copiando	Copying
+La ruta de destino cambió desde que se inició la transferencia	The destination path changed since the transfer started
+El original cambió: {0}. Se conserva sin borrar.	The original changed: {0}. It's kept, not deleted.
+Un archivo ya copiado cambió o fue eliminado: {0}	A file that was already copied changed or was deleted: {0}
+El archivo parcial fue sustituido por un enlace	The partial file was replaced by a link
+La copia parcial cambió; descarta esta transferencia y vuelve a intentarlo	The partial copy changed; discard this transfer and try again
+No se pudo crear el destino	Couldn't create the destination
+Copia parcial no válida	Invalid partial copy
+El original o la copia parcial cambió	The original or the partial copy changed
+El original cambió durante la copia	The original changed during the copy
+El destino cambió; se conservan ambos archivos	The destination changed; both files are kept
+Se creó otro archivo en el destino; se conserva sin sustituir	Another file was created at the destination; it's kept, not replaced
+El original o el destino cambió; el original se conserva	The original or the destination changed; the original is kept
+Copiado, pero no se pudo borrar el original: {0}	Copied, but the original couldn't be deleted: {0}
+No se pudo guardar la transferencia	Couldn't save the transfer
+Selecciona al menos un archivo	Select at least one file
+No puedes copiar una carpeta dentro de sí misma	You can't copy a folder into itself
+Destino no válido	Invalid destination
+La carpeta supera 128 niveles	The folder is more than 128 levels deep
+No se copian archivos especiales: {0}	Special files aren't copied: {0}
+El destino contiene un enlace fuera de la carpeta elegida	The destination contains a link outside the chosen folder
+Tipos incompatibles: {0}	Incompatible types: {0}
+Selecciona menos de 100.000 elementos por transferencia	Select fewer than 100,000 items per transfer
+No se pudo leer {0}	Couldn't read {0}
+Registro de transferencia demasiado grande	Transfer record too large
+Registro de transferencia no válido	Invalid transfer record
+Identificador de transferencia no válido	Invalid transfer ID
+Registro no válido	Invalid record
+Subiendo	Uploading
+Descargando	Downloading
+La conexión «{0}» ya no existe	The connection “{0}” no longer exists
+El archivo remoto ya no existe: {0}	The remote file no longer exists: {0}
+Descarga incompleta: {0}	Incomplete download: {0}
+El archivo remoto cambió durante la transferencia: {0}	The remote file changed during the transfer: {0}
+El servidor guardó un tamaño distinto: {0}	The server saved a different size: {0}
+Subido, pero no se pudo borrar el original: {0}	Uploaded, but the original couldn't be deleted: {0}
+La carpeta remota supera 128 niveles	The remote folder is more than 128 levels deep
+No se suben archivos especiales: {0}	Special files aren't uploaded: {0}
+La carpeta supera el límite de 50.000 elementos	The folder exceeds the limit of 50,000 items
+Respuesta sin HTTPS	Response without HTTPS
+No se recibió una descarga	No download was received
+Descarga sin HTTPS	Download without HTTPS
+S3 requiere un endpoint HTTPS	S3 requires an HTTPS endpoint
+Faltan las claves de S3	The S3 keys are missing
+Respuesta XML demasiado grande	XML response too large
+Declaración XML no permitida	XML declaration not allowed
+Escribe /nombre-del-bucket en la carpeta inicial	Type /bucket-name in the start folder
+Ya existe un archivo o carpeta con ese nombre	A file or folder with that name already exists
+S3 devolvió un archivo fuera de la carpeta	S3 returned a file outside the folder
+La carpeta supera el límite de 100.000 archivos	The folder exceeds the limit of 100,000 files
+S3 no confirmó la copia	S3 didn't confirm the copy
+No se puede mover «{0}» dentro de sí misma	Can't move “{0}” into itself
+No se puede copiar «{0}» dentro de sí misma	Can't copy “{0}” into itself
+No se pudo crear la carpeta de destino	Couldn't create the destination folder
+«{0}» es de otro tipo; renómbralo o conserva ambos	“{0}” is of another type; rename it or keep both
+No se pudo crear «{0}»	Couldn't create “{0}”
+No se puede leer «{0}»	Can't read “{0}”
+No se pudo borrar {0}	Couldn't delete {0}
+El archivo cambió durante la copia: {0}; vuelve a intentarlo	The file changed during the copy: {0}; try again
+Moviendo a la papelera	Moving to trash
+Eliminando	Deleting
+Sin acción	No action
+Carpeta superior	Parent folder
+Inicio	Home
+Actualizar	Refresh
+Pestaña siguiente	Next tab
+Pestaña anterior	Previous tab
+Nueva pestaña	New tab
+Mostrar / ocultar archivos ocultos	Show / hide hidden files
+Seleccionar todo	Select all
+«{0}» ya está oculto	“{0}” is already hidden
+«{0}» no está oculto con un punto	“{0}” isn't hidden with a dot
+No se puede cambiar el nombre de {0}	Can't rename {0}
+Ya existe «{0}» en la carpeta	“{0}” already exists in the folder
+No se pudo renombrar «{0}»	Couldn't rename “{0}”
+Almacenamiento	Storage
+Categorías	Categories
+Accesos rápidos	Shortcuts
+Marcadores	Bookmarks
+Archivos nuevos	New files
+Apps	Apps
+Red / nube	Network / cloud
+Analizar	Analyze
+Transferir	Transfer
+Raíz	Root
+Ajustes	Settings
+Libre	Free
+1:1	1:1
+4:3	4:3
+3:4	3:4
+16:9	16:9
+9:16	9:16
+No se pudo leer la imagen	Couldn't read the image
+Este formato no se puede sobrescribir: guarda una copia	This format can't be overwritten: save a copy
+La imagen es demasiado grande para editarla	The image is too large to edit
+No se pudo guardar la imagen	Couldn't save the image
+«{0}» pide acceso a: {1}. Toca para revisar los permisos.	“{0}” asks for access to: {1}. Tap to review the permissions.
+Temporales y vacíos	Temporary and empty
+Archivos .tmp, .temp, .bak, archivos vacíos y carpetas vacías	.tmp, .temp and .bak files, empty files and empty folders
+Miniaturas guardadas	Saved thumbnails
+Copias pequeñas de fotos; Android las vuelve a crear	Small copies of photos; Android creates them again
+APK ya instalados	APKs already installed
+Instaladores de apps que ya tienes en esa versión o en una más nueva	Installers of apps you already have in that version or a newer one
+Restos de apps desinstaladas	Leftovers of uninstalled apps
+Carpetas de apps que ya no están en el teléfono	Folders of apps that are no longer on the phone
+Buscando basura	Looking for junk
+{0} ya instalada	{0} already installed
+UTF-8	UTF-8
+ISO-8859-1 (Europa occidental)	ISO-8859-1 (Western Europe)
+Windows-1252	Windows-1252
+GBK (chino simplificado)	GBK (Simplified Chinese)
+Shift_JIS (japonés)	Shift_JIS (Japanese)
+Clásica (amarilla)	Classic (yellow)
+Color de la app	App color
+Gris	Grey
+Automática	Automatic
+Vertical	Portrait
+Horizontal	Landscape
+Nombre	Name
+Fecha	Date
+Tamaño	Size
+Tipo	Type
+Según el sistema	Follow the system
+Claro	Light
+Oscuro	Dark
+Colores del sistema	System colors
+Azul	Blue
+Rojo	Red
+Verde	Green
+Naranja	Orange
+Morado	Purple
+Turquesa	Teal
+Rosa	Pink
+Videos	Videos
+Libros	Books
+Capturas	Screenshots
+Grabaciones	Recordings
+Word	Word
+Excel	Excel
+PowerPoint	PowerPoint
+Recientes	Recent
+Listado del comprimido no válido	Invalid archive listing
+Enlaces y nombres especiales no se extraen	Links and special names aren't extracted
+Entrada repetida en el comprimido	Repeated entry in the archive
+Entrada demasiado grande	Entry too large
+Nombre de archivo o listado no compatible	Unsupported file name or listing
+Listado ambiguo en el comprimido	Ambiguous listing in the archive
+Selecciona archivos para comprimir	Select files to compress
+Carpeta no válida	Invalid folder
+Para crear un 7z, selecciona archivos de la misma carpeta	To create a 7z, select files from the same folder
+Comprimiendo 7z	Compressing 7z
+7z creado	7z created
+El motor de comprimidos no está instalado	The archive engine isn't installed
+Listado del comprimido demasiado grande	Archive listing too large
+El motor de comprimidos no respondió	The archive engine didn't respond
+No se pudo leer o crear el comprimido. Comprueba su integridad y contraseña.	Couldn't read or create the archive. Check its integrity and password.
+Oferta con demasiados archivos	Offer with too many files
+Oferta no válida	Invalid offer
+Nombres repetidos en la oferta	Repeated names in the offer
+Otro teléfono	Another phone
+Enviando a {0}	Sending to {0}
+Preparando	Preparing
+Solo se envían archivos: {0}	Only files are sent: {0}
+Esperando que {0} acepte	Waiting for {0} to accept
+El otro teléfono respondió {0}	The other phone responded {0}
+Falta el tamaño	The size is missing
+Tamaño no permitido	Size not allowed
+Archivo no ofrecido	File not offered
+El tamaño no coincide con la oferta	The size doesn't match the offer
+Archivo ya recibido	File already received
+Envío incompleto	Incomplete transfer
+El archivo llegó dañado	The file arrived damaged
+1 archivo nuevo	1 new file
+{0} archivos nuevos	{0} new files
+No existe la lista «{0}»	The playlist “{0}” doesn't exist
+Ya existe una lista llamada «{0}»	A playlist named “{0}” already exists
+No se pudo renombrar la lista	Couldn't rename the playlist
+No se pudo guardar la lista	Couldn't save the playlist
+Escribe un nombre para la lista	Type a name for the playlist
+El nombre es demasiado largo	The name is too long
+El nombre no puede tener «/», «\\» ni empezar por un punto	The name can't contain “/” or “\\” or start with a dot
+Inicio (categorías)	Home (categories)
+Carpeta de inicio	Home folder
+Última carpeta abierta	Last opened folder
+Ruta original no válida	Invalid original path
+No se pudo restaurar «{0}»	Couldn't restore “{0}”
+Restaurado en {0}	Restored to {0}
+FTP	FTP
+FTPS	FTPS
+FTPS implícito	Implicit FTPS
+SFTP	SFTP
+Windows / SMB	Windows / SMB
+NFS	NFS
+WebDAV	WebDAV
+Google Drive	Google Drive
+Dropbox	Dropbox
+OneDrive	OneDrive
+Box	Box
+Yandex Disk	Yandex Disk
+Amazon S3	Amazon S3
+Baidu Netdisk	Baidu Netdisk
+SugarSync	SugarSync
+Bluetooth	Bluetooth
+Root / Magisk	Root / Magisk
+No se puede leer {0}	Can't read {0}
+La carpeta remota supera el límite de profundidad	The remote folder exceeds the depth limit
+Descarga incompleta	Incomplete download
+El servidor rechazó las credenciales	The server rejected the credentials
+No se pudo descargar	Couldn't download
+Transferencia interrumpida	Transfer interrupted
+No se pudo subir el archivo	Couldn't upload the file
+No se pudo renombrar	Couldn't rename
+No se pudo borrar la carpeta	Couldn't delete the folder
+No se pudo borrar el archivo	Couldn't delete the file
+SFTP requiere la huella SHA256 del servidor	SFTP requires the server's SHA256 fingerprint
+La huella SFTP no coincide. Huella recibida: {0}	The SFTP fingerprint doesn't match. Fingerprint received: {0}
+El servidor NFS no renombró el archivo	The NFS server didn't rename the file
+El servidor NFS no cambió el nombre	The NFS server didn't change the name
+Solo HTTP o HTTPS	HTTP or HTTPS only
+Acceso rechazado; revisa credenciales o token	Access denied; check the credentials or token
+No existe el archivo	The file doesn't exist
+Respuesta HTTP {0}	HTTP response {0}
+Escribe la dirección completa, http:// o https://	Type the full address, http:// or https://
+El archivo se subió como «{0}» pero no se pudo renombrar: {1}	The file was uploaded as “{0}” but couldn't be renamed: {1}
+No se pudo guardar la lista de archivos remotos	Couldn't save the list of remote files
+Root no concedido. Se necesita un dispositivo con su/Magisk y autorización del usuario.	Root not granted. It needs a device with su/Magisk and the user's authorization.
+Ruta no válida	Invalid path
+Operación root rechazada	Root operation rejected
+Lectura root rechazada	Root read rejected
+La raíz no se puede eliminar	The root can't be deleted
+Permisos octales no válidos	Invalid octal permissions
+Nombre de archivo no válido	Invalid file name
+No se siguen enlaces simbólicos: {0}	Symbolic links aren't followed: {0}
+Ya no existe «{0}»	“{0}” no longer exists
+Ruta insegura en el archivo comprimido	Unsafe path in the archive
+Ruta fuera del destino	Path outside the destination
+El archivo no es una copia de ajustes	The file isn't a settings backup
+El archivo no es una copia de ajustes de OI Archivos	The file isn't an OI Archivos settings backup
+Copia de una versión más nueva de OI Archivos	Backup from a newer version of OI Archivos
+La copia no tiene ajustes	The backup has no settings
+Valor no válido en la copia: {0}	Invalid value in the backup: {0}
+Compartir archivos por red	Share files over the network
+Servidor activo · toca Detener al terminar	Server running · tap Stop when you finish
+Detener	Stop
+Elige una carpeta	Choose a folder
+La carpeta no se puede leer	The folder can't be read
+Conéctate a una red Wi-Fi local	Connect to a local Wi-Fi network
+El puerto {0} está ocupado: elige otro	Port {0} is busy: choose another one
+Almacenamiento interno	Internal storage
+Tarjeta SD	SD card
+Avisos de almacenamiento	Storage alerts
+Quedan {0} libres de {1}. Toca para limpiar basura.	{0} free of {1}. Tap to clean junk.
+Espacio insuficiente	Low storage
+Permisos de una app nueva	Permissions of a new app
+{0}: {1} libres de {2} ({3} % usado)	{0}: {1} free of {2} ({3} % used)
+Uso del almacenamiento	Storage usage
+Informe de archivos nuevos	New files report
+Rango no válido	Invalid range
+El archivo es más corto de lo esperado	The file is shorter than expected
+Subtítulos demasiado grandes	Subtitles too large
+Revisa los tiempos del archivo SRT	Check the times in the SRT file
+Tiempo SRT no válido	Invalid SRT time
+Subtítulo SRT no válido	Invalid SRT subtitle
+Demasiados subtítulos	Too many subtitles
+Copiar	Copy
+Cortar	Cut
+Eliminar	Delete
+Renombrar	Rename
+Compartir	Share
+Comprimir	Compress
+Fijar arriba	Pin to top
+Propiedades	Properties
+Cancelar	Cancel
+No se pudo crear la carpeta de descargas	Couldn't create the downloads folder
+El servidor respondió {0}	The server responded {0}
+Respuesta vacía	Empty response
+Descarga incompleta; vuelve a intentarlo para continuar	Incomplete download; try again to resume
+No se pudo crear la intro o el outro	Couldn't create the intro or the outro
+No se pudo abrir la imagen	Couldn't open the image
+Exportando video	Exporting video
+Elige un intervalo de hasta 10 segundos	Choose an interval of up to 10 seconds
+No se pudo leer el video	Couldn't read the video
+No se pudo leer un fotograma	Couldn't read a frame
+Creando GIF	Creating GIF
+El ZIP está dañado o no es compatible	The ZIP is damaged or not supported
+Entrada insegura en el ZIP: {0}	Unsafe entry in the ZIP: {0}
+Contraseña incorrecta	Wrong password
+OI Archivos está protegido	OI Archivos is protected
+Escribe la contraseña para continuar.	Type the password to continue.
+Contraseña	Password
+Desbloquear	Unlock
+«{0}» está protegido con contraseña.	“{0}” is protected with a password.
+Aceptar	OK
+OI Archivos necesita acceso a tus archivos	OI Archivos needs access to your files
+Para explorar, copiar, mover y organizar todo tu almacenamiento, concede el permiso «Acceso a todos los archivos». Las conexiones de red solo se usan cuando tú las activas.	To browse, copy, move and organize all your storage, grant the “All files access” permission. Network connections are only used when you turn them on.
+Abre Ajustes > Apps > OI Archivos > Permisos	Open Settings > Apps > OI Archivos > Permissions
+Conceder permiso	Grant permission
+Salir	Exit
+«{0}» cambió en el servidor	“{0}” changed on the server
+Mientras lo editabas, el archivo cambió en el servidor. ¿Qué hago con tu versión?	While you were editing it, the file changed on the server. What should I do with your version?
+Sustituir el del servidor	Replace the server's copy
+Subir como copia	Upload as a copy
+Descartar mis cambios	Discard my changes
+Ya existen elementos con ese nombre	Items with that name already exist
+{0} de {1} elemento(s) ya existen en la carpeta de destino. ¿Qué quieres hacer?	{0} of {1} item(s) already exist in the destination folder. What do you want to do?
+Conservar ambos (renombrar)	Keep both (rename)
+Reemplazar / combinar	Replace / merge
+Omitir los que existen	Skip the existing ones
+ · En pausa	 · Paused
+{0} de {1} archivos	{0} of {1} files
+{0} de {1} · {2}/s	{0} of {1} · {2}/s
+ · faltan {0}	 · {0} left
+Reanudar	Resume
+Pausar	Pause
+Continuar navegando	Keep browsing
+Carpetas que dejó «{0}»	Folders left by “{0}”
+Se moverán a la papelera, de donde se pueden recuperar.	They'll be moved to the trash, where they can be recovered.
+La papelera está desactivada: se borrarán.	The trash is turned off: they'll be deleted.
+Mover a la papelera	Move to trash
+Borrar	Delete
+Dejarlas	Leave them
+Fijado arriba	Pinned to top
+Ya no está fijado	No longer pinned
+Subiendo «{0}» al servidor…	Uploading “{0}” to the server…
+«{0}» actualizado en el servidor	“{0}” updated on the server
+No se pudo subir «{0}»: {1}	Couldn't upload “{0}”: {1}
+Conéctate a una Wi-Fi o desactiva «Solo con Wi-Fi»	Connect to a Wi-Fi network or turn off “Wi-Fi only”
+La copia ya estaba al día	The backup was already up to date
+{0} archivo(s) copiado(s)	{0} file(s) backed up
+El código QR no es de un teléfono de tu red local	The QR code isn't from a phone on your local network
+Guardando contenido compartido	Saving shared content
+No se pudo abrir el archivo compartido	Couldn't open the shared file
+Guardado en Descargas/Compartido con OI ({0})	Saved to Downloads/Compartido con OI ({0})
+{0} oculto(s). {1}	{0} hidden. {1}
+{0} oculto(s): se ven en la «Lista de ocultos»	{0} hidden: they're in the “Hidden list”
+{0} visible(s). {1}	{0} visible. {1}
+{0} visible(s) otra vez	{0} visible again
+Conexiones de red	Network connections
+Espera a que termine la operación actual	Wait for the current operation to finish
+No se pudo iniciar la operación	Couldn't start the operation
+Creado «{0}». El original se conserva.	Created “{0}”. The original is kept.
+No se puede leer esta carpeta	Can't read this folder
+Marca el primero y el último elemento del rango	Mark the first and the last item of the range
+Archivos ocultos	Hidden files
+Fondo cambiado	Background changed
+No se pudo usar esa imagen	Couldn't use that image
+El nombre no puede estar vacío	The name can't be empty
+Nombre no válido	Invalid name
+Ya existe «{0}»	“{0}” already exists
+Creado «{0}»	Created “{0}”
+Renombrando	Renaming
+Renombrados: {0}	Renamed: {0}
+ · omitidos: {0}	 · skipped: {0}
+{0} elemento(s) listos para mover. Ve al destino y toca «Pegar aquí».	{0} item(s) ready to move. Go to the destination and tap “Paste here”.
+{0} elemento(s) listos para copiar. Ve al destino y toca «Pegar aquí».	{0} item(s) ready to copy. Go to the destination and tap “Paste here”.
+No se pudo cambiar la lista	Couldn't change the playlist
+Ya estaban en «{0}»	They were already in “{0}”
+{0} añadido(s) a «{1}»	{0} added to “{1}”
+Permite a OI Archivos cambiar los ajustes del sistema y vuelve a intentarlo	Allow OI Archivos to change system settings and try again
+«{0}» es ahora el {1}	“{0}” is now the {1}
+No se pudo poner como tono	Couldn't set it as a ringtone
+En el portapapeles: {0} elemento(s)	On the clipboard: {0} item(s)
+Los archivos del portapapeles ya no existen	The files on the clipboard no longer exist
+Transferencia guardada en la cola. Abre Transferencias para iniciarla.	Transfer saved in the queue. Open Transfers to start it.
+No se pudo preparar la copia	Couldn't prepare the copy
+Enviados a la papelera: {0}	Moved to the trash: {0}
+Eliminados: {0}	Deleted: {0}
+ · fallaron: {0}	 · failed: {0}
+Extraídos {0} archivos en «{1}»	Extracted {0} files to “{1}”
+Respaldando apps	Backing up apps
+APK guardados en «{0}» ({1} de {2})	APKs saved to “{0}” ({1} of {2})
+Permite a OI Archivos instalar apps y vuelve a intentarlo	Allow OI Archivos to install apps and try again
+Instalando {0} APK: confirma cada uno	Installing {0} APK(s): confirm each one
+Espera a que termine la tanda de instalación en curso	Wait for the current installation batch to finish
+Las apps del sistema no se pueden desinstalar sin root	System apps can't be uninstalled without root
+Espera a que termine la tanda en curso	Wait for the current batch to finish
+Se omiten {0} app(s) del sistema	{0} system app(s) skipped
+Copia antes de desinstalar	Backup before uninstalling
+Copias guardadas: {0}	Backups saved: {0}
+Copia guardada: {0}	Backup saved: {0}
+Caché eliminada: {0}	Cache deleted: {0}
+La contraseña actual no es correcta	The current password isn't correct
+Las contraseñas nuevas no coinciden	The new passwords don't match
+Contraseña quitada; ya no hay protecciones	Password removed; there are no protections anymore
+Contraseña cambiada	Password changed
+Copia de ajustes	Settings backup
+Ajustes guardados en {0}	Settings saved to {0}
+Ajustes restaurados ({0})	Settings restored ({0})
+No se pudo leer la copia	Couldn't read the backup
+Eliminado definitivamente	Deleted permanently
+Vaciando papelera	Emptying trash
+Papelera vaciada	Trash emptied
+Mantén pulsado y arrastra al otro panel	Long-press and drag to the other panel
+Archivos	Files
+{0} elementos	{0} items
+{0} · {1} elementos	{0} · {1} items
+Fijado	Pinned
+Seleccionado	Selected
+No existe esa carpeta	That folder doesn't exist
+Ruta	Path
+Ir	Go
+Subir	Up
+Sin subcarpetas	No subfolders
+Elegir esta carpeta	Choose this folder
+Entrar en {0}	Open {0}
+Autoriza la cuenta en Baidu con este código. El acceso se guardará cuando confirmes allí.	Authorize the account in Baidu with this code. Access will be saved once you confirm there.
+Copiar código	Copy code
+Abrir Baidu	Open Baidu
+{0}\nLa contraseña se usa para autorizar esta conexión y no se guarda.	{0}\nThe password is used to authorize this connection and isn't saved.
+Contraseña de SugarSync	SugarSync password
+No se pudo entrar	Couldn't sign in
+Entrar	Sign in
+Cerrar	Close
+Analizar apps	Analyze apps
+Qué apps piden permisos delicados. «Concedido» quiere decir que la app ya puede usarlo; «solicitado», que lo pide pero aún no se le dio. Se cambian en la información de cada app.	Which apps ask for sensitive permissions. “Granted” means the app can already use it; “requested” means it asks for it but hasn't been given it yet. They're changed in each app's info.
+Incluir apps del sistema	Include system apps
+Todos ({0})	All ({0})
+Ninguna app pide esto.	No app asks for this.
+Concedido: 	Granted: 
+Solicitado: 	Requested: 
+\n{0} · Android {1}	\n{0} · Android {1}
+Aplicaciones ({0})	Apps ({0})
+{0} seleccionada(s)	{0} selected
+Atrás	Back
+Cancelar selección	Cancel selection
+Seleccionar todas	Select all
+Respaldar seleccionadas	Back up selected
+Desinstalar seleccionadas	Uninstall selected
+Más	More
+Ocultar apps del sistema	Hide system apps
+Mostrar apps del sistema	Show system apps
+Analizar permisos	Analyze permissions
+Respaldar todas las mostradas	Back up all shown
+Buscar app…	Search apps…
+Instalando {0} de {1}: {2}	Installing {0} of {1}: {2}
+Desinstalando {0} de {1}: {2}	Uninstalling {0} of {1}: {2}
+{0}\nv{1} · {2}	{0}\nv{1} · {2}
+ · Sistema	 · System
+Opciones	Options
+Abrir	Open
+Esta app no tiene pantalla para abrir	This app has no screen to open
+Respaldar APK	Back up APK
+Compartir APK	Share APK
+Información de la app	App info
+Desinstalar	Uninstall
+Contraseña (si corresponde)	Password (if any)
+Extraer en carpeta nueva	Extract to a new folder
+Contenido del comprimido	Archive contents
+Carpeta	Folder
+Tamaño desconocido	Unknown size
+Abriendo archivo del ZIP	Opening file from the ZIP
+Extrae primero los archivos de más de 64 MB	Extract files larger than 64 MB first
+No existe la entrada	The entry doesn't exist
+Vista previa demasiado grande	Preview too large
+Abriendo	Opening
+Usa «Extraer en carpeta nueva» para abrir este archivo	Use “Extract to a new folder” to open this file
+Concede el permiso de dispositivos cercanos	Grant the nearby devices permission
+Este teléfono no dispone de Bluetooth	This phone doesn't have Bluetooth
+Activa Bluetooth	Turn on Bluetooth
+Dispositivo	Device
+Explorador Bluetooth	Bluetooth browser
+Elige un equipo vinculado que ofrezca el servicio de transferencia de archivos OBEX FTP. El equipo remoto debe autorizar el acceso a su carpeta.	Choose a paired device that offers the OBEX FTP file transfer service. The remote device must authorize access to its folder.
+Vincular o activar Bluetooth	Pair or turn on Bluetooth
+No se pudo guardar el equipo	Couldn't save the device
+No hay equipos vinculados. Abre los ajustes Bluetooth y vincula uno, luego pulsa Actualizar.	There are no paired devices. Open the Bluetooth settings and pair one, then tap Refresh.
+Descifrar archivo	Decrypt file
+Cifrar archivo	Encrypt file
+Crear nuevo	Create new
+Archivo vacío	Empty file
+Nueva carpeta	New folder
+Nuevo archivo	New file
+Crear	Create
+¿Eliminar «{0}»?	Delete “{0}”?
+¿Eliminar {0} elementos?	Delete {0} items?
+Mover a la papelera (se puede restaurar)	Move to the trash (can be restored)
+Extraer aquí (en una carpeta nueva)	Extract here (in a new folder)
+Abrir con otra app	Open with another app
+Instalar	Install
+Extraer contenido	Extract contents
+Ordenar por	Sort by
+Ascendente (A→Z, antiguo→nuevo)	Ascending (A→Z, old→new)
+Descendente (Z→A, nuevo→antiguo)	Descending (Z→A, new→old)
+Aplicar	Apply
+Renombrar {0} elementos	Rename {0} items
+Buscar texto	Find text
+Reemplazar por	Replace with
+Agregar al inicio	Add at the beginning
+Agregar al final	Add at the end
+Numerar desde (vacío = no)	Number from (empty = no)
+Nueva extensión (vacío = igual)	New extension (empty = same)
+Vista previa	Preview
+…y {0} más	…and {0} more
+Archivo .{0}	.{0} file
+Modificado	Modified
+Permisos	Permissions
+Lectura	Read
+Sin lectura	No read
+Escritura	Write
+Solo lectura	Read only
+ · Oculto	 · Hidden
+Calculando…	Calculating…
+{0} ({1} bytes)	{0} ({1} bytes)
+Contenido	Contents
+{0} archivos · {1} carpetas	{0} files · {1} folders
+Error	Error
+Calcular MD5 / SHA-1 / SHA-256	Calculate MD5 / SHA-1 / SHA-256
+Se crea una copia. El original se conserva.	A copy is created. The original is kept.
+Continuar	Continue
+Crear ZIP	Create ZIP
+Nombre: .zip, .7z, .tar o .tar.gz	Name: .zip, .7z, .tar or .tar.gz
+Contraseña opcional (AES)	Optional password (AES)
+Nivel de compresión	Compression level
+No es un APK compatible	It isn't a compatible APK
+Aplicación: {0}\nPaquete: {1}\nVersión: {2}\n\nPermisos solicitados:\n	App: {0}\nPackage: {1}\nVersion: {2}\n\nRequested permissions:\n
+Ninguno	None
+No se pudo inspeccionar el APK	Couldn't inspect the APK
+Leyendo…	Reading…
+Buscar: {0}	Search: {0}
+Esta carpeta está vacía	This folder is empty
+No hay archivos en esta categoría	There are no files in this category
+Sin resultados	No results
+Menú	Menu
+Buscar	Search
+Seleccionar	Select
+Pestañas	Tabs
+Cambiar vista	Change view
+Más opciones	More options
+Búsqueda avanzada	Advanced search
+Analizar esta carpeta	Analyze this folder
+Doble panel	Dual pane
+Pegar desde red / nube	Paste from network / cloud
+Ordenar…	Sort…
+Ocultar archivos ocultos	Hide hidden files
+Mostrar archivos ocultos	Show hidden files
+Acceso directo en Android	Android shortcut
+Quitar de marcadores	Remove from bookmarks
+Agregar a marcadores	Add to bookmarks
+{0} seleccionado(s)	{0} selected
+Seleccionar rango	Select range
+Invertir selección	Invert selection
+Cerrar búsqueda	Close search
+Buscar aquí y en subcarpetas…	Search here and in subfolders…
+Abrir como	Open as
+Poner como tono	Set as ringtone
+Solo se pueden compartir archivos, no carpetas	Only files can be shared, not folders
+Quitar de fijados	Unpin
+Dejar de ocultar	Unhide
+Ocultar	Hide
+Añadir al portapapeles	Add to clipboard
+Enviar a otro teléfono	Send to another phone
+Instalar APK	Install APK
+Instalar {0} APK	Install {0} APK(s)
+Añadir a lista de reproducción	Add to playlist
+Enviar a la TV	Send to TV
+Comprimir en ZIP	Compress to ZIP
+Extraer aquí	Extract here
+Descifrar con contraseña	Decrypt with password
+Cifrar con contraseña	Encrypt with password
+Inspeccionar APK	Inspect APK
+Recortar o girar imagen	Crop or rotate image
+Establecer fondo de pantalla	Set as wallpaper
+Estableciendo fondo	Setting wallpaper
+Fondo de pantalla actualizado	Wallpaper updated
+Abrir con…	Open with…
+Abrir como…	Open as…
+Editar como texto	Edit as text
+Abrir ubicación	Open location
+Abrir en pestaña nueva	Open in new tab
+Renombrar en lote	Batch rename
+Mostrar (quitar punto)	Show (remove dot)
+Ocultar (añadir punto)	Hide (add dot)
+Alternar .nomedia	Toggle .nomedia
+Actualizando .nomedia	Updating .nomedia
+No se pudo cambiar .nomedia	Couldn't change .nomedia
+Configuración de medios actualizada	Media settings updated
+Copiar ruta	Copy path
+Ruta copiada	Path copied
+{0} elemento(s) para mover · Ver	{0} item(s) to move · View
+{0} elemento(s) para copiar · Ver	{0} item(s) to copy · View
+Pegar aquí	Paste here
+Portapapeles	Clipboard
+Quitar {0}	Remove {0}
+Vaciar	Empty
+Cerrar pestaña	Close tab
+Pestañas abiertas	Open tabs
+Pestaña actual	Current tab
+Cerrar la pestaña {0}	Close tab {0}
+{0} · {1} archivos	{0} · {1} files
+«{0}» en {1} · {2} resultados	“{0}” in {1} · {2} results
+ (buscando…)	 (searching…)
+Enviando a «{0}»…	Sending to “{0}”…
+Reproduciendo en «{0}»	Playing on “{0}”
+En pausa en «{0}»	Paused on “{0}”
+Pausa	Pause
+La TV lee el archivo directamente de este teléfono; mantén la app abierta o en segundo plano mientras se reproduce.	The TV reads the file directly from this phone; keep the app open or in the background while it plays.
+Elige una foto, música o vídeo en el explorador y usa Más → Enviar a la TV.	Choose a photo, music or video in the browser and use More → Send to TV.
+Enviar «{0}» a:	Send “{0}” to:
+No se encontró ninguna TV. Debe estar encendida y en la misma Wi-Fi; también puedes añadirla por su dirección.	No TV was found. It must be on and on the same Wi-Fi; you can also add it by its address.
+Buscar otra vez	Search again
+Añadir por dirección	Add by address
+Añadir TV	Add TV
+IP de la TV (por ejemplo 192.168.1.50) o la URL de su descripción.	The TV's IP (for example 192.168.1.50) or the URL of its description.
+Dirección de la TV	TV address
+No respondió ninguna TV	No TV responded
+No se pudo conectar	Couldn't connect
+No se pudo buscar	Couldn't search
+Busca temporales, miniaturas guardadas, APK de apps ya instaladas y restos de apps desinstaladas. Lo que elijas va a la papelera, así que se puede recuperar.	Looks for temporary files, saved thumbnails, APKs of installed apps and leftovers of uninstalled apps. What you choose goes to the trash, so it can be recovered.
+Buscar basura	Look for junk
+Se pueden liberar {0}	{0} can be freed
+Caché de OI Archivos	OI Archivos cache
+Miniaturas y vistas previas · {0}	Thumbnails and previews · {0}
+Ver	View
+Limpiar {0}	Clean {0}
+{0} elemento(s) irán a la papelera	{0} item(s) will go to the trash
+ y se borrará la caché de la app.	 and the app cache will be deleted.
+Limpiar	Clean
+No se pudo autorizar Google Drive	Couldn't authorize Google Drive
+No se pudo autorizar Google Drive: {0}	Couldn't authorize Google Drive: {0}
+Permiso temporal; vuelve a elegir la carpeta si caduca	Temporary permission; choose the folder again if it expires
+No se pudieron leer las conexiones: {0}	Couldn't read the connections: {0}
+Agregar	Add
+Entrar en Google Drive	Sign in to Google Drive
+Elegir una cuenta y autorizar acceso a sus archivos	Choose an account and authorize access to its files
+Enviar o recibir archivos por la misma Wi-Fi	Send or receive files over the same Wi-Fi
+Descargar desde una URL	Download from a URL
+Gestor de descargas; si se corta, continúa donde iba	Download manager; if it's interrupted, it resumes where it was
+Fotos, música y vídeos en un televisor DLNA	Photos, music and videos on a DLNA TV
+Buscar en la red local	Search the local network
+Servidores SMB, FTP, FTPS y SFTP de tu Wi-Fi	SMB, FTP, FTPS and SFTP servers on your Wi-Fi
+Explorar equipos por Bluetooth	Browse devices over Bluetooth
+Archivos y carpetas mediante OBEX FTP	Files and folders via OBEX FTP
+Carpeta de SD / USB / proveedor de nube	SD / USB / cloud provider folder
+Elegir una carpeta usando el selector de Android	Choose a folder with the Android picker
+Compartir por Wi-Fi / FTP	Share over Wi-Fi / FTP
+Acceder desde una computadora	Access from a computer
+Editar	Edit
+Agrega un servidor FTP, FTPS, SFTP, SMB, WebDAV o una cuenta de nube. Puedes guardar varias cuentas de cada proveedor.	Add an FTP, FTPS, SFTP, SMB or WebDAV server or a cloud account. You can save several accounts for each provider.
+No se pudo guardar	Couldn't save
+Nueva conexión	New connection
+Editar conexión	Edit connection
+Nombre de la conexión	Connection name
+URL completa https://…	Full URL https://…
+Servidor	Server
+Puerto	Port
+Usuario y grupo uid:gid	User and group uid:gid
+Usuario	User
+Vacío: 65534:65534 («nobody»). NFS no cifra nada: úsalo en una red de confianza	Empty: 65534:65534 (“nobody”). NFS encrypts nothing: use it on a trusted network
+Correo de SugarSync	SugarSync email
+Identificador de tu aplicación SugarSync /sc/…	Your SugarSync app ID /sc/…
+Token de acceso (opcional si usas Entrar)	Access token (optional if you use Sign in)
+ID de carpeta, 0 para la raíz	Folder ID, 0 for the root
+ID de carpeta o root	Folder ID or root
+Carpeta compartida /nombre	Shared folder /name
+Ruta exportada /srv/datos	Exported path /srv/data
+Carpeta inicial	Start folder
+Región de S3, por ejemplo us-east-1	S3 region, for example us-east-1
+Huella del servidor SHA256:…	Server fingerprint SHA256:…
+Cópiala del administrador del servidor. No se aceptan claves distintas.	Copy it from the server administrator. Different keys aren't accepted.
+Access Key ID de tu aplicación	Your app's Access Key ID
+Identificador de la aplicación OAuth	OAuth app ID
+Tras guardar, pulsa Entrar para autorizar la cuenta y renovar el acceso automáticamente.	After saving, tap Sign in to authorize the account and renew access automatically.
+Clave de tu aplicación (si el proveedor la exige)	Your app key (if the provider requires it)
+Esta conexión usa un token de tu cuenta con permisos de archivos. Cuando caduque, actualízalo aquí. También puedes usar el selector de Android si tienes instalada la app de tu nube.	This connection uses a token from your account with file permissions. When it expires, update it here. You can also use the Android picker if your cloud app is installed.
+FTP envía datos y contraseña sin cifrar. Para conexiones de Internet usa FTPS o SFTP.	FTP sends data and password unencrypted. For Internet connections use FTPS or SFTP.
+Completa los campos y revisa el puerto	Fill in the fields and check the port
+Guardar	Save
+Dirección (URL)	Address (URL)
+Se guarda en {0}	It's saved in {0}
+Descargado: {0}	Downloaded: {0}
+Descargar	Download
+Acceso no disponible: {0}	Access not available: {0}
+USB / documentos	USB / documents
+Copiando a USB / nube	Copying to USB / cloud
+No se pudo leer el origen	Couldn't read the source
+No se pudo crear el archivo	Couldn't create the file
+No se puede escribir	Can't write
+Copiado; no se pudo eliminar el original	Copied; the original couldn't be deleted
+Archivos copiados	Files copied
+Pegar aquí desde el teléfono	Paste here from the phone
+Importando documentos	Importing documents
+Guardados en {0}	Saved to {0}
+Copiar al teléfono	Copy to the phone
+Archivo	File
+Abriendo documento	Opening document
+Creando carpeta	Creating folder
+No se pudo crear	Couldn't create
+Carpeta creada	Folder created
+Renombrado	Renamed
+Eliminar documentos	Delete documents
+El proveedor puede eliminar estos archivos definitivamente.	The provider may delete these files permanently.
+Eliminando documentos	Deleting documents
+No se pudo eliminar {0}	Couldn't delete {0}
+Eliminados	Deleted
+No se pudo leer el documento	Couldn't read the document
+Importando	Importing
+Carpeta no disponible	Folder not available
+Destino: {0}	Destination: {0}
+Copiar aquí	Copy here
+Mover aquí	Move here
+El editor permite archivos de hasta 8 MB	The editor allows files up to 8 MB
+El archivo cambió fuera del editor. Vuelve a abrirlo antes de guardar.	The file changed outside the editor. Open it again before saving.
+Guardado	Saved
+No se encontró el texto	Text not found
+Convertir a mayúsculas	Convert to uppercase
+Convertir a minúsculas	Convert to lowercase
+Duplicar línea	Duplicate line
+A−	A−
+A+	A+
+Líneas	Lines
+Reemplazar con	Replace with
+Siguiente	Next
+Reemplazar	Replace
+Todos	All
+Tab	Tab
+{0} líneas · {1} caracteres	{0} lines · {1} characters
+Cambios sin guardar	Unsaved changes
+¿Guardar antes de salir?	Save before leaving?
+Descartar	Discard
+No hay nada oculto. Selecciona archivos o carpetas y usa «Más» → «Ocultar».	Nothing is hidden. Select files or folders and use “More” → “Hide”.
+Mostrar	Show
+Buscar archivos…	Search files…
+Buscar en todo el almacenamiento	Search all the storage
+Inicio está vacío. Para volver a mostrar algo: Ajustes → Pantalla de inicio.	Home is empty. To show something again: Settings → Home screen.
+Quitar marcador	Remove bookmark
+{0} libres de {1}	{0} free of {1}
+Guardando imagen	Saving image
+Imagen guardada	Image saved
+Guardada como «{0}»	Saved as “{0}”
+Editar imagen	Edit image
+Abriendo la imagen…	Opening the image…
+Recorte: {0} × {1} px de {2} × {3}	Crop: {0} × {1} px of {2} × {3}
+Girar a la izquierda	Rotate left
+Girar a la derecha	Rotate right
+Voltear	Flip
+Guardar copia	Save copy
+¿Reemplazar la imagen?	Replace the image?
+«{0}» se sustituirá por la versión editada y no se podrá recuperar.	“{0}” will be replaced by the edited version and can't be recovered.
+Red local	Local network
+Conéctate a una red Wi-Fi para buscar equipos.	Connect to a Wi-Fi network to look for devices.
+Buscando servidores SMB, FTP, FTPS y SFTP en {0}…	Looking for SMB, FTP, FTPS and SFTP servers on {0}…
+Búsqueda terminada en {0}.	Search finished on {0}.
+No se encontraron servidores.	No servers were found.
+No se pudo empezar a recibir: {0}	Couldn't start receiving: {0}
+Enviado a {0}	Sent to {0}
+{0} rechazó el envío	{0} declined the transfer
+Recibir	Receive
+Visible como «{0}» en {1}. Deja esta pantalla abierta.	Visible as “{0}” on {1}. Keep this screen open.
+El otro teléfono debe estar en la misma red Wi-Fi y tener OI Archivos.	The other phone must be on the same Wi-Fi network and have OI Archivos.
+Dejar de recibir	Stop receiving
+Empezar a recibir	Start receiving
+O que el otro teléfono lea este código QR con su cámara:	Or let the other phone read this QR code with its camera:
+Recibidos en {0}: {1}	Received in {0}: {1}
+Enviar	Send
+Selecciona archivos en el explorador y usa Más → Enviar a otro teléfono.	Select files in the browser and use More → Send to another phone.
+{0} archivo(s), {1}	{0} file(s), {1}
+Buscar teléfonos	Look for phones
+No se encontró ningún teléfono recibiendo. En el otro, abre esta pantalla y toca Empezar a recibir.	No phone receiving was found. On the other one, open this screen and tap Start receiving.
+Enviar a «{0}»	Send to “{0}”
+Primero selecciona archivos en el explorador y usa Más → Enviar a otro teléfono; luego vuelve a leer el código.	First select files in the browser and use More → Send to another phone; then read the code again.
+{0} archivo(s), {1}, a {2}. El otro teléfono tendrá que aceptarlos.	{0} file(s), {1}, to {2}. The other phone will have to accept them.
+Archivos entrantes	Incoming files
+«{0}» quiere enviarte {1} archivo(s), {2}:\n	“{0}” wants to send you {1} file(s), {2}:\n
+Rechazar	Decline
+Código QR	QR code
+Nombre de la lista	Playlist name
+Nueva lista	New playlist
+Nueva lista…	New playlist…
+Nueva	New
+No hay listas. Selecciona canciones o vídeos en el explorador y usa «Más» → «Añadir a lista de reproducción».	There are no playlists. Select songs or videos in the browser and use “More” → “Add to playlist”.
+{0} pista(s)	{0} track(s)
+Renombrar lista	Rename playlist
+¿Eliminar la lista «{0}»?	Delete the playlist “{0}”?
+Los archivos no se borran, solo la lista.	The files aren't deleted, only the playlist.
+Lista eliminada	Playlist deleted
+Reproducir	Play
+Eliminar lista	Delete playlist
+La lista está vacía.	The playlist is empty.
+No está en el teléfono	It isn't on the phone
+Bajar	Down
+Quitar	Remove
+Archivos remotos	Remote files
+Pegando archivos remotos	Pasting remote files
+Subido, pero no se pudo borrar el original	Uploaded, but the original couldn't be deleted
+Archivos pegados	Files pasted
+Ve a la carpeta de destino y pega los archivos	Go to the destination folder and paste the files
+No se pudo reproducir	Couldn't play
+Abriendo archivo remoto	Opening remote file
+Nombre actualizado	Name updated
+Eliminar {0} elementos	Delete {0} items
+La eliminación en servidores remotos puede ser permanente.	Deleting on remote servers can be permanent.
+Eliminando archivos remotos	Deleting remote files
+Elementos eliminados	Items deleted
+Explorador root	Root browser
+Esta función necesita un teléfono con root y su/Magisk. Al abrirla, el gestor de root te pedirá autorización. Los cambios en archivos del sistema pueden afectar Android.	This feature needs a rooted phone with su/Magisk. When you open it, the root manager will ask you for authorization. Changes to system files can affect Android.
+Solicitando root	Requesting root
+Raíz con root	Root with root access
+Autorizar y explorar	Authorize and browse
+Permisos octales, por ejemplo 644	Octal permissions, for example 644
+Cambiando permisos	Changing permissions
+Permisos actualizados	Permissions updated
+Aplicar permisos a esta ruta	Apply permissions to this path
+En Android 11 o superior, el permiso de todos los archivos no abre los datos privados de otras apps. Esta pantalla usa únicamente el acceso root concedido por el teléfono.	On Android 11 or later, the all files permission doesn't open other apps' private data. This screen only uses the root access granted by the phone.
+General	General
+Pantalla	Display
+Archivos ocultos, miniaturas, historial, tamaño y tema	Hidden files, thumbnails, history, size and theme
+Limpieza	Cleanup
+Borrar el historial y la caché	Clear the history and the cache
+Carpeta de inicio y carpeta de descargas	Home folder and downloads folder
+Ventana inicial	Start window
+Qué se abre al iniciar la app	What opens when the app starts
+Pantalla de inicio	Home screen
+Ocultar y ordenar las secciones y los iconos de Inicio	Hide and reorder the Home sections and icons
+Barra de herramientas	Toolbar
+Elegir y ordenar los botones de la barra al seleccionar	Choose and order the bar's buttons when selecting
+Barra lateral	Side bar
+Ocultar y ordenar las opciones del menú lateral	Hide and reorder the side menu options
+Notificaciones	Notifications
+Aviso al terminar, espacio bajo y archivos nuevos	Alert when finished, low storage and new files
+Red y nube	Network and cloud
+Subir lo que edites en otra app	Upload what you edit in another app
+Subir fotos, vídeos, música y carpetas a una conexión	Upload photos, videos, music and folders to a connection
+Seguridad	Security
+Proteger la app, las conexiones y los archivos ocultos	Protect the app, the connections and the hidden files
+Guardar y restaurar los ajustes	Save and restore the settings
+Herramientas	Tools
+Copia del APK y carpeta de copias	APK backup and backup folder
+Editor de texto	Text editor
+Letra, líneas, sangría, tabulador, símbolos y guardado	Font, lines, indentation, tab, symbols and saving
+Qué tipos de archivo entran en la categoría Documentos	Which file types are in the Documents category
+Usar la papelera al eliminar	Use the trash when deleting
+Gestos	Gestures
+Deslizar en el explorador	Swipe in the browser
+Sistema	System
+Acerca de	About
+Versión de OI Archivos	OI Archivos version
+Subir los cambios automáticamente	Upload changes automatically
+Al abrir un archivo de un servidor con otra app y editarlo, los cambios se suben solos al volver a OI Archivos. Si el archivo cambió en el servidor, se pregunta antes de sustituirlo.	When you open a file from a server with another app and edit it, the changes are uploaded automatically when you come back to OI Archivos. If the file changed on the server, you're asked before replacing it.
+Usar la papelera	Use the trash
+Al eliminar, mover a la papelera para poder restaurar	When deleting, move to the trash so it can be restored
+Orientación de la pantalla:	Screen orientation:
+Mostrar el nombre en la barra de herramientas	Show the name in the toolbar
+El título de la carpeta o categoría que se ve arriba	The title of the folder or category shown at the top
+Mostrar el botón de pestañas	Show the tabs button
+Un botón con el número de pestañas abiertas, para cambiar de una a otra o abrir otra	A button with the number of open tabs, to switch between them or open another one
+Mostrar botón de selección	Show the selection button
+Un botón en la barra para empezar a marcar archivos sin mantener pulsado	A button in the bar to start marking files without long-pressing
+Diseño grande	Large layout
+Textos y controles un 20 % más grandes	Text and controls 20 % larger
+Archivos y carpetas que empiezan con punto	Files and folders that start with a dot
+Miniaturas	Thumbnails
+Vista previa de imágenes, videos y APK en lugar de iconos	Preview images, videos and APKs instead of icons
+Solo carpetas en el historial	Only folders in the history
+No mostrar en el historial los archivos abiertos	Don't show opened files in the history
+Tamaño de las celdas: {0}	Cell size: {0}
+Tema	Theme
+Fondo negro puro	Pure black background
+Con el tema oscuro, fondo totalmente negro (ahorra batería en pantallas OLED)	With the dark theme, a completely black background (saves battery on OLED screens)
+Estilo de las carpetas:	Folder style:
+Color de la app:	App color:
+Borrar el historial al salir	Clear the history on exit
+Al tocar «Salir» en el menú lateral se borra el historial	Tapping “Exit” in the side menu clears the history
+Borrar la caché al salir	Clear the cache on exit
+Al tocar «Salir» se borran las miniaturas y vistas previas guardadas	Tapping “Exit” deletes the saved thumbnails and previews
+Borrar la caché ahora	Clear the cache now
+Miniaturas y vistas previas guardadas: {0}	Saved thumbnails and previews: {0}
+Borrar el historial ahora	Clear the history now
+Carpetas y archivos abiertos	Opened folders and files
+Historial borrado	History cleared
+{0}\nSe abre con la ventana inicial «Carpeta de inicio»	{0}\nOpens with the “Home folder” start window
+Carpeta de descargas	Downloads folder
+{0}\nDescargas de red y nube, lo recibido de otro teléfono y lo copiado desde USB	{0}\nNetwork and cloud downloads, what you receive from another phone and what you copy from USB
+Elige qué opciones salen en el menú lateral y en qué orden. «Inicio», «Ajustes» y «Salir» siempre se ven.	Choose which options appear in the side menu and in what order. “Home”, “Settings” and “Exit” are always shown.
+Subir {0}	Move {0} up
+Bajar {0}	Move {0} down
+Restablecer	Reset
+Elige qué secciones salen en Inicio y en qué orden, y qué iconos se ven dentro de «Categorías» y «Accesos rápidos». El botón de Ajustes de arriba siempre está.	Choose which sections appear on Home and in what order, and which icons are shown in “Categories” and “Shortcuts”. The Settings button at the top is always there.
+Mostrar el buscador en Inicio	Show the search bar on Home
+Una barra para buscar por nombre en todo el almacenamiento	A bar to search by name in all the storage
+Iconos de «Categorías»	“Categories” icons
+Iconos de «Accesos rápidos»	“Shortcuts” icons
+Restablecer Inicio	Reset Home
+Fondo de la app:	App background:
+Ruta de la imagen (JPG, PNG…)	Image path (JPG, PNG…)
+Usar como fondo	Use as background
+Elegir imagen…	Choose image…
+Visibilidad de la imagen: {0} %	Image visibility: {0} %
+Quitar el fondo	Remove the background
+Elige qué tipos de archivo salen en la categoría «Documentos». Tiene que quedar al menos uno.	Choose which file types appear in the “Documents” category. At least one must remain.
+Elige qué botones salen en la barra de abajo al seleccionar archivos (hasta {0}) y en qué orden. Lo demás sigue en «Más».	Choose which buttons appear in the bottom bar when selecting files (up to {0}) and in what order. The rest stays in “More”.
+Quita otro botón para poder añadir este	Remove another button to add this one
+Restablecer barra	Reset bar
+Qué se muestra al abrir OI Archivos:	What's shown when OI Archivos opens:
+Categorías, almacenamiento y accesos	Categories, storage and shortcuts
+La carpeta que estaba abierta al salir	The folder that was open when you left
+Copiar automáticamente	Back up automatically
+Sube lo nuevo a una conexión guardada en cuanto aparece y, además, cada 6 horas	Uploads new files to a saved connection as soon as they appear and, also, every 6 hours
+Destino	Destination
+No hay conexiones: crea una en «Red, nube y USB»	No connections: create one in “Network, cloud and USB”
+Sin elegir	Not chosen
+Carpeta en el destino	Folder at the destination
+Qué copiar:	What to back up:
+Otras carpetas del teléfono (se copian enteras):	Other folders on the phone (backed up entirely):
+Añadir carpeta	Add folder
+Solo con Wi-Fi	Wi-Fi only
+No gastar datos móviles	Don't use mobile data
+Copiar ahora	Back up now
+Última copia: {0}	Last backup: {0}
+Destino de la copia	Backup destination
+Dentro de la carpeta inicial de la conexión; puede tener subcarpetas (a/b)	Inside the connection's start folder; it can have subfolders (a/b)
+Carpeta para copiar	Folder to back up
+Cerrar la notificación al terminar	Dismiss the notification when finished
+Si está desactivado, al terminar una copia, descarga u otra tarea queda un aviso con el resultado	If it's off, when a copy, download or other task finishes a notice with the result stays
+Advertencia de espacio bajo	Low storage warning
+Avisar cuando quede poco espacio libre en el teléfono (se revisa cada hora)	Warn when the phone is running out of free space (checked every hour)
+Avisar con menos de:	Warn with less than:
+Mostrar el uso del almacenamiento	Show storage usage
+Una notificación fija con el espacio libre del teléfono y de la tarjeta SD (se actualiza cada hora)	A persistent notification with the free space of the phone and the SD card (updated every hour)
+Avisar de archivos nuevos	Notify about new files
+Como el Registrador de ES: una notificación cuando aparecen fotos, vídeos, música, documentos o APK nuevos	Like ES Logger: a notification when new photos, videos, music, documents or APKs appear
+Tipos de archivo:	File types:
+Informe diario de archivos nuevos	Daily new files report
+Una vez al día, un resumen de cuántos archivos aparecieron y de qué tipo	Once a day, a summary of how many files appeared and of what type
+Ver el informe ahora	See the report now
+Permiso de notificaciones	Notification permission
+Permitidas	Allowed
+Bloqueadas: no se verá el progreso ni el aviso al terminar. Toca para permitirlas	Blocked: progress and the notice when finished won't be shown. Tap to allow them
+Proteger al abrir la app	Protect when opening the app
+Pedir la contraseña para entrar en OI Archivos	Ask for the password to enter OI Archivos
+Proteger las conexiones de red	Protect network connections
+Pedir la contraseña para abrir servidores, nubes y Bluetooth	Ask for the password to open servers, clouds and Bluetooth
+Proteger los archivos ocultos	Protect hidden files
+Pedir la contraseña para mostrar los archivos ocultos	Ask for the password to show hidden files
+Cambiar la contraseña	Change the password
+Déjala vacía para quitar la contraseña y las protecciones	Leave it empty to remove the password and the protections
+Aún no hay contraseña	There's no password yet
+Basta con escribirla una vez mientras uses la app; se vuelve a pedir tras cinco minutos fuera de ella o al tocar «Salir». Si la olvidas, solo se puede quitar borrando los datos de OI Archivos en los ajustes de Android.	You only need to type it once while you use the app; it's asked again after five minutes away from it or when you tap “Exit”. If you forget it, it can only be removed by clearing OI Archivos data in Android settings.
+Las contraseñas no coinciden	The passwords don't match
+Crear contraseña	Create password
+Quitar protección	Remove protection
+Contraseña actual	Current password
+Contraseña nueva	New password
+Repetir contraseña	Repeat password
+Guardar copia de los ajustes	Save a settings backup
+En {0}	In {0}
+Restaurar los ajustes	Restore the settings
+Copia del {0}	Backup from {0}
+No hay ninguna copia guardada	There's no saved backup
+La copia no incluye la contraseña ni las conexiones de red y nube, que llevan credenciales.	The backup doesn't include the password or the network and cloud connections, which carry credentials.
+Los ajustes actuales se sustituirán por los de la copia.	The current settings will be replaced by the ones in the backup.
+Restaurar	Restore
+Guardar el APK de una app antes de desinstalarla	Save an app's APK before uninstalling it
+Limpiar carpetas al desinstalar	Clean folders when uninstalling
+Tras desinstalar una app desde OI Archivos, proponer mover a la papelera las carpetas con su nombre que dejó en el almacenamiento	After uninstalling an app from OI Archivos, offer to move to the trash the folders with its name that it left in the storage
+Avisar de los permisos al instalar	Warn about permissions when installing
+Al instalar una app desde OI Archivos, una notificación dice qué permisos delicados pide	When installing an app from OI Archivos, a notification says which sensitive permissions it asks for
+Apps predeterminadas	Default apps
+Cambiar con qué app se abre cada tipo de archivo (ajustes de Android)	Change which app opens each file type (Android settings)
+Carpeta de copias de apps	App backup folder
+Lista de símbolos	Symbol list
+Símbolos	Symbols
+Separados por espacios. Cada uno es un botón encima del teclado.	Separated by spaces. Each one is a button above the keyboard.
+Tamaño de la letra: {0}	Font size: {0}
+Números de línea	Line numbers
+Mostrar el número de cada línea	Show the number of each line
+Saltos de línea automáticos	Word wrap
+Partir las líneas largas en vez de desplazar a los lados	Wrap long lines instead of scrolling sideways
+Sangría automática	Auto indent
+Al pulsar Intro, la línea nueva empieza con la sangría de la anterior	When you press Enter, the new line starts with the previous one's indentation
+Resaltado de sintaxis	Syntax highlighting
+Colorear el código (solo en archivos de hasta {0} KB)	Color the code (only in files up to {0} KB)
+Tamaño máximo del archivo resaltado:	Maximum size of the highlighted file:
+Guardado automático	Auto save
+Guardar al salir del editor sin preguntar	Save when leaving the editor without asking
+Mostrar espacios en blanco	Show whitespace
+Dibujar los espacios como · y los tabuladores como →	Draw spaces as · and tabs as →
+Mayúscula automática de la primera letra	Auto capitalize the first letter
+El teclado empieza cada frase en mayúscula	The keyboard starts each sentence with a capital letter
+Barra de símbolos	Symbol bar
+Tab y símbolos encima del teclado	Tab and symbols above the keyboard
+Usar espacios en lugar de tabuladores	Use spaces instead of tabs
+La tecla Tab de la barra escribe espacios	The bar's Tab key types spaces
+Tamaño de tabulación:	Tab size:
+{0} espacios	{0} spaces
+Lista de símbolos personalizada	Custom symbol list
+Deslizar a la izquierda	Swipe left
+Deslizar a la derecha	Swipe right
+Cuando actives un gesto, abre el menú lateral con su botón.	When you turn on a gesture, open the side menu with its button.
+OI Archivos {0}	OI Archivos {0}
+Uso personal. Sin anuncios ni rastreo. La red se usa para las conexiones y transferencias que activas.	Personal use. No ads or tracking. The network is used for the connections and transfers you turn on.
+Compartir por red	Share over the network
+Conecta el teléfono y la computadora a la misma red. Solo se comparte la carpeta que elijas.	Connect the phone and the computer to the same network. Only the folder you choose is shared.
+Carpeta a compartir	Folder to share
+Puerto FTP (vacío: automático)	FTP port (empty: automatic)
+Un número de 1024 a 65535	A number from 1024 to 65535
+Si lo fijas, el PC puede guardar la conexión	If you set it, the PC can save the connection
+Contraseña FTP fija (opcional)	Fixed FTP password (optional)
+De 8 a 64 caracteres, sin espacios	8 to 64 characters, no spaces
+Vacía: se genera una nueva en cada inicio. El usuario es «oi»	Empty: a new one is generated on each start. The user is “oi”
+Detener el servidor al salir de la app	Stop the server when leaving the app
+Codificación de los nombres en FTP	FTP name encoding
+Navegador / Wi-Fi	Browser / Wi-Fi
+Servidor FTP	FTP server
+Dirección: {0}\nUsuario: {1}\nContraseña: {2}\nCarpeta: {3}	Address: {0}\nUser: {1}\nPassword: {2}\nFolder: {3}
+{0}\nUsuario: {1}\nContraseña: {2}	{0}\nUser: {1}\nPassword: {2}
+Copiar datos	Copy details
+Detener servidor	Stop server
+HTTP y FTP de esta pantalla no cifran el tráfico. Úsalos en una red de confianza. Se genera una contraseña nueva en cada inicio.	The HTTP and FTP on this screen don't encrypt the traffic. Use them on a trusted network. A new password is generated on each start.
+El historial está vacío.	The history is empty.
+Reanudar transferencia	Resume transfer
+Pausar transferencia	Pause transfer
+No se pudo reanudar	Couldn't resume
+Las operaciones y sus resultados aparecerán aquí.	Operations and their results will appear here.
+Buscar en {0}	Search in {0}
+Tipo (sin elegir, de cualquier tipo)	Type (none chosen: any type)
+Nombre (opcional)	Name (optional)
+Extensiones: jpg, mp4, pdf…	Extensions: jpg, mp4, pdf…
+Tamaño mínimo en MB	Minimum size in MB
+Tamaño máximo en MB	Maximum size in MB
+Modificados en los últimos días	Modified in the last days
+Texto dentro del archivo	Text inside the file
+Archivos de texto de hasta 8 MB	Text files up to 8 MB
+Buscar en las subcarpetas	Search in subfolders
+Incluir archivos y carpetas ocultos	Include hidden files and folders
+Revisa el tamaño y el número de días	Check the size and the number of days
+Filtros avanzados	Advanced filters
+{0} resultados	{0} results
+ (límite alcanzado)	 (limit reached)
+Analizar almacenamiento	Analyze storage
+Buscar duplicados por SHA-256	Find duplicates by SHA-256
+Analizando almacenamiento	Analyzing storage
+Análisis terminado	Analysis finished
+Resultado parcial: se alcanzó el límite de 200.000 archivos	Partial result: the limit of 200,000 files was reached
+Carpetas y archivos que más ocupan	Folders and files that take the most space
+Archivos más grandes	Largest files
+Duplicados exactos	Exact duplicates
+Grupo {0} · {1} cada uno	Group {0} · {1} each
+Candidatos a revisar	Candidates to review
+Archivos temporales, vacíos y carpetas vacías. Revisa los seleccionados antes de eliminarlos.	Temporary files, empty files and empty folders. Review the selected ones before deleting them.
+Enviar {0} a la papelera	Move {0} to the trash
+Revisar eliminación	Review deletion
+Enviar a la papelera	Move to the trash
+Vaciar papelera	Empty trash
+La papelera está vacía	The trash is empty
+{0}\n{1} · {2}	{0}\n{1} · {2}
+Eliminar definitivamente	Delete permanently
+Se eliminarán definitivamente {0} elemento(s). No se puede deshacer.	{0} item(s) will be deleted permanently. This can't be undone.
+Revisa el intervalo de tiempo	Check the time interval
+Revisa los archivos adicionales	Check the additional files
+Revisa el color de fondo, por ejemplo #202020	Check the background color, for example #202020
+Revisa el color de la intro y el outro, por ejemplo #202020	Check the intro and outro color, for example #202020
+Editar {0}	Edit {0}
+Exporta una copia MP4. El video original se conserva.	Exports an MP4 copy. The original video is kept.
+Inicio en segundos	Start in seconds
+Fin en segundos (vacío: hasta el final)	End in seconds (empty: to the end)
+Rotación: {0}°	Rotation: {0}°
+Velocidad: {0}x	Speed: {0}x
+Recortar 12,5 % de cada borde	Crop 12.5 % of each edge
+Quitar audio original	Remove original audio
+Texto sobre el video	Text over the video
+Ruta de música para añadir (opcional)	Path of music to add (optional)
+Rutas de videos a unir, una por línea	Paths of videos to join, one per line
+Imagen superpuesta (ruta opcional)	Overlay image (optional path)
+Archivo SRT (ruta opcional)	SRT file (optional path)
+Los tiempos cuentan desde el inicio del video, después de la intro si la hay.	The times count from the start of the video, after the intro if there's one.
+Lienzo: 	Canvas: 
+Horizontal 1280 × 720	Landscape 1280 × 720
+Vertical 720 × 1280	Portrait 720 × 1280
+Cuadrado 1080 × 1080	Square 1080 × 1080
+Tamaño original	Original size
+Color de fondo (#RRGGBB)	Background color (#RRGGBB)
+Imagen de fondo (ruta opcional)	Background image (optional path)
+Intro y outro: una imagen fija al principio y al final del video. Puede ser una foto (se recorta al centro para llenar el cuadro), un texto sobre un color o el texto encima de la foto.	Intro and outro: a still image at the start and at the end of the video. It can be a photo (cropped at the center to fill the frame), a text over a color or the text over the photo.
+Texto de la intro	Intro text
+Imagen de la intro (ruta opcional)	Intro image (optional path)
+Texto del outro	Outro text
+Imagen del outro (ruta opcional)	Outro image (optional path)
+Color de la intro y el outro (#RRGGBB)	Intro and outro color (#RRGGBB)
+Duración de la intro y el outro: {0} s	Intro and outro duration: {0} s
+Editando video	Editing video
+Creado {0}	Created {0}
+Exportar MP4	Export MP4
+Para GIF, elige un fin de hasta 10 segundos después del inicio	For a GIF, choose an end up to 10 seconds after the start
+Video a GIF	Video to GIF
+Crear GIF (máx. 10 s)	Create GIF (max. 10 s)
+Imagen	Image
+Anterior	Previous
+Restablecer zoom	Reset zoom
+Abrir con	Open with
+Desde la red, sin descargar	From the network, without downloading
+No hay pistas que reproducir.	There are no tracks to play.
+No se pudo reproducir el audio	Couldn't play the audio
+Aleatorio	Shuffle
+Repetir uno	Repeat one
+Repetir todos	Repeat all
+Sin repetición	No repeat
+Página {0}	Page {0}
+El lanzador no permite fijar accesos directos	The launcher doesn't allow pinning shortcuts
+No se pudo solicitar el acceso directo	Couldn't request the shortcut
+Texto (editor de OI Archivos)	Text (OI Archivos editor)
+Audio	Audio
+Vídeo	Video
+Cualquier tipo	Any type
+No hay ninguna app para abrir este archivo	There's no app to open this file
+No se pudo abrir: {0}	Couldn't open: {0}
+No se pudo compartir: {0}	Couldn't share: {0}
+Tono de llamada	Ringtone
+Sonido de notificación	Notification sound
+Sonido de alarma	Alarm sound
+Android no reconoce «{0}» como audio	Android doesn't recognize “{0}” as audio
+Falta el permiso para cambiar los ajustes del sistema	The permission to change system settings is missing

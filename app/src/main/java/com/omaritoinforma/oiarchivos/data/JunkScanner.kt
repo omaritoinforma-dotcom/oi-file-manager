@@ -9,12 +9,18 @@ import kotlinx.coroutines.ensureActive
  * están instaladas y restos de apps desinstaladas. Solo propone; lo elegido va a la papelera.
  */
 object JunkScanner {
-    enum class Kind(val label: String, val description: String) {
-        TEMP("Temporales y vacíos", "Archivos .tmp, .temp, .bak, archivos vacíos y carpetas vacías"),
-        THUMBNAILS("Miniaturas guardadas", "Copias pequeñas de fotos; Android las vuelve a crear"),
-        INSTALLED_APK("APK ya instalados", "Instaladores de apps que ya tienes en esa versión o en una más nueva"),
-        LEFTOVERS("Restos de apps desinstaladas", "Carpetas de apps que ya no están en el teléfono")
-    }
+    enum class Kind(private val labelEs: String, private val descriptionEs: String) {
+        TEMP(trKey("Temporales y vacíos"), trKey("Archivos .tmp, .temp, .bak, archivos vacíos y carpetas vacías")),
+        THUMBNAILS(trKey("Miniaturas guardadas"), trKey("Copias pequeñas de fotos; Android las vuelve a crear")),
+        INSTALLED_APK(trKey("APK ya instalados"), trKey("Instaladores de apps que ya tienes en esa versión o en una más nueva")),
+        LEFTOVERS(trKey("Restos de apps desinstaladas"), trKey("Carpetas de apps que ya no están en el teléfono"));
+
+    val label: String
+        get() = tr(labelEs)
+
+    val description: String
+        get() = tr(descriptionEs)
+}
 
     data class Item(val file: File, val kind: Kind, val size: Long, val detail: String = "")
 
@@ -42,7 +48,7 @@ object JunkScanner {
         var seen = 0
         for (f in SafeFiles.walk(root)) {
             currentCoroutineContext().ensureActive()
-            if (++seen % 200 == 0) report(OpProgress("Buscando basura", f.name, doneFiles = seen))
+            if (++seen % 200 == 0) report(OpProgress(tr("Buscando basura"), f.name, doneFiles = seen))
             val parent = f.parentFile?.canonicalFile
             // Restos: carpetas con nombre de paquete dentro de Android/media u Android/obb.
             if (f.isDirectory && parent in leftoverBases && packageName.matches(f.name) &&
@@ -63,7 +69,7 @@ object JunkScanner {
                     val info = apkInfo(f) ?: continue
                     val installed = installedVersion(info.packageName) ?: continue
                     if (installed >= info.versionCode)
-                        out += Item(f, Kind.INSTALLED_APK, f.length(), "${info.label} ya instalada")
+                        out += Item(f, Kind.INSTALLED_APK, f.length(), tr("{0} ya instalada", info.label))
                 }
             }
         }

@@ -10,11 +10,11 @@ internal class RootFs : RemoteFs {
     init {
         if (command("id -u").trim() != "0")
             throw IOException(
-                "Root no concedido. Se necesita un dispositivo con su/Magisk y autorización del usuario.")
+                tr("Root no concedido. Se necesita un dispositivo con su/Magisk y autorización del usuario."))
     }
 
     private fun q(value: String): String {
-        if (value.contains('\u0000')) throw IOException("Ruta no válida")
+        if (value.contains('\u0000')) throw IOException(tr("Ruta no válida"))
         return "'" + value.replace("'", "'\"'\"'") + "'"
     }
 
@@ -24,7 +24,7 @@ internal class RootFs : RemoteFs {
             process.outputStream.use { out -> input?.copyTo(out) }
             val result = process.inputStream.bufferedReader().use { it.readText() }
             if (process.waitFor() != 0)
-                throw IOException(result.take(1000).ifBlank { "Operación root rechazada" })
+                throw IOException(result.take(1000).ifBlank { tr("Operación root rechazada") })
             return result
         } finally {
             process.destroy()
@@ -57,7 +57,7 @@ internal class RootFs : RemoteFs {
             override fun close() {
                 super.close()
                 try {
-                    if (process.waitFor() != 0) throw IOException("Lectura root rechazada")
+                    if (process.waitFor() != 0) throw IOException(tr("Lectura root rechazada"))
                 } finally {
                     process.destroy()
                 }
@@ -87,12 +87,12 @@ internal class RootFs : RemoteFs {
     }
 
     override fun delete(entry: RemoteEntry) {
-        if (entry.path == "/") throw IOException("La raíz no se puede eliminar")
+        if (entry.path == "/") throw IOException(tr("La raíz no se puede eliminar"))
         command("rm ${if(entry.directory)"-r"else"-f"} ${q(entry.path)}")
     }
 
     fun chmod(path: String, mode: String) {
-        if (!Regex("[0-7]{3,4}").matches(mode)) throw IOException("Permisos octales no válidos")
+        if (!Regex("[0-7]{3,4}").matches(mode)) throw IOException(tr("Permisos octales no válidos"))
         command("chmod $mode ${q(path)}")
     }
 }

@@ -26,6 +26,7 @@ Referencia de funciones: ficha del desarrollador de ES en [Xiaomi](https://app.m
 | Cifrado | AES-256-GCM por bloques, PBKDF2-SHA256, final autenticado; copia y original conservado | Formato propio versionado OIENC v2; no importa el cifrado propietario de ES |
 | Integración Android | Recibir archivos/texto compartidos, `.nomedia`, ocultar/mostrar por nombre y fondo de pantalla | Capacidades del lanzador, proveedor y versión de Android |
 | Personalización | Inicio (secciones e iconos que se ocultan y reordenan, archivos nuevos, buscador), menú lateral y barra de herramientas configurables, tema claro/oscuro, color, negro puro, estilo de carpetas, fondo con imagen, orientación, diseño grande, avisos (espacio bajo, archivos nuevos, informe diario, permisos de apps nuevas, uso del almacenamiento) y copia de ajustes validada | La contraseña FTP y la imagen de fondo son del dispositivo y no van en la copia de ajustes |
+| Idioma | Español, inglés o el del teléfono (Ajustes → Pantalla), al momento y en la copia de ajustes; textos en español en el código y catálogo `assets/i18n/en.tsv` con datos {0}, {1}… | Una prueba JVM exige traducción para cada texto de la interfaz; los mensajes que se envían a otros equipos (FTP, HTTP, envío entre teléfonos) siguen en español |
 | Privacidad | Sin anuncios ni analítica; credenciales con Keystore; backup Android desactivado | Permiso de Internet necesario para red/nube; sin tráfico durante uso local |
 
 ## Pendientes para la equivalencia completa

@@ -17,26 +17,26 @@ fun RootToolsScreen(vm: MainViewModel) {
     val ctx = LocalContext.current
     var path by remember { mutableStateOf("/") }
     var mode by remember { mutableStateOf("644") }
-    ToolPage("Explorador root", vm) { pad ->
+    ToolPage(tr("Explorador root"), vm) { pad ->
         Column(
             Modifier.fillMaxSize().padding(pad).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Text(
-                    "Esta función necesita un teléfono con root y su/Magisk. Al abrirla, el gestor de root te pedirá autorización. Los cambios en archivos del sistema pueden afectar Android.")
+                    tr("Esta función necesita un teléfono con root y su/Magisk. Al abrirla, el gestor de root te pedirá autorización. Los cambios en archivos del sistema pueden afectar Android."))
                 OutlinedTextField(
                     path,
                     { path = it },
-                    label = { Text("Ruta") },
+                    label = { Text(tr("Ruta")) },
                     modifier = Modifier.fillMaxWidth())
                 Button(
                     onClick = {
-                        vm.runTask("Solicitando root") {
+                        vm.runTask(tr("Solicitando root")) {
                             RootFs().use { it.list(path) }
                             val store = ConnectionStore(ctx)
                             val c =
                                 Connection(
                                     "system-root",
-                                    "Raíz con root",
+                                    tr("Raíz con root"),
                                     Protocol.ROOT,
                                     "",
                                     1,
@@ -48,21 +48,21 @@ fun RootToolsScreen(vm: MainViewModel) {
                             OperationResult(null)
                         }
                     }) {
-                        Text("Autorizar y explorar")
+                        Text(tr("Autorizar y explorar"))
                     }
                 OutlinedTextField(
-                    mode, { mode = it }, label = { Text("Permisos octales, por ejemplo 644") })
+                    mode, { mode = it }, label = { Text(tr("Permisos octales, por ejemplo 644")) })
                 TextButton(
                     onClick = {
-                        vm.runTask("Cambiando permisos") {
+                        vm.runTask(tr("Cambiando permisos")) {
                             RootFs().use { it.chmod(path, mode) }
-                            OperationResult("Permisos actualizados")
+                            OperationResult(tr("Permisos actualizados"))
                         }
                     }) {
-                        Text("Aplicar permisos a esta ruta")
+                        Text(tr("Aplicar permisos a esta ruta"))
                     }
                 Text(
-                    "En Android 11 o superior, el permiso de todos los archivos no abre los datos privados de otras apps. Esta pantalla usa únicamente el acceso root concedido por el teléfono.")
+                    tr("En Android 11 o superior, el permiso de todos los archivos no abre los datos privados de otras apps. Esta pantalla usa únicamente el acceso root concedido por el teléfono."))
             }
     }
 }
