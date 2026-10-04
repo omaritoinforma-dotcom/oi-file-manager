@@ -72,7 +72,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Búsqueda avanzada (tamaño, fecha, tipo, subcarpetas, ocultos) | 🟠 | Búsqueda por contenido comprobada en el emulador, tras corregir un error que borraba los resultados; faltan el filtro de archivos del sistema y la búsqueda dentro de una categoría |
 | Analizador de espacio por tipo y carpeta | ✅ | Emulador Android 15 |
 | Archivos grandes, recientes, vacíos y duplicados | ✅ | Emulador Android 15 (grandes y duplicados) |
-| Limpieza de basura: caché, restos de apps desinstaladas, APK obsoletos, miniaturas | 🟠 | Solo temporales y vacíos |
+| Limpieza de basura: caché, restos de apps desinstaladas, APK obsoletos, miniaturas | ✅ | Emulador Android 15: restos de apps desinstaladas, miniaturas y APK ya instalados van a la papelera; también temporales, vacíos y la caché |
 | Analizador de apps (permisos sensibles, tamaño, memoria) | 🟠 | Se muestran los permisos de cada APK; falta el análisis global |
 | Informe diario de archivos nuevos y aviso de archivos nuevos | ❌ | |
 | Aviso de poco espacio | ❌ | |
@@ -128,7 +128,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Bluetooth: servidor OBEX FTP (que otros exploren el teléfono) | ❌ | |
 | USB OTG y tarjeta SD (SAF) | 🟡 | Falta hardware |
 | Expulsar USB de forma segura y aviso al conectarlo | ❌ | |
-| Gestor de descargas desde URL | ❌ | |
+| Gestor de descargas desde URL | ✅ | Emulador Android 15: descarga desde el equipo de CI con SHA-256 comprobado; si se corta, continúa con Range/If-Range (pruebas unitarias) |
 | Centro de tareas: progreso, cancelar, historial | ✅ | Transferencias, reanudación SFTP comprobada |
 
 ### Root
@@ -153,10 +153,10 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 
 | Estado | Funciones |
 | --- | ---: |
-| ✅ Comprobadas en su entorno real | 28 |
+| ✅ Comprobadas en su entorno real | 30 |
 | 🟡 Implementadas, sin comprobar | 15 |
-| 🟠 Parciales | 13 |
-| ❌ Faltan | 23 |
+| 🟠 Parciales | 12 |
+| ❌ Faltan | 22 |
 | **Total de filas** | **79** |
 
 **OI Archivos no cubre todavía el mínimo.** Las funciones que faltan más grandes, por valor para el usuario:
@@ -169,6 +169,6 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 6. Enviar entre teléfonos por punto de acceso o código QR.
 7. Idioma y temas dentro de la app; barra lateral personalizable.
 
-Hechos y pendientes de su comprobación en el emulador (CI en curso): gestor de descargas desde URL, portapapeles de varias carpetas, poner como tono, limpiar basura y ajustes del editor.
+Hechos y pendientes de su comprobación en el emulador (CI en curso): portapapeles de varias carpetas, poner como tono y ajustes del editor (en la última pasada la app funcionó, pero fallaron las pruebas; ya están corregidas).
 
-Los recuentos son por fila de esta matriz; una fila puede agrupar varias funciones pequeñas. Solo 28 de 79 cumplen ya el criterio de terminación (conectadas y comprobadas en su entorno real).
+Los recuentos son por fila de esta matriz; una fila puede agrupar varias funciones pequeñas. Solo 30 de 79 cumplen ya el criterio de terminación (conectadas y comprobadas en su entorno real).
