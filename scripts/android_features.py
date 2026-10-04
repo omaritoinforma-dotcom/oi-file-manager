@@ -816,6 +816,41 @@ def apps_backup():
     assert size and int(size[0]) > 1_000_000, f"Respaldo de tamaño sospechoso: {size}"
 
 
+@check("apps-informacion-compartir-y-abrir-otra-app")
+def apps_info_share_open():
+    launch_home()
+    ui.drawer("Aplicaciones")
+    fill("Buscar app…", "OI Arch")
+    wait("OI Archivos")
+    # Información: abre los ajustes de Android de esa app.
+    tap("Opciones")
+    tap("Información de la app")
+    until(lambda: "settings" in focused_window().lower(),
+          f"No se abrió la información de la app: {focused_window()}", 20)
+    evidence("apps-informacion-de-android")
+    adb("shell", "input", "keyevent", "4")
+    # Compartir APK: selector de apps del sistema.
+    wait("OI Archivos")
+    tap("Opciones")
+    tap("Compartir APK")
+    until(lambda: any(word in focused_window().lower() for word in ("chooser", "resolver")),
+          f"No se abrió el selector para compartir el APK: {focused_window()}", 20)
+    evidence("apps-compartir-apk-selector")
+    adb("shell", "input", "keyevent", "4")
+    # Abrir otra app (Ajustes, del sistema): se muestran las del sistema y se abre su fila.
+    wait("OI Archivos")
+    tap("Más")
+    tap("Mostrar apps del sistema")
+    fill("Buscar app…", "Settings", current="OI Arch")
+    label = wait("Settings")[0]
+    label_y = center(label)[1]
+    options = min(nodes("Opciones", hierarchy()), key=lambda n: abs(center(n)[1] - label_y))
+    tap_node(options)
+    tap("Abrir")
+    until(lambda: "com.android.settings" in focused_window(), f"No se abrió Ajustes: {focused_window()}", 20)
+    ui.launch()
+
+
 @check("inspeccionar-apk")
 def inspect_apk():
     open_test_folder()

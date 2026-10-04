@@ -98,7 +98,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 
 | Función de ES | OI | Nota |
 | --- | --- | --- |
-| Lista de apps, abrir, desinstalar, compartir, información | 🟡 | Lista y búsqueda usadas en el emulador; faltan abrir, desinstalar y compartir |
+| Lista de apps, abrir, desinstalar, compartir, información | 🟡 | Lista, búsqueda, respaldar APK y desinstalar (con copia previa y por lotes) usados en el emulador; información de la app, compartir APK y abrir otra app con comprobación preparada |
 | Copia de seguridad de APK (también divididos) | ✅ | Emulador Android 15 (APK simple) |
 | Instalar o desinstalar varias apps a la vez | 🟡 | Varios APK desde el explorador y varias apps desde Aplicaciones (mantener pulsado), de una en una con la confirmación de Android; comprobación en el emulador preparada |
 | Copia antes de desinstalar, limpiar carpetas asociadas | 🟠 | Copia del APK antes de desinstalar comprobada en el emulador. Android ya borra Android/data, media y obb de la app al desinstalarla; lo que queda se limpia desde «Limpiar basura». Las carpetas que ES asocia a cada app vienen de su base de datos en línea; adivinarlas por el nombre podría borrar datos del usuario, así que no se hace |
