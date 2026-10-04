@@ -486,6 +486,62 @@ def edit_image():
     assert not exists(f"{folder}/.mitad.png.oi-tmp"), "Quedó un temporal"
 
 
+@check("editor-de-video-recortar-girar-velocidad-gif-y-unir")
+def video_editor():
+    folder = f"{DIR}/oivideo"
+    sh("rm", "-rf", q(folder), check=False)
+    launch_home()
+    source = record_clip(f"{folder}/clip.mp4", 6)
+    second = record_clip(f"{folder}/clip2.mp4", 3)
+    assert source["width"] and source["height"], f"Sin tamaño de vídeo: {source}"
+
+    def exported(name, timeout=240):
+        """Espera a que el MP4 exista y esté terminado (la caja «moov» se escribe al final)."""
+        path = f"{folder}/{name}"
+        until(lambda: exists(path) and mp4_info(read_bytes(path)), f"No se creó {name}", timeout)
+        return mp4_info(read_bytes(path))
+
+    open_test_folder()
+    tap_node(find("oivideo"))
+    tap("clip.mp4")
+    tap("Editar")
+    wait("Exportar MP4")
+    evidence("editor-de-video-formulario")
+    # Recortar de 1 s a 3 s, girar 90° y velocidad doble: 2 s de vídeo a doble velocidad, ≈ 1 s y de lado.
+    fill("Inicio en segundos", "1", clear=True)
+    fill("Fin en segundos (vacío: hasta el final)", "3")
+    tap("Rotación: 0°")
+    tap("Velocidad: 1.0x")
+    tap("Velocidad: 1.5x")
+    tap_node(find("Exportar MP4"))
+    edited = exported("clip-editado.mp4")
+    assert 0.4 <= edited["duration"] <= 1.8, f"Recorte y velocidad: dura {edited['duration']} s en vez de ≈ 1 s"
+    assert abs(edited["width"] - source["height"]) <= 16 and abs(edited["height"] - source["width"]) <= 16, (
+        f"Girado 90°: {edited['width']}×{edited['height']} desde {source['width']}×{source['height']}")
+    evidence("editor-de-video-exportado")
+    # GIF de los 2 s elegidos.
+    tap_node(find("Crear GIF (máx. 10 s)"))
+    until(lambda: exists(f"{folder}/clip.gif"), "No se creó el GIF", 120)
+    time.sleep(1)
+    gif = read_bytes(f"{folder}/clip.gif")
+    assert gif[:6] == b"GIF89a" and gif[-1] == 0x3B, "El GIF no está bien formado"
+    width, height = struct.unpack("<HH", gif[6:10])
+    assert (width, height) == (source["width"], source["height"]), f"GIF de {width}×{height}"
+    frames = gif.count(b"\x21\xf9\x04\x08")
+    assert frames >= 10, f"El GIF solo tiene {frames} fotogramas"
+    # Unir: sin giro ni velocidad, el primero recortado (2 s) y el segundo entero (≈ 3 s).
+    for _ in range(5):  # volver arriba: los controles de giro y velocidad están al principio del formulario
+        adb("shell", "input", "swipe", "540", "700", "540", "1700", "250")
+    for label in ("Rotación: 90°", "Rotación: 180°", "Rotación: 270°", "Velocidad: 2.0x", "Velocidad: 0.5x"):
+        tap(label)
+    fill("Rutas de videos a unir, una por línea", f"{folder}/clip2.mp4")
+    tap_node(find("Exportar MP4"))
+    joined = exported("clip-editado (1).mp4")
+    assert 3.8 <= joined["duration"] <= 6.5, f"Unir: dura {joined['duration']} s en vez de ≈ 5 s"
+    assert abs(joined["width"] - source["width"]) <= 16, f"Unir: {joined['width']}×{joined['height']}"
+    evidence("editor-de-video-unido")
+
+
 @check("analizar-espacio-grandes-y-duplicados")
 def analysis():
     open_test_folder()
@@ -885,6 +941,62 @@ def decode_png(data):
         rows.append(line)
         prev = line
     return width, height, [[tuple(r[x * bpp:x * bpp + 3]) for x in range(width)] for r in rows]
+
+
+def mp4_info(data):
+    """Duración (s) y tamaño del vídeo de un MP4, leyendo sus cajas; None si aún no está terminado."""
+
+    def boxes(start, end):
+        pos = start
+        while pos + 8 <= end:
+            size, kind = struct.unpack(">I4s", data[pos:pos + 8])
+            header = 8
+            if size == 1:
+                size, header = struct.unpack(">Q", data[pos + 8:pos + 16])[0], 16
+            elif size == 0:
+                size = end - pos
+            if size < header:
+                return
+            yield kind, pos + header, pos + size
+            pos += size
+
+    info = {"duration": None, "width": 0, "height": 0}
+    for kind, start, end in boxes(0, len(data)):
+        if kind != b"moov":
+            continue
+        for kind2, start2, end2 in boxes(start, end):
+            if kind2 == b"mvhd":
+                if data[start2] == 1:
+                    scale, length = struct.unpack(">IQ", data[start2 + 20:start2 + 32])
+                else:
+                    scale, length = struct.unpack(">II", data[start2 + 12:start2 + 20])
+                info["duration"] = length / scale
+            elif kind2 == b"trak":
+                for kind3, start3, end3 in boxes(start2, end2):
+                    if kind3 == b"tkhd":
+                        at = start3 + (88 if data[start3] == 1 else 76)
+                        width, height = struct.unpack(">II", data[at:at + 8])
+                        if width and height:
+                            info["width"], info["height"] = width >> 16, height >> 16
+    return info if info["duration"] is not None else None
+
+
+def record_clip(path, seconds):
+    """Graba la pantalla del emulador en un MP4 real; se mueve la pantalla para que haya fotogramas nuevos."""
+    sh("mkdir", "-p", q(path.rsplit("/", 1)[0]))
+    recorder = subprocess.Popen(
+        ["adb", "shell", "screenrecord", "--time-limit", str(seconds), "--size", "360x640",
+         "--bit-rate", "800000", path],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    deadline = time.monotonic() + seconds + 15
+    while recorder.poll() is None and time.monotonic() < deadline:
+        adb("shell", "input", "swipe", "540", "1600", "540", "700", "200")
+        adb("shell", "input", "swipe", "540", "700", "540", "1600", "200")
+    recorder.wait(timeout=30)
+    time.sleep(1)
+    info = mp4_info(read_bytes(path))
+    assert info and info["duration"] >= seconds - 2, f"El vídeo grabado no sirve: {info}"
+    return info
 
 
 def push_bytes(data, path):
