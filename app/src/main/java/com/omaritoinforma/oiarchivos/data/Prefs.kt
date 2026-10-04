@@ -306,6 +306,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("ftp_stop_on_exit", false)
         set(v) = sp.edit().putBoolean("ftp_stop_on_exit", v).apply()
 
+    /** Avisar de los permisos delicados de una app recién instalada desde OI Archivos. */
+    var appPermissionNotify: Boolean
+        get() = sp.getBoolean("app_permission_notify", true)
+        set(v) = sp.edit().putBoolean("app_permission_notify", v).apply()
+
     var folderStyle: FolderStyle
         get() = enumOr(sp.getString("folder_style", null), FolderStyle.CLASSIC)
         set(v) = sp.edit().putString("folder_style", v.name).apply()

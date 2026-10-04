@@ -2746,6 +2746,35 @@ def home_search():
         time.sleep(2)
 
 
+@check("aviso-de-permisos-al-instalar-una-app")
+def install_permission_notice():
+    package, label = "com.omaritoinforma.prueba.permisos", "Prueba permisos"
+    folder = f"{DIR}/apk-permisos"
+    sh("pm", "uninstall", package, check=False)
+    sh("rm", "-rf", q(folder), check=False)
+    with tempfile.TemporaryDirectory() as tmp:
+        apk = build_test_apk(pathlib.Path(tmp), package, label,
+                             permissions=("android.permission.CAMERA", "android.permission.ACCESS_FINE_LOCATION"))
+        adb("push", str(apk), f"{folder}/permisos.apk")
+    adb("shell", "appops", "set", ui.PACKAGE, "REQUEST_INSTALL_PACKAGES", "allow")
+    adb("shell", "pm", "grant", ui.PACKAGE, "android.permission.POST_NOTIFICATIONS")
+    try:
+        open_test_folder()
+        tap_node(find("apk-permisos"))
+        long_press("permisos.apk")
+        menu_option("Instalar APK")
+        answer_system_dialogs(["Install", "INSTALL", "Install anyway", "Don't send"],
+                              lambda: installed(package), "No se instaló la app de prueba")
+        until(lambda: "Permisos de una app nueva" in sh("dumpsys", "notification", "--noredact", check=False),
+              "No salió el aviso de permisos de la app instalada", 30)
+        shown = sh("dumpsys", "notification", "--noredact", check=False)
+        assert "Prueba permisos" in shown, "El aviso no nombra la app"
+        assert "Cámara" in shown and "Ubicación" in shown, "El aviso no nombra los permisos"
+        evidence("aviso-permisos-instalacion")
+    finally:
+        sh("pm", "uninstall", package, check=False)
+
+
 @check("informe-diario-de-archivos-nuevos")
 def daily_report():
     folder = "/sdcard/DCIM/OIInforme"

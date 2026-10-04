@@ -1116,6 +1116,10 @@ private fun AppSettings(vm: MainViewModel) {
             "Copia antes de desinstalar",
             "Guardar el APK de una app antes de desinstalarla",
             vm.backupBeforeUninstall)
+        SwitchRow(
+            "Avisar de los permisos al instalar",
+            "Al instalar una app desde OI Archivos, una notificación dice qué permisos delicados pide",
+            vm.appPermissionNotify)
         val ctx = LocalContext.current
         ListItem(
             headlineContent = { Text("Apps predeterminadas") },

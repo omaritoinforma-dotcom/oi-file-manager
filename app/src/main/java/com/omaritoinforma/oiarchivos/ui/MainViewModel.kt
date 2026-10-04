@@ -283,6 +283,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Los tipos elegidos para «Documentos», ya como enumerado. */
     fun documentTypeSet(): Set<DocumentType> =
         documentTypes.value.mapNotNull { name -> DocumentType.entries.firstOrNull { it.name == name } }.toSet()
+    val appPermissionNotify = PrefState({ prefs.appPermissionNotify }, { prefs.appPermissionNotify = it })
     val homeSearch = PrefState({ prefs.homeSearch }, { prefs.homeSearch = it })
     val ftpPassword = PrefState({ prefs.ftpPassword }, { prefs.ftpPassword = it })
     val ftpStopOnExit = PrefState({ prefs.ftpStopOnExit }, { prefs.ftpStopOnExit = it })
@@ -488,6 +489,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             ftpEncoding,
             toolbarActions,
             documentTypes,
+            appPermissionNotify,
             homeSearch,
             ftpStopOnExit,
             backgroundStrength,
@@ -623,6 +625,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             "transfers" -> goTo(Screen.Transfers)
             "cleaner" -> goTo(Screen.Cleaner)
             "recent" -> navigate(Location.Category(FileCategory.RECENT))
+            "permissions" -> goTo(Screen.AppAnalysis)
         }
         if (intent.action in
             setOf(

@@ -194,7 +194,16 @@ object AppInstaller {
 
     private fun finish(ctx: Context, key: String, success: Boolean, reason: String?) {
         val q = queue ?: return
+        val job = q.current
         if (!q.result(key, success, reason)) return
+        if (success && job is Install && Prefs(ctx).appPermissionNotify)
+            runCatching {
+                InstallNotice.inspect(ctx, job.apk)?.let { (label, groups) ->
+                    InstallNotice.text(label, groups)?.let {
+                        StorageWatch.notifyInstalledPermissions(ctx, job.apk.name, it)
+                    }
+                }
+            }
         confirm.value = null
         next(ctx)
     }

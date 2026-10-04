@@ -198,6 +198,22 @@ object StorageWatch {
                 .build())
     }
 
+    /** Aviso tras instalar una app: qué permisos delicados pide. Al tocarlo se abre «Analizar permisos». */
+    fun notifyInstalledPermissions(ctx: Context, packageName: String, text: String) {
+        channel(ctx)
+        notify(
+            ctx,
+            InstallNotice.NOTIFICATION_BASE + (packageName.hashCode() and 0xFFF),
+            NotificationCompat.Builder(ctx, CHANNEL)
+                .setSmallIcon(android.R.drawable.stat_notify_error)
+                .setContentTitle("Permisos de una app nueva")
+                .setContentText(text)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setContentIntent(open(ctx, 40 + (packageName.hashCode() and 0xFF), "screen" to "permissions"))
+                .setAutoCancel(true)
+                .build())
+    }
+
     /** Informe diario: resumen de lo que apareció; al tocarlo se abre «Recientes». */
     fun notifyReport(ctx: Context, text: String) {
         channel(ctx)
