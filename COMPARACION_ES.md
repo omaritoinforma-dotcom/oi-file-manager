@@ -30,17 +30,17 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Función de ES | OI | Nota |
 | --- | --- | --- |
 | Copiar, cortar, pegar, mover, renombrar, eliminar, crear | ✅ | Emulador Android 15: crear carpeta, copiar, cortar, renombrar y eliminar, verificados en el disco |
-| Selección múltiple, todo, ninguno, por intervalo | 🟡 | |
+| Selección múltiple, todo, ninguno, por intervalo | 🟡 | Mantener pulsado, «Seleccionar rango», «Seleccionar todo», «Invertir selección» y cancelar; comprobación en el emulador preparada (cuenta de elementos marcados tras cada paso) |
 | Portapapeles visible, «Pegar todo» y botón flotante cuando hay contenido | ✅ | Emulador Android 15: archivos de dos carpetas en el portapapeles, ver la lista, quitar uno y pegar el resto, verificado en el disco |
 | Renombrado por lotes (número inicial, cambiar extensión) | ✅ | Emulador Android 15 (prefijo); numerar y cambiar extensión sin recorrido propio |
 | Propiedades (tamaño, contenido, fechas, permisos, propietario) | ✅ | Emulador Android 15, con SHA-256 comprobado |
-| Copiar ruta completa | 🟡 | |
-| Abrir con | 🟡 | |
+| Copiar ruta completa | 🟡 | «Más» → «Copiar ruta»; comprobación en el emulador preparada (se pega en el buscador y se compara la ruta) |
+| Abrir con | 🟡 | Muestra el selector de apps de Android; comprobación en el emulador preparada |
 | «Abrir como» (elegir tipo) y gestión de apps predeterminadas | 🟡 | Abrir como texto (editor propio), imagen, audio, vídeo, PDF o cualquier tipo. Los predeterminados se cambian en la pantalla de Android (una app no puede borrar los de otras); comprobación en el emulador preparada |
 | Fijar elementos arriba | 🟡 | Archivos y carpetas, con alfiler; se conserva al reabrir, sigue al renombrar y va en la copia de ajustes; comprobación en el emulador preparada |
 | Papelera de reciclaje (activar, restaurar, vaciar) | ✅ | Emulador Android 15 |
 | Ocultar archivos y lista de ocultos protegida con contraseña | 🟡 | «Ocultar» (pone un punto al nombre, no pisa nada) y «Dejar de ocultar»; «Lista de ocultos» en el menú lateral con lo ocultado desde la app, protegida con contraseña si se activa «Proteger los archivos ocultos». Mostrar los ocultos con contraseña está comprobado en el emulador; la lista tiene su comprobación preparada |
-| Accesos directos en el escritorio | 🟡 | |
+| Accesos directos en el escritorio | 🟡 | «Más opciones» → «Acceso directo en Android» fija una carpeta en el lanzador; comprobación en el emulador preparada (confirma el aviso del lanzador y mira que Android guarde el acceso) |
 | Comprimir ZIP/7z con nivel de compresión | 🟡 | Sin compresión, rápida, normal o máxima en ZIP, 7z y tar.gz; se recuerda el último. Pruebas locales de tamaños y contenido; comprobación en el emulador preparada |
 | Extraer ZIP | ✅ | Emulador |
 | Extraer 7z/RAR (motor 7-Zip, igual que ES) | ✅ | Emulador Android 15: crear y extraer 7z cifrado, extraer RAR5 cifrado |
@@ -51,7 +51,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Función de ES | OI | Nota |
 | --- | --- | --- |
 | Ventanas o pestañas, abrir en ventana nueva | ✅ | Emulador Android 15 |
-| Vistas lista, detalle y cuadrícula, ordenar, miniaturas | 🟡 | Ordenar por tamaño comprobado en el emulador; faltan vistas y miniaturas |
+| Vistas lista, detalle y cuadrícula, ordenar, miniaturas | 🟡 | Ordenar por tamaño y miniaturas (mostrar y ocultar) comprobados en el emulador; las tres vistas con comprobación preparada (detalle por el texto «fecha · tamaño», cuadrícula por filas con varias columnas) |
 | Doble panel | 🟡 | La pantalla abre (emulador); arrastrar archivos de un panel al otro (copiar o mover) con comprobación en el emulador preparada |
 | Marcadores, historial y opciones del historial | ✅ | Emulador Android 15: el marcador sobrevive al reinicio; el historial abre |
 | Categorías (imágenes, música, vídeo, documentos, APK, comprimidos) | ✅ | Emulador Android 15 (Documentos; el resto usa la misma consulta) |
@@ -83,7 +83,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | --- | --- | --- |
 | Visor de imágenes, zoom, deslizar | ✅ | Emulador |
 | Recortar imagen y fijarla como fondo | 🟡 | Fondo de pantalla desde el menú «Más». Editor de imagen (visor → «Editar imagen», o «Más» → «Recortar o girar imagen»): recuadro que se arrastra por el centro o por las esquinas, proporciones libre, 1:1, 4:3, 3:4, 16:9 y 9:16, girar a izquierda o derecha y voltear; se guarda como copia («foto (editada).jpg») o reemplazando la original con confirmación, siempre vía un temporal, y respeta la orientación EXIF. Las cuentas del recuadro tienen pruebas JVM; comprobación en el emulador con píxeles preparada |
-| Reproductor de audio y vídeo, aleatorio y repetir | 🟡 | El audio suena en el emulador; faltan vídeo, aleatorio y repetir |
+| Reproductor de audio y vídeo, aleatorio y repetir | 🟡 | El audio suena en el emulador y sigue en segundo plano; «Repetir uno», «Repetir todos», sin repetición y «Aleatorio» con comprobación preparada; el vídeo se reproduce al abrirlo desde el editor de vídeo |
 | Listas de reproducción guardadas | 🟡 | Listas M3U8: crear, añadir desde el explorador, reordenar, quitar, renombrar y reproducir; comprobación en el emulador preparada |
 | Audio en segundo plano con notificación | ✅ | Emulador Android 15: sigue sonando al salir, con notificación |
 | Poner como tono, alarma o notificación | ✅ | Emulador Android 15: el tono de llamada del sistema pasa a ser el archivo elegido |
@@ -91,8 +91,8 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Visor de PDF | ✅ | Emulador |
 | Editor de texto: codificación, buscar y reemplazar, tamaño de letra | ✅ | Guardado comprobado en el emulador |
 | Editor de texto: resaltado de sintaxis, sangría automática, mayúsculas y minúsculas, duplicar línea, guardado automático | 🟡 | Sangría y guardado automáticos comprobados en el emulador; resaltado sencillo. Añadidos mayúsculas/minúsculas, duplicar línea, barra de símbolos con Tab (espacios o tabulador, tamaño 2/4/8), mostrar espacios en blanco y mayúscula automática; comprobación en el emulador preparada |
-| Editor de vídeo: recortar, rotar, velocidad, recorte de imagen, música, subtítulos, imágenes, fondo, intro/outro | 🟠 | Todo menos intro/outro; sin comprobar en Android |
-| Unir vídeos y convertir vídeo a GIF | 🟡 | |
+| Editor de vídeo: recortar, rotar, velocidad, recorte de imagen, música, subtítulos, imágenes, fondo, intro/outro | 🟠 | Todo menos intro/outro. Comprobación en el emulador preparada con vídeos reales grabados con screenrecord: recortar de 1 s a 3 s, girar 90° y velocidad doble, leyendo la duración y el tamaño del MP4 resultante; música, subtítulos, imagen superpuesta y fondo sin comprobar |
+| Unir vídeos y convertir vídeo a GIF | 🟡 | Unir (suma de duraciones) y GIF (cabecera, tamaño y fotogramas) con comprobación en el emulador preparada; el codificador de GIF ya tenía pruebas JVM con el lector de GIF del JDK |
 
 ### Aplicaciones
 

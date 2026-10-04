@@ -542,6 +542,156 @@ def video_editor():
     evidence("editor-de-video-unido")
 
 
+@check("seleccion-por-rango-copiar-ruta-y-vistas")
+def selection_copy_path_and_views():
+    folder = f"{DIR}/seleccion"
+    sh("rm", "-rf", q(folder), check=False)
+    sh("mkdir", "-p", q(folder))
+    for i in range(1, 7):
+        push_bytes(b"12345", f"{folder}/s{i}.txt")
+    open_test_folder()
+    tap_node(find("seleccion"))
+    wait("s6.txt")
+    # Rango: se marcan s2 y s5 y «Seleccionar rango» marca también s3 y s4.
+    long_press("s2.txt")
+    wait_text("1 seleccionado(s)")
+    tap("s5.txt")
+    wait_text("2 seleccionado(s)")
+    tap("Seleccionar rango")
+    wait_text("4 seleccionado(s)")
+    evidence("seleccion-por-rango")
+    # Invertir deja las otras dos (s1 y s6); «Seleccionar todo» marca las seis.
+    tap("Más")  # la del menú superior; la inferior es la de las acciones
+    tap("Invertir selección")
+    wait_text("2 seleccionado(s)")
+    tap("Seleccionar todo")
+    wait_text("6 seleccionado(s)")
+    tap("Cancelar selección")
+    # Copiar ruta: al pegar en el buscador sale la ruta completa del archivo.
+    long_press("s3.txt")
+    menu_option("Copiar ruta")
+    tap("Cancelar selección")
+    tap("Buscar")
+    time.sleep(1.5)
+    adb("shell", "input", "keyevent", "KEYCODE_PASTE")
+    wait_text(f"{folder}/s3.txt")
+    tap("Cerrar búsqueda")
+    # Vistas: lista, detalle y cuadrícula; tres pulsaciones dan la vuelta y dejan la vista como estaba.
+    seen = set()
+    for _ in range(3):
+        tap("Cambiar vista")
+        time.sleep(1)
+        tree = hierarchy()
+        first, second = nodes("s1.txt", tree), nodes("s2.txt", tree)
+        assert first and second, "No se ven los archivos tras cambiar la vista"
+        top = lambda n: int(re.findall(r"\d+", n[0].get("bounds"))[1])
+        left = lambda n: int(re.findall(r"\d+", n[0].get("bounds"))[0])
+        if top(first) == top(second) and left(first) != left(second):
+            seen.add("cuadrícula")
+        elif any(" · 5 B" in (n.get("text") or "") for n in tree.iter("node")):
+            seen.add("detalle")
+        else:
+            seen.add("lista")
+        evidence(f"vista-{len(seen)}")
+    assert seen == {"lista", "detalle", "cuadrícula"}, f"Las vistas distintas fueron: {seen}"
+
+
+@check("abrir-con-muestra-el-selector-de-android")
+def open_with_chooser():
+    open_test_folder()
+    long_press("a.txt")
+    menu_option("Abrir con…")
+    until(lambda: any(word in focused_window().lower() for word in ("chooser", "resolver")),
+          f"No se abrió el selector de apps de Android: {focused_window()}", 20)
+    evidence("abrir-con-selector")
+    adb("shell", "input", "keyevent", "4")
+    ui.launch()
+
+
+@check("acceso-directo-a-una-carpeta-en-android")
+def folder_shortcut():
+    open_test_folder()
+    tap("Más opciones")
+    tap("Acceso directo en Android")
+    # El lanzador pide confirmar («Add to home screen»); según el idioma, el botón dice Add, Añadir o Agregar.
+    deadline = time.monotonic() + 20
+    button = None
+    while button is None and time.monotonic() < deadline:
+        tree = hierarchy()
+        button = next(
+            (n for n in tree.iter("node")
+             if n.get("clickable") == "true"
+             and re.match(r"^(add|añadir|agregar)\b", (n.get("text") or n.get("content-desc") or "").strip(), re.I)),
+            None)
+        if button is None:
+            time.sleep(0.5)
+    shown = sorted({n.get("text") for n in hierarchy().iter("node") if n.get("text")})
+    evidence("acceso-directo-peticion")
+    assert button is not None, f"El lanzador no pidió confirmar el acceso directo. En pantalla: {shown}"
+    tap_node(button)
+    until(lambda: "folder-" in sh("dumpsys", "shortcut", check=False),
+          "Android no guardó el acceso directo de la carpeta", 20)
+    ui.launch()
+
+
+@check("reproductor-repetir-y-aleatorio")
+def player_repeat_and_shuffle():
+    folder = f"{DIR}/oimusica"
+    sh("rm", "-rf", q(folder), check=False)
+    sh("mkdir", "-p", q(folder))
+    for name, hz in (("a-corta.wav", 440), ("b-corta.wav", 660)):
+        with tempfile.TemporaryDirectory() as tmp:
+            local = pathlib.Path(tmp) / name
+            with wave.open(str(local), "wb") as audio:
+                audio.setnchannels(1)
+                audio.setsampwidth(2)
+                audio.setframerate(16000)
+                audio.writeframes(b"".join(
+                    struct.pack("<h", int(8000 * math.sin(2 * math.pi * hz * i / 16000))) for i in range(16000 * 6)))
+            adb("push", str(local), f"{folder}/{name}")
+
+    def playing():
+        blocks = [b for b in sh("dumpsys", "media_session").split("\n\n") if ui.PACKAGE in b]
+        return bool(blocks) and any("state=3" in b or "PLAYING" in b for b in blocks)
+
+    def chip(label):
+        """Cómo se ve la ficha: lo que cuenta la accesibilidad y el color de su borde izquierdo."""
+        node = nodes(label, hierarchy())[0]
+        x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds")))
+        return node.get("selected"), node.get("checked"), pixel(x1 + 6, (y1 + y2) // 2)
+
+    open_test_folder()
+    tap_node(find("oimusica"))
+    tap("a-corta.wav")
+    until(playing, "El audio no empezó a sonar", 20)
+    # Repetir uno: pasados los 12 s que durarían las dos pistas, sigue sonando y en la primera.
+    tap("Sin repetición")
+    wait("Repetir uno")
+    time.sleep(14)
+    assert playing(), "Con «Repetir uno» la reproducción se detuvo"
+    assert not nodes("b-corta.wav", hierarchy()), "Con «Repetir uno» pasó a la otra pista"
+    # Repetir todos: pasa a la segunda pista y sigue sonando al volver a empezar.
+    tap("Repetir uno")
+    wait("Repetir todos")
+    wait("b-corta.wav", 30)
+    time.sleep(9)
+    assert playing(), "Con «Repetir todos» la reproducción se detuvo"
+    # Aleatorio se marca y se desmarca.
+    before = chip("Aleatorio")
+    tap("Aleatorio")
+    time.sleep(1)
+    marked = chip("Aleatorio")
+    assert marked != before, f"«Aleatorio» no cambió: {before} → {marked}"
+    tap("Aleatorio")
+    time.sleep(1)
+    assert chip("Aleatorio") == before, "«Aleatorio» no se desmarcó"
+    # Sin repetición: al acabar las dos pistas se para.
+    tap("Repetir todos")
+    wait("Sin repetición")
+    until(lambda: not playing(), "Sin repetición la reproducción no terminó", 40)
+    adb("shell", "input", "keyevent", "4")
+
+
 @check("analizar-espacio-grandes-y-duplicados")
 def analysis():
     open_test_folder()
