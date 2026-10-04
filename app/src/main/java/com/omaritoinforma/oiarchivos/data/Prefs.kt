@@ -69,6 +69,15 @@ class Prefs(context: Context) {
         get() = enumOr(sp.getString("compression_level", null), CompressionLevel.NORMAL)
         set(v) = sp.edit().putString("compression_level", v.name).apply()
 
+    var accent: AccentColor
+        get() = enumOr(sp.getString("accent", null), AccentColor.DYNAMIC)
+        set(v) = sp.edit().putString("accent", v.name).apply()
+
+    /** Con el tema oscuro, fondo negro puro (ahorra batería en pantallas OLED). */
+    var pureBlack: Boolean
+        get() = sp.getBoolean("pure_black", false)
+        set(v) = sp.edit().putBoolean("pure_black", v).apply()
+
     // ---- Pantalla ----
 
     var thumbnails: Boolean

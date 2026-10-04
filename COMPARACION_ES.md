@@ -59,7 +59,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Gestos configurables | ✅ | Emulador Android 15 |
 | Barra lateral personalizable y diseño de la barra de herramientas | ❌ | |
 | Temas: claro y oscuro | ✅ | Emulador Android 15 (brillo de pantalla medido) |
-| Temas: colores, fondo, estilo de carpetas | ❌ | |
+| Temas: colores, fondo, estilo de carpetas | 🟠 | Color de la app (azul, rojo, verde, naranja, morado, turquesa, rosa o los del sistema) y fondo negro puro con el tema oscuro, con comprobación en el emulador preparada; faltan el fondo con imagen y el estilo de carpetas |
 | Idioma dentro de la app | ❌ | Hoy sigue el idioma del sistema |
 | Contraseña para abrir la app | ✅ | Emulador Android 15: pide la contraseña al abrir, rechaza una incorrecta y desbloquea con la buena. Se guarda como hash PBKDF2 con sal (ES la guardaba cifrada de forma reversible) |
 | Contraseña para recursos de red | ✅ | Emulador Android 15: abrir una conexión y mostrar los ocultos piden la contraseña |
@@ -155,8 +155,8 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 32 |
 | 🟡 Implementadas, sin comprobar | 24 |
-| 🟠 Parciales | 10 |
-| ❌ Faltan | 13 |
+| 🟠 Parciales | 11 |
+| ❌ Faltan | 12 |
 | **Total de filas** | **79** |
 
 **OI Archivos no cubre todavía el mínimo.** Las funciones que faltan más grandes, por valor para el usuario:

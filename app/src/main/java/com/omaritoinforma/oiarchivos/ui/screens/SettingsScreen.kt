@@ -8,7 +8,11 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +20,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -59,6 +64,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.omaritoinforma.oiarchivos.BuildConfig
+import com.omaritoinforma.oiarchivos.data.AccentColor
 import com.omaritoinforma.oiarchivos.data.AutoBackup
 import com.omaritoinforma.oiarchivos.data.BackupKind
 import com.omaritoinforma.oiarchivos.data.GestureAction
@@ -194,6 +200,33 @@ private fun DisplaySettings(vm: MainViewModel) {
                 },
                 modifier = Modifier.clickable { vm.updateTheme(m) },
             )
+        }
+        SwitchRow(
+            "Fondo negro puro",
+            "Con el tema oscuro, fondo totalmente negro (ahorra batería en pantallas OLED)",
+            vm.pureBlack)
+        Text(
+            "Color de la app:",
+            Modifier.padding(horizontal = 16.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ChipRow {
+            AccentColor.entries
+                .filter { it != AccentColor.DYNAMIC || Build.VERSION.SDK_INT >= Build.VERSION_CODES.S }
+                .forEach { a ->
+                    FilterChip(
+                        vm.accent.value == a,
+                        onClick = { vm.accent.value = a },
+                        label = { Text(a.label) },
+                        leadingIcon = {
+                            if (a != AccentColor.DYNAMIC)
+                                Box(
+                                    Modifier.size(14.dp)
+                                        .clip(CircleShape)
+                                        .background(
+                                            com.omaritoinforma.oiarchivos.ui.theme.accentPrimary(
+                                                a, isSystemInDarkTheme())))
+                        })
+                }
         }
     }
 }

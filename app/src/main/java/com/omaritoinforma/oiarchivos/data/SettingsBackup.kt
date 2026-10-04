@@ -53,6 +53,8 @@ object SettingsBackup {
             "bookmarks" to Kind.Folders,
             "pinned" to Kind.Folders,
             "compression_level" to choice(CompressionLevel.entries.toTypedArray()),
+            "accent" to choice(AccentColor.entries.toTypedArray()),
+            "pure_black" to Kind.Flag,
             "thumbnails" to Kind.Flag,
             "history_folders_only" to Kind.Flag,
             "clear_history_on_exit" to Kind.Flag,

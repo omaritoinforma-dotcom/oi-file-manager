@@ -218,6 +218,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     val compressionLevel =
         PrefState({ prefs.compressionLevel }, { prefs.compressionLevel = it })
+    val accent = PrefState({ prefs.accent }, { prefs.accent = it })
+    val pureBlack = PrefState({ prefs.pureBlack }, { prefs.pureBlack = it })
 
     /** Rutas fijadas arriba en las listas de archivos. */
     val pinned = mutableStateListOf<String>().apply { addAll(prefs.pinned) }
@@ -380,6 +382,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             editorSymbolBar,
             editorSymbols,
             compressionLevel,
+            accent,
+            pureBlack,
             lockStart,
             lockNetwork,
             lockHidden)

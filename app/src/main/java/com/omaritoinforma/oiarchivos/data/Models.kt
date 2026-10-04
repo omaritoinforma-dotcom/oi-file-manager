@@ -36,6 +36,18 @@ enum class SortBy(val label: String) { NAME("Nombre"), DATE("Fecha"), SIZE("Tama
 
 enum class ThemeMode(val label: String) { SYSTEM("Según el sistema"), LIGHT("Claro"), DARK("Oscuro") }
 
+/** Color de la app («Temas» de ES). DYNAMIC usa los colores del fondo de pantalla (Android 12 o posterior). */
+enum class AccentColor(val label: String) {
+    DYNAMIC("Colores del sistema"),
+    BLUE("Azul"),
+    RED("Rojo"),
+    GREEN("Verde"),
+    ORANGE("Naranja"),
+    PURPLE("Morado"),
+    TEAL("Turquesa"),
+    PINK("Rosa")
+}
+
 enum class Conflict { RENAME, OVERWRITE, SKIP }
 
 enum class FileCategory(val label: String) {

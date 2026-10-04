@@ -1839,6 +1839,58 @@ def sub_categories():
            "--arg", "external_primary", check=False)
 
 
+def pixel(x, y):
+    raw = subprocess.check_output(["adb", "exec-out", "screencap"], timeout=30)
+    width, height = struct.unpack("<II", raw[:8])
+    pixels = raw[len(raw) - width * height * 4:]
+    i = (y * width + x) * 4
+    return pixels[i], pixels[i + 1], pixels[i + 2]
+
+
+def center(node):
+    x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds")))
+    return (x1 + x2) // 2, (y1 + y2) // 2
+
+
+@check("tema-color-y-fondo-negro")
+def theme_color_and_black():
+    settings("Pantalla")
+    try:
+        tap(find("Claro").get("text"))
+        tap(find("Rojo").get("text"))
+        time.sleep(1.5)
+        # El botón de opción marcado se dibuja con el color principal: debe ser rojo.
+        selected = next(n for n in hierarchy().iter("node")
+                        if n.get("class") == "android.widget.RadioButton" and n.get("checked") == "true")
+        r, g, b = pixel(*center(selected))
+        (OUTPUT / "tema-color-rojo.json").write_text(json.dumps({"rgb": [r, g, b]}))
+        assert r > 150 and g < 100 and b < 100, f"El color principal no es rojo: {(r, g, b)}"
+        tap("Verde")
+        time.sleep(1.5)
+        selected = next(n for n in hierarchy().iter("node")
+                        if n.get("class") == "android.widget.RadioButton" and n.get("checked") == "true")
+        r, g, b = pixel(*center(selected))
+        assert g > r + 40 and g > b + 40, f"Al elegir verde, el color principal no es verde: {(r, g, b)}"
+        # Fondo negro puro: con el tema oscuro, el fondo es exactamente negro.
+        tap("Oscuro")
+        time.sleep(1.5)
+        normal = brightness()
+        if not switch_state("Fondo negro puro"):
+            tap("Fondo negro puro")
+        time.sleep(1.5)
+        black = brightness()
+        r, g, b = pixel(540, 1750)
+        assert (r, g, b) == (0, 0, 0), f"El fondo no es negro puro: {(r, g, b)}"
+        assert black < normal - 8, f"El negro puro no oscurece más que el oscuro normal ({normal:.0f} → {black:.0f})"
+    finally:
+        settings("Pantalla")
+        if switch_state("Fondo negro puro"):
+            tap("Fondo negro puro")
+        tap(find("Según el sistema").get("text"))
+        tap(find("Colores del sistema").get("text"))
+        time.sleep(1)
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()

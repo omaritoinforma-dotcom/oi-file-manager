@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
                 )
                 onDispose {}
             }
-            OiTheme(dark = dark) {
+            OiTheme(dark = dark, accent = vm.accent.value, pureBlack = vm.pureBlack.value) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background) {
