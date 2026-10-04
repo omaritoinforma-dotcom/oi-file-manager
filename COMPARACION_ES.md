@@ -74,7 +74,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la prueba por funciones en Android:
 | Archivos grandes, recientes, vacíos y duplicados | ✅ | Emulador Android 15 (grandes y duplicados) |
 | Limpieza de basura: caché, restos de apps desinstaladas, APK obsoletos, miniaturas | ✅ | Emulador Android 15: restos de apps desinstaladas, miniaturas y APK ya instalados van a la papelera; también temporales, vacíos y la caché |
 | Analizador de apps (permisos sensibles, tamaño, memoria) | 🟠 | Se muestran los permisos de cada APK; falta el análisis global |
-| Informe diario de archivos nuevos y aviso de archivos nuevos | 🟠 | Aviso de archivos nuevos (Registrador) por tipo, lanzado por Android al cambiar MediaStore; falta el informe diario |
+| Informe diario de archivos nuevos y aviso de archivos nuevos | 🟡 | Aviso de archivos nuevos (Registrador) por tipo, lanzado por Android al cambiar MediaStore, y un informe cada día con el recuento por tipo (sin nombrar archivos); comprobaciones en el emulador preparadas |
 | Aviso de poco espacio | 🟡 | Revisión cada hora con umbral elegible; el aviso abre «Limpiar basura» |
 
 ### Multimedia y editores
@@ -154,8 +154,8 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | Estado | Funciones |
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 32 |
-| 🟡 Implementadas, sin comprobar | 24 |
-| 🟠 Parciales | 12 |
+| 🟡 Implementadas, sin comprobar | 25 |
+| 🟠 Parciales | 11 |
 | ❌ Faltan | 11 |
 | **Total de filas** | **79** |
 

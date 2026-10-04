@@ -165,6 +165,16 @@ class Prefs(context: Context) {
         get() = sp.getLong("new_files_since", 0L)
         set(v) = sp.edit().putLong("new_files_since", v).apply()
 
+    /** Informe diario de archivos nuevos («Informe diario» de ES). */
+    var dailyReport: Boolean
+        get() = sp.getBoolean("daily_report", false)
+        set(v) = sp.edit().putBoolean("daily_report", v).apply()
+
+    /** Fecha (segundos) desde la que cuenta el próximo informe. */
+    var reportSince: Long
+        get() = sp.getLong("report_since", 0L)
+        set(v) = sp.edit().putLong("report_since", v).apply()
+
     var notificationPermissionAsked: Boolean
         get() = sp.getBoolean("notification_permission_asked", false)
         set(v) = sp.edit().putBoolean("notification_permission_asked", v).apply()

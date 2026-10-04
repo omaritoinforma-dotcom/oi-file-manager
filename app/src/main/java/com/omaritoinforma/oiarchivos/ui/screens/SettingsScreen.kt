@@ -583,6 +583,14 @@ private fun NotificationSettings(vm: MainViewModel) {
                 }
             }
         }
+        SwitchRow(
+            "Informe diario de archivos nuevos",
+            "Una vez al día, un resumen de cuántos archivos aparecieron y de qué tipo",
+            vm.dailyReport)
+        if (vm.dailyReport.value)
+            TextButton(onClick = { vm.reportNow() }, modifier = Modifier.padding(horizontal = 8.dp)) {
+                Text("Ver el informe ahora")
+            }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val granted =
                 ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) ==

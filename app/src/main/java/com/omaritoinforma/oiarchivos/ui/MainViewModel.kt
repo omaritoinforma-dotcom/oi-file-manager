@@ -271,6 +271,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             scheduleStorageWatch()
         })
     val newFilesKinds = PrefState({ prefs.newFilesKinds }, { prefs.newFilesKinds = it })
+    val dailyReport =
+        PrefState({ prefs.dailyReport }, {
+            prefs.dailyReport = it
+            if (it) prefs.reportSince = 0L
+            runCatching { com.omaritoinforma.oiarchivos.data.NewFilesReport.schedule(ctx) }
+        })
+
+    fun reportNow() = com.omaritoinforma.oiarchivos.data.NewFilesReport.now(ctx)
 
     private fun scheduleStorageWatch() {
         runCatching { com.omaritoinforma.oiarchivos.data.StorageWatch.schedule(ctx) }
@@ -364,6 +372,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             lowSpaceMb,
             newFilesNotify,
             newFilesKinds,
+            dailyReport,
             autoBackup,
             autoBackupFolder,
             autoBackupKinds,
@@ -440,6 +449,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
         scheduleStorageWatch()
         scheduleAutoBackup()
+        runCatching { com.omaritoinforma.oiarchivos.data.NewFilesReport.schedule(ctx) }
         viewModelScope.launch {
             AppInstaller.finished.collect { summary ->
                 toast(summary)
@@ -466,6 +476,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         when (intent.getStringExtra("screen")) {
             "transfers" -> goTo(Screen.Transfers)
             "cleaner" -> goTo(Screen.Cleaner)
+            "recent" -> navigate(Location.Category(FileCategory.RECENT))
         }
         if (intent.action in
             setOf(

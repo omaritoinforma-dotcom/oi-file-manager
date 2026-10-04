@@ -1918,6 +1918,42 @@ def drawer_customize():
         time.sleep(2)
 
 
+@check("informe-diario-de-archivos-nuevos")
+def daily_report():
+    folder = "/sdcard/DCIM/OIInforme"
+    sh("rm", "-rf", q(folder), check=False)
+    settings("Notificaciones")
+    try:
+        set_switch("Informe diario de archivos nuevos", True)
+        time.sleep(3)
+        # Tres archivos nuevos: dos imágenes y uno de otro tipo.
+        push_bytes(png((255, 0, 0)), f"{folder}/uno.png")
+        push_bytes(png((0, 255, 0)), f"{folder}/dos.png")
+        push_bytes(b"\x00" * 2000, f"{folder}/raro.oi")
+        sh("content", "call", "--uri", "content://media", "--method", "scan_volume",
+           "--arg", "external_primary", check=False)
+        time.sleep(3)
+        tap("Ver el informe ahora")
+        until(lambda: notification_shown(33), "No llegó el informe de archivos nuevos", 90)
+        out = sh("dumpsys", "notification", "--noredact", check=False)
+        block = out[out.index(f"|{ui.PACKAGE}|33|"):][:3000]
+        (OUTPUT / "informe-diario-notificacion.txt").write_text(block, encoding="utf-8")
+        assert "Informe de archivos nuevos" in block, "La notificación no tiene el título del informe"
+        assert re.search(r"\b[3-9]\d* archivos nuevos", block), f"El informe no cuenta los archivos nuevos: {block[:600]}"
+        assert "2 imágenes" in block or re.search(r"[2-9]\d* imágenes", block), "El informe no cuenta las imágenes"
+        assert "uno.png" not in block, "El informe no debe nombrar los archivos"
+        # Tocar la notificación abre «Recientes».
+        adb("shell", "cmd", "statusbar", "expand-notifications")
+        time.sleep(1)
+        tap(find_text("Informe de archivos nuevos"))
+        wait("Recientes")
+    finally:
+        adb("shell", "cmd", "statusbar", "collapse", check=False)
+        settings("Notificaciones")
+        set_switch("Informe diario de archivos nuevos", False)
+        sh("rm", "-rf", q(folder), check=False)
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()

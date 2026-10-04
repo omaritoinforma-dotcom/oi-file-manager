@@ -68,6 +68,7 @@ object SettingsBackup {
             "low_space_warning" to Kind.Flag,
             "low_space_mb" to Kind.Number(100..102400),
             "new_files_notify" to Kind.Flag,
+            "daily_report" to Kind.Flag,
             "new_files_kinds" to Kind.Choices(NewFileKind.entries.map { it.name }.toSet()),
             "auto_backup" to Kind.Flag,
             "auto_backup_folder" to Kind.RemoteFolder,

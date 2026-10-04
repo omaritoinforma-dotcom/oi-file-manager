@@ -137,7 +137,7 @@ object StorageWatch {
 
     /** Filas (ruta, fecha en segundos) añadidas a MediaStore después de [since]. */
     @Suppress("DEPRECATION")
-    fun queryAddedSince(ctx: Context, since: Long): List<Pair<String, Long>> {
+    fun queryAddedSince(ctx: Context, since: Long, limit: Int = 500): List<Pair<String, Long>> {
         val out = ArrayList<Pair<String, Long>>()
         val projection = arrayOf(MediaStore.MediaColumns.DATA, MediaStore.MediaColumns.DATE_ADDED)
         val selection = buildString {
@@ -153,7 +153,7 @@ object StorageWatch {
                 arrayOf(since.toString()),
                 "${MediaStore.MediaColumns.DATE_ADDED} DESC")
             ?.use { c ->
-                while (c.moveToNext() && out.size < 500) {
+                while (c.moveToNext() && out.size < limit) {
                     val path = c.getString(0) ?: continue
                     out += path to c.getLong(1)
                 }
@@ -194,6 +194,22 @@ object StorageWatch {
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setContentIntent(open(ctx, 30, "screen" to "cleaner"))
+                .setAutoCancel(true)
+                .build())
+    }
+
+    /** Informe diario: resumen de lo que apareció; al tocarlo se abre «Recientes». */
+    fun notifyReport(ctx: Context, text: String) {
+        channel(ctx)
+        notify(
+            ctx,
+            NewFilesReport.NOTIFICATION_ID,
+            NotificationCompat.Builder(ctx, CHANNEL)
+                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                .setContentTitle("Informe de archivos nuevos")
+                .setContentText(text)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setContentIntent(open(ctx, 33, "screen" to "recent"))
                 .setAutoCancel(true)
                 .build())
     }
