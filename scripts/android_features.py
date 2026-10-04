@@ -3431,6 +3431,34 @@ def app_language():
     wait("Orientación de la pantalla:")
 
 
+def softap_diagnostic():
+    """No es una comprobación: guarda si el emulador puede crear un punto de acceso Wi-Fi (para
+    decidir si el envío por punto de acceso se puede probar aquí). No cambia RESULTS."""
+    lines = []
+    for command in (["cmd", "wifi", "status"],
+                    ["cmd", "wifi", "start-softap", "OIprueba", "wpa2", "clave12345"],
+                    ["sleep", "6"],
+                    ["cmd", "wifi", "status"],
+                    ["ip", "-4", "addr"],
+                    ["cmd", "wifi", "stop-softap"],
+                    ["cmd", "wifi", "start-lohs", "OIprueba2", "wpa2", "clave12345"],
+                    ["sleep", "6"],
+                    ["ip", "-4", "addr"],
+                    ["cmd", "wifi", "stop-lohs"]):
+        try:
+            out = adb("shell", *command, check=False, timeout=60)
+        except Exception as e:  # el diagnóstico nunca hace fallar la pasada
+            out = f"error: {e}"
+        lines.append("$ " + " ".join(command) + "\n" + str(out).strip() + "\n")
+    try:
+        dump = adb("shell", "dumpsys", "wifi", check=False, timeout=60)
+        lines.append("$ dumpsys wifi (SoftAp)\n" + "\n".join(
+            line for line in dump.splitlines() if "softap" in line.lower() or "hotspot" in line.lower())[:20000])
+    except Exception as e:
+        lines.append(f"dumpsys: {e}")
+    (OUTPUT / "diagnostico-punto-de-acceso.txt").write_text("\n".join(lines), encoding="utf-8")
+
+
 def main():
     adb("shell", "appops", "set", ui.PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     seed()
@@ -3448,6 +3476,8 @@ def main():
             run()
     finally:
         ui.keyboards(enable=True)
+    if not shard or shard.startswith("1/"):
+        softap_diagnostic()
     crash = adb("logcat", "-d", "-b", "crash")
     if f"Process: {ui.PACKAGE}" in crash:
         RESULTS["sin-cierres-inesperados"] = "FAIL: la app se cerró"
