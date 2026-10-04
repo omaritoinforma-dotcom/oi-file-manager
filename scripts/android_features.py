@@ -42,6 +42,10 @@ def read(path):
     return sh("cat", q(path), check=False)
 
 
+def read_bytes(path):
+    return subprocess.check_output(["adb", "exec-out", "cat", path], timeout=30)
+
+
 def exists(path):
     return sh("test", "-e", q(path), "&&", "echo", "yes", check=False).strip() == "yes"
 
@@ -219,12 +223,20 @@ def rename():
     until(lambda: read(f"{DIR}/renombrado.txt") == "contenido c", "No se renombró")
 
 
+def move_to_trash():
+    tap("Eliminar")
+    wait("Mover a la papelera (se puede restaurar)")
+    # The option is a checkbox (on by default); confirm with the dialog's "Eliminar" button.
+    box = [n for n in hierarchy().iter("node") if n.get("checkable") == "true"]
+    assert box and box[0].get("checked") == "true", "La papelera no está marcada por defecto"
+    tap_last("Eliminar")
+
+
 @check("papelera-eliminar-restaurar-vaciar")
 def trash():
     open_test_folder()
     long_press("t.txt")
-    tap("Eliminar")
-    tap("Mover a la papelera (se puede restaurar)")
+    move_to_trash()
     until(lambda: not exists(f"{DIR}/t.txt"), "No se movió a la papelera")
     ui.drawer("Papelera")
     wait("t.txt")
@@ -232,8 +244,7 @@ def trash():
     until(lambda: read(f"{DIR}/t.txt") == "contenido t", "No se restauró")
     open_test_folder()
     long_press("t.txt")
-    tap("Eliminar")
-    tap("Mover a la papelera (se puede restaurar)")
+    move_to_trash()
     until(lambda: not exists(f"{DIR}/t.txt"), "No se movió a la papelera")
     ui.drawer("Papelera")
     wait("t.txt")
@@ -273,7 +284,7 @@ def encrypt_decrypt():
     fill("Contraseña", PASSWORD)
     tap("Continuar")
     until(lambda: exists(f"{DIR}/a.txt.oienc"), "No se creó el archivo cifrado")
-    assert "contenido a" not in read(f"{DIR}/a.txt.oienc"), "El cifrado contiene el texto"
+    assert b"contenido a" not in read_bytes(f"{DIR}/a.txt.oienc"), "El cifrado contiene el texto"
     open_test_folder()
     long_press("a.txt.oienc")
     more("Descifrar con contraseña")
