@@ -46,7 +46,7 @@ class WebDavIntegrationTest {
                                     .setBody(okio.Buffer().write(it))
                             } ?: MockResponse().setResponseCode(404)
                         "PUT" -> {
-                            if (path in files || path in directories)
+                            if (files.containsKey(path) || path in directories)
                                 MockResponse().setResponseCode(412)
                             else {
                                 files[path] = request.body.readByteArray()
@@ -54,7 +54,7 @@ class WebDavIntegrationTest {
                             }
                         }
                         "MKCOL" -> {
-                            if (path in files || path in directories)
+                            if (files.containsKey(path) || path in directories)
                                 MockResponse().setResponseCode(405)
                             else {
                                 directories += path
@@ -66,7 +66,7 @@ class WebDavIntegrationTest {
                                 request.getHeader("Destination")
                                     ?.let { normalize(URI(it).rawPath ?: "/") }
                                     ?: return MockResponse().setResponseCode(400)
-                            if (destination in files || destination in directories)
+                            if (files.containsKey(destination) || destination in directories)
                                 return MockResponse().setResponseCode(412)
                             val body = files.remove(path)
                             if (body != null) {
