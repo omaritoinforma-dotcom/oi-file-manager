@@ -577,6 +577,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Lo que se va a enviar a la TV con «Enviar a la TV». */
     var castSource by mutableStateOf<com.omaritoinforma.oiarchivos.data.StreamServer.Source?>(null)
 
+    /** Quita una app del sistema para este usuario (root); se devuelve en Explorador root. */
+    fun removeSystemApp(app: AppInfo) {
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) { runCatching { com.omaritoinforma.oiarchivos.data.RootSystem.removeSystemApp(app.packageName) } }
+            result
+                .onSuccess {
+                    toast(tr("«{0}» quitada; se puede devolver en Explorador root", app.label))
+                    loadApps(appsIncludeSystem)
+                }
+                .onFailure { toast(it.message ?: tr("No se pudo desinstalar")) }
+        }
+    }
+
     /** Unidad (memoria USB o tarjeta SD) que se quiere expulsar. */
     var ejectRequest by mutableStateOf<String?>(null)
 

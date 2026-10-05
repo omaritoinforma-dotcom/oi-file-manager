@@ -260,6 +260,12 @@ private fun AppRow(
                             vm.uninstall(app)
                         }
                     }
+                    if (app.isSystem && app.packageName != ctx.packageName) {
+                        MenuItem(tr("Quitar app del sistema (root)"), Icons.Filled.Delete) {
+                            menu = false
+                            vm.removeSystemApp(app)
+                        }
+                    }
                 }
             }
         },

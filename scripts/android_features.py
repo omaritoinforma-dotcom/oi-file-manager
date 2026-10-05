@@ -2441,6 +2441,119 @@ def wait_text_node(fragment, timeout=30):
     raise AssertionError(f"Text not shown: {fragment}")
 
 
+class TestRoot:
+    """Root de prueba en el emulador: «adb root», SELinux permisivo y un su (scripts/test_root/su)
+    montado encima del su del sistema que pasa las órdenes de la app a un demonio root, como hace
+    Magisk. Se deshace todo al salir, para que las demás pruebas sigan como usuario shell."""
+
+    D = "/data/local/tmp/oi-su"
+
+    def __enter__(self):
+        adb("root", check=False)
+        subprocess.run(["adb", "wait-for-device"], timeout=120)
+        until(lambda: sh("id", "-u", check=False).strip() == "0", "adb root no funcionó en el emulador", 60)
+        sh("setenforce", "0")
+        sh("rm", "-rf", self.D, check=False)
+        sh("mkdir", "-p", f"{self.D}/q")
+        sh("chmod", "777", self.D, f"{self.D}/q")
+        for name in ("su", "daemon.sh"):
+            adb("push", str(ROOT / "scripts" / "test_root" / name), f"{self.D}/{name}")
+        sh("chmod", "755", f"{self.D}/su", f"{self.D}/daemon.sh")
+        self.daemon = subprocess.Popen(["adb", "shell", f"sh {self.D}/daemon.sh"],
+                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        # Encima del su del sistema (solo deja usarlo a shell y root) o, si no hay, en /system/xbin.
+        if sh("test", "-e", "/system/xbin/su", "&&", "echo", "si", check=False).strip() == "si":
+            self.target = "/system/xbin/su"
+            sh("mount", "-o", "bind", f"{self.D}/su", self.target)
+            self.tmpfs = None
+        else:
+            self.tmpfs = "/system/xbin"
+            sh("mount", "-t", "tmpfs", "-o", "mode=755", "tmpfs", self.tmpfs)
+            sh("cp", f"{self.D}/su", "/system/xbin/su")
+            sh("chmod", "755", "/system/xbin/su")
+            self.target = None
+        # La app vuelve a arrancar para ver el montaje nuevo.
+        sh("am", "force-stop", ui.PACKAGE, check=False)
+        (OUTPUT / "root-de-prueba.txt").write_text(
+            "mount: " + sh("grep", "xbin", "/proc/mounts", check=False) + "\n" +
+            "getenforce: " + sh("getenforce", check=False), encoding="utf-8")
+        return self
+
+    def log(self):
+        return sh("cat", f"{self.D}/log", check=False)
+
+    def __exit__(self, *exc):
+        (OUTPUT / "root-de-prueba-ordenes.txt").write_text(self.log(), encoding="utf-8")
+        sh("touch", f"{self.D}/stop", check=False)
+        time.sleep(0.5)
+        self.daemon.kill()
+        sh("umount", self.target or self.tmpfs, check=False)
+        sh("umount", "/system/etc/hosts", check=False)
+        sh("rm", "-rf", self.D, "/data/adb/oi-archivos", check=False)
+        sh("setenforce", "1", check=False)
+        sh("am", "force-stop", ui.PACKAGE, check=False)
+        adb("unroot", check=False)
+        subprocess.run(["adb", "wait-for-device"], timeout=120)
+        until(lambda: sh("id", "-u", check=False).strip() == "2000", "adb no volvió a ser el usuario shell", 60)
+        return False
+
+
+@check("funciones-root-con-su-de-prueba")
+def root_functions():
+    egg = "com.android.egg"
+    assert f"package:{egg}" in sh("pm", "list", "packages", "-s", egg, check=False), f"Falta {egg} en la imagen"
+    with TestRoot() as root:
+        # Explorador root: /data/data solo se puede listar como root.
+        launch_home()
+        ui.drawer("Root con Magisk")
+        fill("Ruta", "/data/data", clear=True)
+        tap("Autorizar y explorar")
+        wait("com.android.settings", timeout=60)
+        evidence("root-explorador-data")
+        assert "find '/data/data'" in root.log(), root.log()[-500:]
+        # Archivo hosts: se monta una copia encima del original y luego se vuelve atrás.
+        launch_home()
+        ui.drawer("Root con Magisk")
+        tap(find("Editar el archivo hosts").get("text"))
+        fill("/system/etc/hosts", "127.0.0.1 localhost", clear=True, verify=False)
+        adb("shell", "input", "keyevent", "66")
+        adb("shell", "input", "text", "10.0.2.2%sservidor-de-prueba.oi")
+        tap(find("Guardar hosts").get("text"))
+        wait_text("Hosts guardado", timeout=30)
+        hosts = sh("cat", "/system/etc/hosts")
+        assert "10.0.2.2 servidor-de-prueba.oi" in hosts and "127.0.0.1 localhost" in hosts, hosts
+        evidence("root-hosts-guardado")
+        tap(find("Volver al original").get("text"))
+        wait_text("Se volvió al hosts original", timeout=30)
+        assert "servidor-de-prueba.oi" not in sh("cat", "/system/etc/hosts"), "El hosts no volvió al original"
+        # Sistema en lectura y escritura: el emulador arranca con el sistema verificado, así que
+        # Android lo rechaza y la app debe decirlo sin cambiar nada.
+        tap(find("Lectura y escritura").get("text"))
+        wait_text("Android no dejó montar", timeout=30)
+        wait_text("está montada en solo lectura")
+        assert "mount -o remount,rw" in root.log()
+        # Quitar una app del sistema desde Apps y devolverla desde la pantalla de root.
+        launch_home()
+        ui.drawer("Aplicaciones")
+        wait("OI Archivos")
+        tap("Más")
+        tap("Mostrar apps del sistema")
+        fill("Buscar app…", egg, current="OI Arch")
+        row = wait_text_node(egg, timeout=30)
+        options = min(nodes("Opciones", hierarchy()), key=lambda n: abs(center(n)[1] - center(row)[1]))
+        tap_node(options)
+        tap("Quitar app del sistema (root)")
+        until(lambda: f"package:{egg}" not in sh("pm", "list", "packages", egg, check=False),
+              "La app del sistema sigue instalada para el usuario", 30)
+        launch_home()
+        ui.drawer("Root con Magisk")
+        find(egg)
+        tap(find("Devolver").get("text"))
+        until(lambda: f"package:{egg}" in sh("pm", "list", "packages", egg, check=False),
+              "La app del sistema no se devolvió", 30)
+        wait_text(f"«{egg}» devuelta", timeout=30)
+
+
 @check("descargar-desde-una-url")
 def download_from_url():
     """El equipo de CI sirve un archivo por HTTP (10.0.2.2 para el emulador)."""

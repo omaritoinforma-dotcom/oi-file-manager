@@ -108,7 +108,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la última pasada completa de `scri
 | Instalar o desinstalar varias apps a la vez | ✅ | Varios APK desde el explorador y varias apps desde Aplicaciones (mantener pulsado), de una en una con la confirmación de Android. Aprobado en el emulador Android 15 (ejecución 37234077192). |
 | Aviso de los permisos de una app recién instalada («Notificarme los permisos de aplicaciones» de ES) | ✅ | Al terminar de instalar un APK desde OI Archivos, una notificación dice qué permisos delicados pide (ubicación, cámara, micrófono…) y al tocarla abre «Analizar permisos»; se desactiva en Ajustes → «Aplicaciones» y va en la copia de ajustes. Solo cubre lo instalado desde la app (Android no deja avisar de instalaciones ajenas sin un receptor que ya no se permite). Pruebas JVM del texto y. Aprobado en el emulador Android 15 (ejecución 37234077192). |
 | Copia antes de desinstalar, limpiar carpetas asociadas | ✅ | Copia del APK antes de desinstalar comprobada en el emulador. Limpiar carpetas: tras desinstalar una app desde OI Archivos, se proponen las carpetas de la raíz del almacenamiento con el nombre exacto de la app o de su paquete (nunca las de Android ni nombres genéricos); el usuario elige cuáles y van a la papelera. ES las saca de su base de datos en línea; aquí solo se compara el nombre, por eso es conservador. Android ya borra Android/data, media y obb. Aprobado en el emulador Android 15 (ejecución 37234077192). |
-| Desinstalar apps del sistema (root) | ❌ | |
+| Desinstalar apps del sistema (root) | 🟡 | Apps → Mostrar apps del sistema → Quitar app del sistema (root): `pm uninstall -k --user 0`, que no rompe la verificación del sistema; se devuelven desde la pantalla de root. Comprobación en el emulador preparada con un su de prueba (demonio root como el de Magisk) |
 | Ver el contenido de un APK | ✅ | Emulador Android 15 |
 
 ### Red, nube y dispositivos
@@ -141,9 +141,9 @@ Fecha: 4 de octubre de 2026 (actualizada con la última pasada completa de `scri
 
 | Función de ES | OI | Nota |
 | --- | --- | --- |
-| Explorador root | 🟡 | Falta un dispositivo con root |
-| Montar /system en lectura y escritura | ❌ | |
-| Editar el archivo hosts | ❌ | |
+| Explorador root | 🟡 | Lista cada carpeta con una sola orden de su (antes, tres por elemento). Comprobación en el emulador preparada con un su de prueba: lista /data/data, que sin root no se puede leer. Falta un teléfono con Magisk |
+| Montar /system en lectura y escritura | 🟡 | Muestra si el sistema está en solo lectura y prueba `mount -o remount,rw`; si Android lo impide (verificación del arranque, como en el emulador y en casi todos los teléfonos actuales), lo dice sin cambiar nada. En el emulador se comprueba ese rechazo; falta un teléfono donde se pueda escribir |
+| Editar el archivo hosts | 🟡 | Editor con validación de cada línea. Si el sistema no se puede escribir, monta una copia de /data/adb encima del original (como los módulos de hosts de Magisk; dura hasta reiniciar) y se puede volver al original. Comprobación en el emulador preparada con un su de prueba |
 
 ### Fuera del mínimo (⛔)
 
@@ -160,15 +160,15 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | Estado | Filas |
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 58 |
-| 🟡 Implementadas; su comprobación en el emulador está escrita y espera su pasada | 20 |
+| 🟡 Implementadas; su comprobación en el emulador está escrita y espera su pasada | 23 |
 | 🟠 Parciales | 1 |
-| ❌ Faltan | 6 |
+| ❌ Faltan | 3 |
 | **Total de filas** | **85** |
 
 **OI Archivos no cubre todavía el mínimo.** Lo que falta, por valor para el usuario:
 
 1. Enviar entre teléfonos por punto de acceso Wi-Fi (misma Wi-Fi y código QR ya están).
-2. Lo que exige hardware, root o cuentas que el CI no tiene: servidor OBEX, punto de acceso propio, funciones root y nubes minoritarias.
+2. Lo que exige hardware, root o cuentas que el CI no tiene: servidor OBEX, punto de acceso propio y nubes minoritarias.
 
 Las filas en 🟡 pasan a ✅ cuando las aprueba una pasada del emulador en el CI.
 

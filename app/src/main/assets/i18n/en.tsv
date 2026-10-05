@@ -1355,3 +1355,30 @@ No queda ninguna copia en curso. Android solo deja expulsar desde sus Ajustes: e
 Abrir Ajustes de almacenamiento	Open storage settings
 Avisar al conectar una memoria USB o tarjeta SD	Notify when a USB drive or SD card is connected
 Una notificación para abrirla o expulsarla, y otra si se quita sin expulsar	A notification to open or eject it, and another if it is removed without ejecting
+el sistema sigue igual	the system is unchanged
+Android no dejó montar {0} en lectura y escritura: {1}	Android did not allow mounting {0} read-write: {1}
+No se pudo volver a montar {0} en solo lectura: {1}	Could not remount {0} read-only: {1}
+Línea {0}: «{1}»	Line {0}: “{1}”
+El hosts tiene líneas no válidas:\n{0}	The hosts file has invalid lines:\n{0}
+Android no aplicó el nuevo hosts	Android did not apply the new hosts file
+«{0}» quitada; se puede devolver en Explorador root	“{0}” removed; it can be restored in Root explorer
+Quitar app del sistema (root)	Remove system app (root)
+Partición del sistema	System partition
+{0} está montada en solo lectura	{0} is mounted read-only
+{0} está montada en lectura y escritura	{0} is mounted read-write
+Sistema montado en lectura y escritura	System mounted read-write
+Lectura y escritura	Read-write
+Sistema montado en solo lectura	System mounted read-only
+En muchos Android actuales la partición del sistema no se puede escribir aunque haya root (verificación del arranque); el hosts se cambia entonces montando una copia encima.	On many current Android versions the system partition cannot be written even with root (verified boot); the hosts file is then changed by mounting a copy on top.
+Archivo hosts	Hosts file
+Editar el archivo hosts	Edit the hosts file
+Se volvió al hosts original	Restored the original hosts file
+Volver al original	Restore the original
+Hosts guardado	Hosts saved
+Guardar hosts	Save hosts
+Si el sistema no se puede escribir, la copia se monta encima del original y dura hasta reiniciar.	If the system cannot be written, the copy is mounted on top of the original and lasts until restart.
+Apps del sistema quitadas	Removed system apps
+Se quitan en Apps → Mostrar apps del sistema → ⋮ → Quitar app del sistema (root). El APK sigue en el sistema y se puede devolver aquí.	They are removed in Apps → Show system apps → ⋮ → Remove system app (root). The APK stays in the system and can be restored here.
+Ninguna	None
+«{0}» devuelta	“{0}” restored
+Devolver	Restore
