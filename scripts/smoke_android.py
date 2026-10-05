@@ -192,6 +192,77 @@ def drag_row_to_right_pane(label):
     adb("shell", "input", "draganddrop", str(sx), str(sy), "820", "1050", "1200")
 
 
+def add_ci_webdav_connection():
+    drawer("Red, nube y USB")
+    tap("Agregar")
+    wait("Nueva conexión")
+    type_into("Nombre de la conexión", "CI-WebDAV")
+    tap_scrolling("WebDAV")
+    type_into_scrolling("URL completa https://…", f"http://10.0.2.2:{WEBDAV_PORT}")
+    type_into_scrolling("Usuario", "oi")
+    type_into_scrolling("Contraseña", "test")
+    tap_scrolling("Guardar")
+    wait("CI-WebDAV")
+    tap("CI-WebDAV")
+    wait("big.bin", timeout=30)
+
+
+def verify_remote_recovery():
+    add_ci_webdav_connection()
+    long_press("big.bin")
+    tap("Descargar")
+
+    partial_command = (
+        'for f in "/sdcard/Download/OI Archivos"/.oi-remote-*.part; '
+        'do [ -f "$f" ] && wc -c < "$f"; done'
+    )
+    deadline = time.monotonic() + 25
+    partial_size = 0
+    while time.monotonic() < deadline:
+        values = [
+            int(line)
+            for line in adb("shell", "sh", "-c", partial_command, check=False).splitlines()
+            if line.strip().isdigit()
+        ]
+        if values:
+            partial_size = max(values)
+            if 64 * 1024 <= partial_size < WEBDAV_SIZE:
+                break
+        time.sleep(0.25)
+    assert 64 * 1024 <= partial_size < WEBDAV_SIZE, (
+        f"Remote download did not create a resumable partial file: {partial_size}"
+    )
+
+    adb("shell", "am", "force-stop", PACKAGE)
+    time.sleep(0.5)
+    adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity")
+    wait("Categorías")
+    drawer("Transferencias")
+    checkpoint("19-remote-recovery-queued", "Reanudar")
+    tap("Reanudar")
+
+    final = "/sdcard/Download/OI Archivos/big.bin"
+    deadline = time.monotonic() + 60
+    size = 0
+    while time.monotonic() < deadline:
+        raw = adb("shell", "stat", "-c", "%s", final, check=False).strip()
+        size = int(raw) if raw.isdigit() else 0
+        if size == WEBDAV_SIZE:
+            break
+        time.sleep(0.5)
+    assert size == WEBDAV_SIZE, f"Resumed remote file has wrong size: {size}"
+
+    digest = adb("shell", "sha256sum", final).split()[0]
+    assert digest == WEBDAV_SHA256, (
+        f"Resumed remote file hash mismatch: {digest} != {WEBDAV_SHA256}"
+    )
+    checkpoint("20-remote-recovery-complete", "Descargando · Completado")
+    CHECKS.append("remote-process-death-recovery")
+    print("PASS: remote-process-death-recovery", flush=True)
+    adb("shell", "input", "keyevent", "4")
+    wait("Categorías")
+
+
 def checkpoint(name, label):
     _, tree = wait(label)
     ET.ElementTree(tree).write(OUTPUT / f"{name}.xml", encoding="utf-8")
