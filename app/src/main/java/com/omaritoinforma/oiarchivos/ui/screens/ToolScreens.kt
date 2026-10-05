@@ -114,8 +114,10 @@ fun TransfersScreen(vm: MainViewModel) {
                                     }
                                 TextButton(
                                     onClick = {
-                                        job.discard()
-                                        refresh++
+                                        scope.launch {
+                                            withContext(Dispatchers.IO) { job.discard() }
+                                            refresh++
+                                        }
                                     }) {
                                         Text("Descartar")
                                     }
