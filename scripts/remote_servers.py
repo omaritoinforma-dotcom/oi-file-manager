@@ -30,6 +30,8 @@ import time
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 WORK = ROOT / "build/remote-servers"
 PORTS = {"sftp": 2222, "ftp": 2121, "webdav": 8088}
+# Segunda cuenta SFTP (usuario «ana», otra contraseña y otra carpeta): varias cuentas del mismo servicio.
+SECOND_SFTP_PORT = 2224
 FTPS_PORTS = {"ftps": 2123, "ftps_implicit": 2122}
 
 
@@ -147,6 +149,17 @@ def start():
             # Con transferencias lentas, la prueba de Android puede interrumpir una descarga a medias.
             args += ["--bwlimit", os.environ["OI_REMOTE_BWLIMIT"]]
         pids.append(subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True).pid)
+    # Segunda cuenta en un servidor SFTP aparte, con su propia carpeta.
+    data2 = WORK / "data-ana"
+    data2.mkdir(parents=True)
+    password2 = secrets.token_urlsafe(16)
+    pids.append(
+        subprocess.Popen(
+            [rclone, "serve", "sftp", str(data2), "--addr", f"127.0.0.1:{SECOND_SFTP_PORT}", "--key", str(WORK / "host_rsa"),
+             "--user", "ana", "--pass", password2, "--dir-cache-time", "0s", "--log-file", str(WORK / "sftp-ana.log")],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True,
+        ).pid
+    )
     ftps_env = {}
     if os.environ.get("OI_REMOTE_FTPS"):
         cert, key, store = test_certificate(WORK)
@@ -164,7 +177,7 @@ def start():
             "OI_REMOTE_TEST_FTPS_IMPLICIT_PORT": str(FTPS_PORTS["ftps_implicit"]),
             "OI_REMOTE_TEST_TRUSTSTORE": str(store),
         }
-    for port in PORTS.values():
+    for port in [*PORTS.values(), SECOND_SFTP_PORT]:
         wait(port)
     (WORK / "state.json").write_text(json.dumps({"pids": pids}))
     env = {
@@ -172,6 +185,9 @@ def start():
         "OI_REMOTE_TEST_PASSWORD": password,
         "OI_REMOTE_TEST_SFTP_FINGERPRINT": fingerprint,
         **{f"OI_REMOTE_TEST_{k.upper()}_PORT": str(v) for k, v in PORTS.items()},
+        "OI_REMOTE_TEST_ROOT2": str(data2),
+        "OI_REMOTE_TEST_PASSWORD2": password2,
+        "OI_REMOTE_TEST_SFTP2_PORT": str(SECOND_SFTP_PORT),
         **ftps_env,
     }
     for key, value in env.items():

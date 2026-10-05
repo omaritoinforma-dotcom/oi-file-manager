@@ -3253,6 +3253,47 @@ def batch_apps():
             sh("pm", "uninstall", package, check=False)
 
 
+if os.environ.get("OI_REMOTE_TEST_ROOT2"):
+
+    @check("varias-cuentas-del-mismo-servicio")
+    def several_accounts():
+        """Dos cuentas SFTP (usuarios «oi» y «ana», contraseñas y carpetas distintas): cada conexión
+        guardada entra con sus credenciales y solo ve los archivos de su cuenta."""
+        mine = pathlib.Path(os.environ["OI_REMOTE_TEST_ROOT"]) / "de-oi.txt"
+        hers = pathlib.Path(os.environ["OI_REMOTE_TEST_ROOT2"]) / "de-ana.txt"
+        mine.write_text("cuenta oi", encoding="utf-8")
+        hers.write_text("cuenta ana", encoding="utf-8")
+        launch_home()
+        ui.drawer("Red, nube y USB")
+        if not nodes("SFTP Ana", hierarchy()):
+            tap("Agregar")
+            ui.keyboards(enable=False)
+            try:
+                fill("Nombre de la conexión", "SFTP Ana")
+                fill("Servidor", "10.0.2.2")
+                fill("Puerto", os.environ["OI_REMOTE_TEST_SFTP2_PORT"], current="22")
+                fill("Usuario", "ana")
+                fill("Contraseña", os.environ["OI_REMOTE_TEST_PASSWORD2"], verify=False)
+                fill("Huella del servidor SHA256:…", os.environ["OI_REMOTE_TEST_SFTP_FINGERPRINT"])
+                tap("Guardar")
+                until(lambda: not nodes("Nueva conexión", hierarchy()), "No se guardó la segunda cuenta", 10)
+            finally:
+                ui.keyboards(enable=True)
+        # Las dos conexiones del mismo servicio están guardadas a la vez.
+        tree = hierarchy()
+        assert nodes("SFTP prueba", tree) and nodes("SFTP Ana", tree), "Faltan las dos cuentas en la lista"
+        tap("SFTP Ana")
+        wait("de-ana.txt", timeout=60)
+        assert not nodes("de-oi.txt", hierarchy()), "La cuenta de Ana ve archivos de la otra cuenta"
+        evidence("cuenta-sftp-ana")
+        adb("shell", "input", "keyevent", "4")
+        wait("SFTP prueba", timeout=30)
+        tap("SFTP prueba")
+        find("de-oi.txt")
+        assert not nodes("de-ana.txt", hierarchy()), "La cuenta oi ve archivos de la cuenta de Ana"
+        evidence("cuenta-sftp-oi")
+
+
 if os.environ.get("OI_REMOTE_TEST_ROOT"):
 
     @check("copia-automatica-a-sftp")
