@@ -546,7 +546,8 @@ def video_editor():
     tap_node(find("oivideo"))
     tap("clip.mp4")
     tap("Editar")
-    wait("Exportar MP4")
+    # El botón queda al final del formulario, debajo de la intro y el outro.
+    wait("Inicio en segundos")
     evidence("editor-de-video-formulario")
     # Recortar de 1 s a 3 s, girar 90° y velocidad doble: 2 s de vídeo a doble velocidad, ≈ 1 s y de lado.
     fill("Inicio en segundos", "1", clear=True)
@@ -713,7 +714,7 @@ def video_intro_outro():
     tap_node(find("oiintro"))
     tap("gris.mp4")
     tap("Editar")
-    wait("Exportar MP4")
+    wait("Inicio en segundos")
     # 2 s de vídeo (de 1 s a 3 s) entre una intro de texto sobre azul y un outro con la foto, de 3 s cada uno.
     fill("Inicio en segundos", "1", clear=True)
     fill("Fin en segundos (vacío: hasta el final)", "3")
@@ -1063,7 +1064,11 @@ def apps_info_share_open():
     tap("Más")
     tap("Mostrar apps del sistema")
     fill("Buscar app…", "Settings", current="OI Arch")
-    label = wait("Settings")[0]
+    # El campo de búsqueda también dice «Settings»: se espera a la fila de la app, que tarda en cargar.
+    def settings_row():
+        return [n for n in nodes("Settings", hierarchy()) if "EditText" not in (n.get("class") or "")]
+    until(lambda: settings_row(), "La app Settings no aparece en la lista", 60)
+    label = settings_row()[0]
     label_y = center(label)[1]
     def settings_open():
         return any(n.get("package") == "com.android.settings" for n in hierarchy().iter("node"))
