@@ -11,6 +11,12 @@ object StorageInfo {
         val internal = Environment.getExternalStorageDirectory()
         result += info(tr("Almacenamiento interno"), internal, removable = false)
         val seen = mutableSetOf(internal.absolutePath)
+        // Memorias USB y tarjetas SD con el nombre que les da Android («Memoria USB SanDisk»…).
+        runCatching {
+            RemovableStorage.mounted(ctx).forEach { (name, dir) ->
+                if (dir.canRead() && seen.add(dir.absolutePath)) result += info(name, dir, removable = true)
+            }
+        }
         ctx.getExternalFilesDirs(null).filterNotNull().forEach { d ->
             val root = d.absolutePath.substringBefore("/Android/data")
             if (seen.add(root) && File(root).canRead()) result += info(tr("Tarjeta SD"), File(root), removable = true)

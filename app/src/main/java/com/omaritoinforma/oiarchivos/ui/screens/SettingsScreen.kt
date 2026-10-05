@@ -904,6 +904,10 @@ private fun NotificationSettings(vm: MainViewModel) {
             tr("Una notificación fija con el espacio libre del teléfono y de la tarjeta SD (se actualiza cada hora)"),
             vm.storageNotification)
         SwitchRow(
+            tr("Avisar al conectar una memoria USB o tarjeta SD"),
+            tr("Una notificación para abrirla o expulsarla, y otra si se quita sin expulsar"),
+            vm.removableNotice)
+        SwitchRow(
             tr("Avisar de archivos nuevos"),
             tr("Como el Registrador de ES: una notificación cuando aparecen fotos, vídeos, música, documentos o APK nuevos"),
             vm.newFilesNotify)

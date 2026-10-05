@@ -1343,3 +1343,15 @@ Reproducir o pausar	Play or pause
 Subir volumen	Volume up
 Bajar volumen	Volume down
 Encender o apagar	Power on or off
+«{0}» conectada	“{0}” connected
+Toca para ver sus archivos	Tap to see its files
+Expulsar	Eject
+Se quitó una unidad sin expulsarla	A drive was removed without ejecting it
+Si se estaba copiando algo, puede haber quedado incompleto. Usa «Expulsar» antes de quitarla.	If something was being copied, it may be incomplete. Use “Eject” before removing it.
+Memorias USB y tarjetas SD	USB drives and SD cards
+Expulsar «{0}»	Eject “{0}”
+Hay una copia o un movimiento de archivos en curso. Espera a que termine antes de expulsar la unidad.	A file copy or move is in progress. Wait for it to finish before ejecting the drive.
+No queda ninguna copia en curso. Android solo deja expulsar desde sus Ajustes: en Almacenamiento, elige la unidad y pulsa «Expulsar».	No copy is in progress. Android only allows ejecting from its Settings: in Storage, choose the drive and press “Eject”.
+Abrir Ajustes de almacenamiento	Open storage settings
+Avisar al conectar una memoria USB o tarjeta SD	Notify when a USB drive or SD card is connected
+Una notificación para abrirla o expulsarla, y otra si se quita sin expulsar	A notification to open or eject it, and another if it is removed without ejecting

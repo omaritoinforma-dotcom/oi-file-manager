@@ -2360,6 +2360,87 @@ def android_tv_over_adb():
         tv.close()
 
 
+def virtual_volume(timeout=90):
+    """Volumen público montado del disco virtual: (id, carpeta) o None."""
+    for line in sh("sm", "list-volumes", "public", check=False).splitlines():
+        parts = line.split()
+        if len(parts) >= 3 and parts[1] == "mounted" and parts[2] != "null":
+            return parts[0], f"/storage/{parts[2]}"
+    return None
+
+
+@check("aviso-y-expulsar-usb-o-sd")
+def removable_storage_notice():
+    """Un disco virtual de vold (sm set-virtual-disk) hace de tarjeta SD o memoria USB."""
+    sh("pm", "grant", ui.PACKAGE, "android.permission.POST_NOTIFICATIONS", check=False)
+    launch_home()
+    sh("sm", "set-virtual-disk", "true")
+    try:
+        disk = None
+        deadline = time.monotonic() + 60
+        while not disk and time.monotonic() < deadline:
+            disk = next(iter(sh("sm", "list-disks", "adoptable", check=False).split()), None)
+            time.sleep(1)
+        assert disk, "No apareció el disco virtual"
+        if not virtual_volume():
+            sh("sm", "partition", disk, "public")
+        until(lambda: virtual_volume() is not None, "El disco virtual no se montó", 90)
+        volume, path = virtual_volume()
+        push_bytes(b"desde la memoria", f"{path}/en-la-memoria.txt")
+        # Aviso al conectarla, con «Abrir» y «Expulsar».
+        until(lambda: "» conectada" in sh("dumpsys", "notification", "--noredact"), "Sin aviso al conectar la unidad", 30)
+        # La unidad aparece en Inicio con su nombre y su botón de expulsar.
+        launch_home()
+        assert eject_button(), "La unidad no aparece en Inicio"
+        evidence("unidad-extraible-en-inicio")
+        # Desde la notificación: abrir la unidad.
+        sh("cmd", "statusbar", "expand-notifications")
+        title = wait_text_node("» conectada", timeout=20)
+        tap_node(title)
+        wait("en-la-memoria.txt", timeout=30)
+        assert "» conectada" in sh("dumpsys", "notification", "--noredact"), "El aviso debe seguir mientras la unidad está conectada"
+        # Expulsar desde Inicio: avisa y lleva a Ajustes → Almacenamiento.
+        launch_home()
+        button = eject_button()
+        assert button is not None, "La unidad no aparece en Inicio"
+        tap_node(button)
+        wait_text("No queda ninguna copia en curso")
+        tap("Abrir Ajustes de almacenamiento")
+        until(lambda: "com.android.settings" in sh("dumpsys", "activity", "activities", check=False).split("mResumedActivity", 1)[-1][:300]
+              or "com.android.settings" in sh("dumpsys", "window", check=False).split("mCurrentFocus", 1)[-1][:200],
+              "No se abrieron los Ajustes de almacenamiento", 20)
+        # Al expulsarla, el aviso desaparece y la unidad sale de la lista.
+        sh("sm", "unmount", volume)
+        until(lambda: "» conectada" not in sh("dumpsys", "notification", "--noredact"), "El aviso sigue tras expulsar", 30)
+        launch_home()
+        time.sleep(2)
+        assert eject_button(swipes=3) is None, "La unidad expulsada sigue en Inicio"
+    finally:
+        sh("cmd", "statusbar", "collapse", check=False)
+        sh("sm", "set-virtual-disk", "false", check=False)
+
+
+def eject_button(swipes=6):
+    """Botón «Expulsar «…»» de la tarjeta de la unidad en Inicio, desplazando si hace falta."""
+    for _ in range(swipes):
+        found = [n for n in hierarchy().iter("node") if (n.get("content-desc") or "").startswith("Expulsar «")]
+        if found:
+            return found[0]
+        adb("shell", "input", "swipe", "540", "1500", "540", "700", "400")
+        time.sleep(0.5)
+    return None
+
+
+def wait_text_node(fragment, timeout=30):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        for n in hierarchy().iter("node"):
+            if fragment in (n.get("text") or ""):
+                return n
+        time.sleep(0.5)
+    raise AssertionError(f"Text not shown: {fragment}")
+
+
 @check("descargar-desde-una-url")
 def download_from_url():
     """El equipo de CI sirve un archivo por HTTP (10.0.2.2 para el emulador)."""

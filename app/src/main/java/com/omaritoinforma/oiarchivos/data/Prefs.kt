@@ -183,6 +183,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("low_space_warned", false)
         set(v) = sp.edit().putBoolean("low_space_warned", v).apply()
 
+    /** Aviso al conectar una memoria USB o una tarjeta SD. */
+    var removableNotice: Boolean
+        get() = sp.getBoolean("removable_notice", true)
+        set(v) = sp.edit().putBoolean("removable_notice", v).apply()
+
     /** «Notificación del Registrador» de ES: aviso cuando aparecen archivos nuevos. */
     var newFilesNotify: Boolean
         get() = sp.getBoolean("new_files_notify", false)

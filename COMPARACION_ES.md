@@ -133,7 +133,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la última pasada completa de `scri
 | Bluetooth: compartir y explorar (cliente OBEX) | 🟡 | Falta un dispositivo real |
 | Bluetooth: servidor OBEX FTP (que otros exploren el teléfono) | ❌ | |
 | USB OTG y tarjeta SD (SAF) | 🟡 | Falta hardware |
-| Expulsar USB de forma segura y aviso al conectarlo | ❌ | |
+| Expulsar USB de forma segura y aviso al conectarlo | 🟡 | Al montar una memoria USB o tarjeta SD sale un aviso con «Abrir» y «Expulsar», que sigue mientras está conectada, y otro si se quita sin expulsar (se puede desactivar en Ajustes). La unidad aparece en Inicio con su nombre y un botón de expulsar. Android no deja a una app desmontar unidades sin root: «Expulsar» comprueba que no queda ninguna copia en curso, sale de la unidad y abre Ajustes → Almacenamiento para pulsar «Expulsar». Comprobación en el emulador preparada con un disco virtual de vold |
 | Gestor de descargas desde URL | ✅ | Emulador Android 15: descarga desde el equipo de CI con SHA-256 comprobado; si se corta, continúa con Range/If-Range (pruebas unitarias) |
 | Centro de tareas: progreso, cancelar, historial | ✅ | Transferencias, reanudación SFTP comprobada |
 
@@ -160,15 +160,15 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | Estado | Filas |
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 58 |
-| 🟡 Implementadas; su comprobación en el emulador está escrita y espera su pasada | 19 |
+| 🟡 Implementadas; su comprobación en el emulador está escrita y espera su pasada | 20 |
 | 🟠 Parciales | 1 |
-| ❌ Faltan | 7 |
+| ❌ Faltan | 6 |
 | **Total de filas** | **85** |
 
 **OI Archivos no cubre todavía el mínimo.** Lo que falta, por valor para el usuario:
 
 1. Enviar entre teléfonos por punto de acceso Wi-Fi (misma Wi-Fi y código QR ya están).
-2. Lo que exige hardware, root o cuentas que el CI no tiene: servidor OBEX, expulsar USB, punto de acceso propio, funciones root y nubes minoritarias.
+2. Lo que exige hardware, root o cuentas que el CI no tiene: servidor OBEX, punto de acceso propio, funciones root y nubes minoritarias.
 
 Las filas en 🟡 pasan a ✅ cuando las aprueba una pasada del emulador en el CI.
 

@@ -514,6 +514,7 @@ private fun Overlays(vm: MainViewModel) {
     vm.unlockRequest?.let { UnlockDialog(vm, it) }
 
     LeftoverFoldersDialog(vm)
+    EjectDialog(vm)
 
     vm.remoteConflict?.let { edit ->
         AlertDialog(
@@ -683,4 +684,34 @@ private fun LeftoverFoldersDialog(vm: MainViewModel) {
                 }
         },
         dismissButton = { TextButton(onClick = { next() }) { Text(tr("Dejarlas")) } })
+}
+
+/** «Expulsar» una memoria USB o tarjeta SD: Android solo lo permite desde sus Ajustes. */
+@Composable
+private fun EjectDialog(vm: MainViewModel) {
+    val path = vm.ejectRequest ?: return
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val busy by vm.progress.collectAsState()
+    val name = vm.volumes.firstOrNull { it.path == path }?.name ?: java.io.File(path).name
+    AlertDialog(
+        onDismissRequest = { vm.ejectRequest = null },
+        title = { Text(tr("Expulsar «{0}»", name)) },
+        text = {
+            Text(
+                if (busy != null) tr("Hay una copia o un movimiento de archivos en curso. Espera a que termine antes de expulsar la unidad.")
+                else tr("No queda ninguna copia en curso. Android solo deja expulsar desde sus Ajustes: en Almacenamiento, elige la unidad y pulsa «Expulsar»."))
+        },
+        confirmButton = {
+            TextButton(
+                enabled = busy == null,
+                onClick = {
+                    vm.prepareEject(path)
+                    vm.ejectRequest = null
+                    runCatching { ctx.startActivity(com.omaritoinforma.oiarchivos.data.RemovableStorage.settingsIntent()) }
+                        .onFailure { ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_SETTINGS)) }
+                }) {
+                    Text(tr("Abrir Ajustes de almacenamiento"))
+                }
+        },
+        dismissButton = { TextButton(onClick = { vm.ejectRequest = null }) { Text(tr("Cancelar")) } })
 }

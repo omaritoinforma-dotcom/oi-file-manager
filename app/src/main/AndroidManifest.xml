@@ -84,6 +84,16 @@
         <service android:name=".data.ShareService" android:exported="false"
             android:foregroundServiceType="dataSync" />
         <receiver android:name=".data.AppInstallReceiver" android:exported="false" />
+        <receiver android:name=".data.RemovableStorageReceiver" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_MOUNTED" />
+                <action android:name="android.intent.action.MEDIA_UNMOUNTED" />
+                <action android:name="android.intent.action.MEDIA_EJECT" />
+                <action android:name="android.intent.action.MEDIA_REMOVED" />
+                <action android:name="android.intent.action.MEDIA_BAD_REMOVAL" />
+                <data android:scheme="file" />
+            </intent-filter>
+        </receiver>
         <service android:name=".data.AudioPlaybackService" android:exported="false"
             android:foregroundServiceType="mediaPlayback">
             <intent-filter><action android:name="androidx.media3.session.MediaSessionService" /></intent-filter>

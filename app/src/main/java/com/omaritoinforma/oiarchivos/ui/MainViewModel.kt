@@ -319,6 +319,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun checkSpaceNow() {
         runCatching { com.omaritoinforma.oiarchivos.data.StorageWatch.checkNow(ctx) }
     }
+    val removableNotice = PrefState({ prefs.removableNotice }, { prefs.removableNotice = it })
     val newFilesNotify =
         PrefState({ prefs.newFilesNotify }, {
             prefs.newFilesNotify = it
@@ -518,6 +519,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             largeLayout,
             editorHighlightLimit,
             newFilesNotify,
+            removableNotice,
             newFilesKinds,
             dailyReport,
             remoteSync,
@@ -575,6 +577,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Lo que se va a enviar a la TV con «Enviar a la TV». */
     var castSource by mutableStateOf<com.omaritoinforma.oiarchivos.data.StreamServer.Source?>(null)
 
+    /** Unidad (memoria USB o tarjeta SD) que se quiere expulsar. */
+    var ejectRequest by mutableStateOf<String?>(null)
+
+    /** Antes de expulsar se sale de la unidad, para no dejar nada suyo abierto. */
+    fun prepareEject(path: String) {
+        val here = (currentTab?.location as? Location.Folder)?.path ?: return
+        if (here == path || here.startsWith("$path/")) goHome()
+    }
+
     /** APK elegidos en el explorador para instalar en una Android TV. */
     var adbApks by mutableStateOf<List<String>>(emptyList())
 
@@ -609,6 +620,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         scheduleStorageWatch()
         scheduleAutoBackup()
         runCatching { com.omaritoinforma.oiarchivos.data.NewFilesReport.schedule(ctx) }
+        viewModelScope.launch {
+            // Al conectar o quitar una memoria USB o tarjeta SD se relee la lista de unidades.
+            com.omaritoinforma.oiarchivos.data.RemovableStorage.changes.collect { if (hasPermission) refreshVolumes() }
+        }
         viewModelScope.launch {
             AppInstaller.finished.collect { summary ->
                 toast(summary)
@@ -647,6 +662,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         intent.getStringExtra("folder")?.let { if (File(it).isDirectory) openFolder(it) }
+        intent.getStringExtra("eject")?.let {
+            ejectRequest = it
+            intent.removeExtra("eject")
+        }
         when (intent.getStringExtra("screen")) {
             "transfers" -> goTo(Screen.Transfers)
             "cleaner" -> goTo(Screen.Cleaner)

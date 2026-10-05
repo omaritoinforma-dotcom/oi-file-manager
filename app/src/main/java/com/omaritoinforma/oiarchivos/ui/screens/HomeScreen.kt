@@ -47,6 +47,7 @@ import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.SdCard
+import androidx.compose.material.icons.filled.Eject
 import androidx.compose.material.icons.filled.Screenshot
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Slideshow
@@ -168,7 +169,7 @@ fun HomeScreen(vm: MainViewModel, openDrawer: () -> Unit) {
                 when (section) {
                     HomeSection.STORAGE ->
                         items(vm.volumes.toList(), key = { "vol:" + it.path }) { v ->
-                            StorageCard(v) { vm.openFolder(v.path) }
+                            StorageCard(v, onEject = { vm.ejectRequest = v.path }) { vm.openFolder(v.path) }
                         }
                     HomeSection.CATEGORIES -> {
                         val tiles = categoryTiles(vm, vm.homeHiddenTiles.value)
@@ -345,7 +346,7 @@ private fun TileView(t: Tile, modifier: Modifier) {
 }
 
 @Composable
-private fun StorageCard(v: StorageVolumeInfo, onClick: () -> Unit) {
+private fun StorageCard(v: StorageVolumeInfo, onEject: () -> Unit, onClick: () -> Unit) {
     val used = (v.total - v.free).coerceAtLeast(0)
     val fraction = if (v.total > 0) used.toFloat() / v.total else 0f
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
@@ -368,6 +369,8 @@ private fun StorageCard(v: StorageVolumeInfo, onClick: () -> Unit) {
                 Text(
                     "${(fraction * 100).roundToInt()} %",
                     style = MaterialTheme.typography.titleMedium)
+                if (v.removable)
+                    IconButton(onClick = onEject) { Icon(Icons.Filled.Eject, contentDescription = tr("Expulsar «{0}»", v.name)) }
             }
             Spacer(Modifier.height(12.dp))
             LinearProgressIndicator(
