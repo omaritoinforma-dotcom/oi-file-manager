@@ -122,6 +122,16 @@ def wait(label, timeout=30):
     raise AssertionError(f"Visible control not found: {label}")
 
 
+def wait_gone(label, timeout=10):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        tree = hierarchy()
+        if not nodes(label, tree):
+            return
+        time.sleep(0.25)
+    raise AssertionError(f"Control still visible: {label}")
+
+
 def tap_node(node):
     x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds")))
     adb("shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2))
@@ -200,8 +210,18 @@ def add_ci_webdav_connection():
     tap_scrolling("WebDAV")
     type_into_scrolling("URL completa https://…", f"http://10.0.2.2:{WEBDAV_PORT}")
     type_into_scrolling("Usuario", "oi")
+    # The IME can cover the password field on Android 15. Hide it before
+    # scrolling to the next field so input is not appended to Usuario.
+    adb("shell", "input", "keyevent", "4")
+    time.sleep(0.3)
     type_into_scrolling("Contraseña", "test")
+    # Confirm/Save lives behind the soft keyboard in this dialog. Hiding the
+    # keyboard also prevents a false positive where wait("CI-WebDAV") matches
+    # the connection-name EditText even though the dialog never closed.
+    adb("shell", "input", "keyevent", "4")
+    time.sleep(0.3)
     tap_scrolling("Guardar")
+    wait_gone("Nueva conexión", timeout=10)
     wait("CI-WebDAV")
     tap("CI-WebDAV")
     wait("big.bin", timeout=30)
