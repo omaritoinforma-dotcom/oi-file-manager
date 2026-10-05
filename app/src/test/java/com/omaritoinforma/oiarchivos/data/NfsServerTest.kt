@@ -24,6 +24,16 @@ class NfsServerTest {
     private fun payload() = ByteArray(3_000_000) { ((it * 13 + 5) % 251).toByte() }
 
     @Test
+    fun pathsUnderTheExportAreRelativeToTheMount() {
+        assertEquals("/", NfsFs.inside("/srv/datos", "/srv/datos"))
+        assertEquals("/", NfsFs.inside("/srv/datos", "/srv/datos/"))
+        assertEquals("/a/b.txt", NfsFs.inside("/srv/datos", "/srv/datos/a/b.txt"))
+        assertEquals("/a/b.txt", NfsFs.inside("/srv/datos", "/a/b.txt"))
+        assertEquals("/srv/datosmas/x", NfsFs.inside("/srv/datos", "/srv/datosmas/x"))
+        assertEquals("/x", NfsFs.inside("/", "x"))
+    }
+
+    @Test
     fun idsAreParsedAndFallBackToNobody() {
         assertEquals(1000 to 1001, NfsFs.parseIds("1000:1001"))
         assertEquals(0 to 0, NfsFs.parseIds(" 0:0 "))
@@ -39,6 +49,9 @@ class NfsServerTest {
         RemoteFiles.connect(connection()).use { fs ->
             fs.mkdir("/", name)
             assertTrue(File(disk, name).isDirectory)
+            // La interfaz empieza en la «carpeta inicial» (la ruta exportada): debe verse lo mismo que en «/».
+            assertTrue(fs.list(export!!).any { it.name == name && it.directory })
+            assertTrue(fs.list("${export!!}/$name").isEmpty())
             val data = payload()
             val sub = fs.mkdir("/$name", "sub carpeta")
             fs.write(sub, "año.bin", data.inputStream(), data.size.toLong())

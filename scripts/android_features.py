@@ -44,7 +44,12 @@ def read(path):
 
 
 def read_bytes(path):
-    return subprocess.check_output(["adb", "exec-out", "cat", q(path)], timeout=30)
+    """Contenido de un archivo del emulador. Se usa «adb pull»: «exec-out cat» no lleva bien los nombres
+    con espacios o paréntesis («mitad (editada).png»)."""
+    with tempfile.TemporaryDirectory() as tmp:
+        local = pathlib.Path(tmp) / "f"
+        subprocess.run(["adb", "pull", path, str(local)], check=False, capture_output=True, timeout=60)
+        return local.read_bytes() if local.exists() else b""
 
 
 def exists(path):
@@ -519,10 +524,17 @@ def edit_image():
 def video_editor():
     folder = f"{DIR}/oivideo"
     sh("rm", "-rf", q(folder), check=False)
+    sh("mkdir", "-p", q(folder))
+    # Vídeos reales (H.264 y AAC, como los de una cámara) con una franja que se mueve. «screenrecord» del
+    # emulador del CI no siempre deja un MP4 terminado.
+    with tempfile.TemporaryDirectory() as tmp:
+        for name, seconds in (("clip.mp4", 6), ("clip2.mp4", 3)):
+            local = pathlib.Path(tmp) / name
+            synthetic_video(local, seconds=seconds, moving=True)
+            adb("push", str(local), f"{folder}/{name}")
+    source = mp4_info(read_bytes(f"{folder}/clip.mp4"))
+    assert source and source["width"] and source["height"], f"Sin tamaño de vídeo: {source}"
     launch_home()
-    source = record_clip(f"{folder}/clip.mp4", 6)
-    second = record_clip(f"{folder}/clip2.mp4", 3)
-    assert source["width"] and source["height"], f"Sin tamaño de vídeo: {source}"
 
     def exported(name, timeout=240):
         """Espera a que el MP4 exista y esté terminado (la caja «moov» se escribe al final)."""
@@ -571,8 +583,9 @@ def video_editor():
     evidence("editor-de-video-unido")
 
 
-def synthetic_video(path, seconds=4, width=360, height=640, color=(128, 128, 128)):
-    """MP4 de un solo color con un tono de 440 Hz, como el de una cámara (H.264 baseline y AAC), hecho con PyAV."""
+def synthetic_video(path, seconds=4, width=360, height=640, color=(128, 128, 128), moving=False):
+    """MP4 con un tono de 440 Hz, como el de una cámara (H.264 baseline y AAC), hecho con PyAV. Es de un solo
+    color o, con [moving], con una franja blanca que baja (para que cada fotograma sea distinto)."""
     import fractions
     import av
 
@@ -583,8 +596,11 @@ def synthetic_video(path, seconds=4, width=360, height=640, color=(128, 128, 128
         audio = out.add_stream("aac", rate=44100, layout="mono")
         frame = av.VideoFrame(width, height, "rgb24")
         stride = frame.planes[0].line_size
-        frame.planes[0].update((bytes(color) * width + b"\0" * (stride - 3 * width)) * height)
+        plain = bytes(color) * width + b"\0" * (stride - 3 * width)
+        white = b"\xff" * (3 * width) + b"\0" * (stride - 3 * width)
         for i in range(seconds * 30):
+            band = (i * 8) % height if moving else -1000
+            frame.planes[0].update(b"".join(white if band <= y < band + 40 else plain for y in range(height)))
             yuv = frame.reformat(format="yuv420p")
             yuv.pts, yuv.time_base = i, fractions.Fraction(1, 30)
             for packet in video.encode(yuv):
@@ -765,7 +781,8 @@ def selection_copy_path_and_views():
     tap("Buscar")
     time.sleep(1.5)
     adb("shell", "input", "keyevent", "KEYCODE_PASTE")
-    wait_text(f"{folder}/s3.txt")
+    # La app copia la ruta real del almacenamiento (/storage/emulated/0), no el atajo /sdcard.
+    wait_text(f"{folder.replace('/sdcard', INTERNAL)}/s3.txt")
     tap("Cerrar búsqueda")
     # Vistas: lista, detalle y cuadrícula; tres pulsaciones dan la vuelta y dejan la vista como estaba.
     seen = set()
@@ -1048,11 +1065,24 @@ def apps_info_share_open():
     fill("Buscar app…", "Settings", current="OI Arch")
     label = wait("Settings")[0]
     label_y = center(label)[1]
-    options = min(nodes("Opciones", hierarchy()), key=lambda n: abs(center(n)[1] - label_y))
-    tap_node(options)
-    tap("Abrir")
-    until(lambda: any(n.get("package") == "com.android.settings" for n in hierarchy().iter("node")),
-          f"No se abrió Ajustes: {focused_window()}", 20)
+    def settings_open():
+        return any(n.get("package") == "com.android.settings" for n in hierarchy().iter("node"))
+
+    # El menú se anima al abrirse: se espera a que «Abrir» esté quieto y, si el toque se perdió, se repite.
+    for _ in range(2):
+        options = min(nodes("Opciones", hierarchy()), key=lambda n: abs(center(n)[1] - label_y))
+        tap_node(options)
+        wait("Abrir")
+        time.sleep(1)
+        tap("Abrir")
+        deadline = time.monotonic() + 15
+        while time.monotonic() < deadline and not settings_open():
+            time.sleep(0.5)
+        if settings_open():
+            break
+        adb("shell", "input", "keyevent", "4")
+        time.sleep(1)
+    assert settings_open(), f"No se abrió Ajustes: {focused_window()}"
     ui.launch()
 
 
@@ -1092,20 +1122,28 @@ def sort_size():
     tap("Tamaño")
     tap("Descendente (Z→A, nuevo→antiguo)")
     tap("Aplicar")
-    time.sleep(1)
-    tree = hierarchy()
-    y = {}
-    for n in tree.iter("node"):
-        if n.get("text") in ("grande.bin", "dup1.bin", "buscar_me.txt"):
-            y[n.get("text")] = int(re.findall(r"\d+", n.get("bounds"))[1])
-    # 3 MiB antes que 1 MiB; el texto pequeño, si se ve, va después de ambos.
-    assert "grande.bin" in y and "dup1.bin" in y, f"No se ven los archivos: {y}"
-    assert y["grande.bin"] < y["dup1.bin"] < y.get("buscar_me.txt", 10**9), f"Orden incorrecto: {y}"
-    tap("Más opciones")
-    tap("Ordenar…")
-    tap("Nombre")
-    tap("Ascendente (A→Z, antiguo→nuevo)")
-    tap("Aplicar")
+    try:
+        time.sleep(1)
+        # La lista conserva su desplazamiento: se vuelve arriba para ver los primeros (los más grandes).
+        for _ in range(6):
+            adb("shell", "input", "swipe", "540", "700", "540", "1700", "200")
+        time.sleep(1)
+        tree = hierarchy()
+        y = {}
+        for n in tree.iter("node"):
+            if n.get("text") in ("grande.bin", "dup1.bin", "buscar_me.txt"):
+                y[n.get("text")] = int(re.findall(r"\d+", n.get("bounds"))[1])
+        # 3 MiB antes que 1 MiB; el texto pequeño, si se ve, va después de ambos.
+        assert "grande.bin" in y and "dup1.bin" in y, f"No se ven los archivos: {y}"
+        assert y["grande.bin"] < y["dup1.bin"] < y.get("buscar_me.txt", 10**9), f"Orden incorrecto: {y}"
+    finally:
+        # Siempre se vuelve al orden por nombre: las demás comprobaciones lo dan por hecho.
+        open_test_folder()
+        tap("Más opciones")
+        tap("Ordenar…")
+        tap("Nombre")
+        tap("Ascendente (A→Z, antiguo→nuevo)")
+        tap("Aplicar")
 
 
 @check("red-local-encontrar-servidor")
@@ -2815,15 +2853,19 @@ def theme_color_and_black():
         tap("Oscuro")
         time.sleep(1.5)
         normal = brightness()
+        find("Fondo negro puro")
         if not switch_state("Fondo negro puro"):
             tap("Fondo negro puro")
         time.sleep(1.5)
         black = brightness()
-        r, g, b = pixel(540, 1750)
-        assert (r, g, b) == (0, 0, 0), f"El fondo no es negro puro: {(r, g, b)}"
+        # El fondo es el color más frecuente de la franja derecha de la pantalla (sin textos largos).
+        from collections import Counter
+        background = Counter(region_pixels(700, 300, 1060, 1800, step=9)).most_common(1)[0][0]
+        assert background == (0, 0, 0), f"El fondo no es negro puro: {background}"
         assert black < normal - 8, f"El negro puro no oscurece más que el oscuro normal ({normal:.0f} → {black:.0f})"
     finally:
         settings("Pantalla")
+        find("Fondo negro puro")
         if switch_state("Fondo negro puro"):
             tap("Fondo negro puro")
         tap(find("Según el sistema").get("text"))
@@ -2877,8 +2919,7 @@ def home_layout():
         evidence("inicio-personalizado")
     finally:
         settings("Pantalla de inicio")
-        if nodes("Restablecer Inicio", hierarchy()):
-            tap("Restablecer Inicio")
+        tap_node(find("Restablecer Inicio"))  # está al final: hay que desplazar
         time.sleep(2)
     launch_home()
     wait("Categorías")
@@ -3100,7 +3141,11 @@ def ftp_stops_on_exit():
         wait("Detener servidor")
         until(running, "El servidor FTP no figura como servicio en marcha", 15)
         # «Salir» del menú lateral cierra la app: con el ajuste, el servidor se detiene con ella.
-        adb("shell", "input", "keyevent", "4")
+        for _ in range(4):  # «atrás» hasta la pantalla con el menú lateral
+            adb("shell", "input", "keyevent", "4")
+            time.sleep(1)
+            if nodes("Menú", hierarchy()):
+                break
         ui.drawer("Salir")
         until(lambda: not running(), "El servidor FTP siguió en marcha tras salir de la app", 20)
     finally:
@@ -3118,7 +3163,12 @@ def ftp_stops_on_exit():
 def document_types():
     def count():
         launch_home()
-        tap("Documentos")
+        # Hay dos «Documentos» en Inicio: la categoría y el acceso rápido (selector de Android). Se pulsa
+        # el primero que está por debajo del título «Categorías».
+        tree = hierarchy()
+        header = int(re.findall(r"\d+", nodes("Categorías", tree)[0].get("bounds"))[1])
+        below = [n for n in nodes("Documentos", tree) if int(re.findall(r"\d+", n.get("bounds"))[1]) > header]
+        tap_node(min(below, key=lambda n: int(re.findall(r"\d+", n.get("bounds"))[1])))
         wait_text("archivos")
         time.sleep(2)
         text = next(n.get("text") for n in hierarchy().iter("node")
@@ -3622,14 +3672,15 @@ def app_language():
         evidence("idioma-ingles-ajustes")
         adb("shell", "input", "keyevent", "4")
         wait("Display")
-        wait("Security")
+        find("Security")
         adb("shell", "input", "keyevent", "4")
         # Inicio y el menú lateral (sus nombres vienen de listas fijas que se traducen al mostrarse).
         wait("Categories", timeout=30)
         tap("Menu")
         wait("Settings")
-        wait("Trash")
+        assert drawer_find("Trash") is not None, "El menú lateral no está en inglés"
         evidence("idioma-ingles-menu")
+        adb("shell", "input", "keyevent", "4")
         # Tras reiniciar la app sigue en inglés: el idioma se aplica al arrancar el proceso.
         ui.launch()
         tree = wait_any("Categories", "Menu", "Categorías", "Menú", timeout=60)

@@ -12,8 +12,8 @@ La matriz completa está en [COMPARACION_ES.md](COMPARACION_ES.md). Se hizo a pa
 
 | Estado | Filas | Qué significa |
 | --- | ---: | --- |
-| ✅ | 40 | Implementado y comprobado en el emulador Android 15 del CI o contra un servidor real |
-| 🟡 | 36 | Implementado y conectado a la interfaz; su comprobación en el emulador ya está escrita y espera su pasada |
+| ✅ | 58 | Implementado y comprobado en el emulador Android 15 del CI o contra un servidor real |
+| 🟡 | 18 | Implementado y conectado a la interfaz; su comprobación en el emulador ya está escrita y espera su pasada |
 | 🟠 | 1 | Parcial: envío entre teléfonos por punto de acceso Wi-Fi |
 | ❌ | 8 | Falta: funciones que exigen root (desinstalar apps del sistema, montar /system, editar hosts), Android TV por ADB, servidor OBEX, expulsar USB, punto de acceso propio y las nubes minoritarias |
 
@@ -43,30 +43,25 @@ El trabajo `smoke` arranca la app en un emulador Android 15 y ejecuta dos script
 
 Desde ahora las comprobaciones se reparten en **tres emuladores nuevos en paralelo** (`OI_SHARD=k/3`). Así una sesión no pasa de unos 40 minutos.
 
-**Última pasada completa (5625ab5, ejecución 37215783930):** aprobó **47 de 57**. Aprobaron por primera vez:
+**Última pasada completa (2e7ae5c, ejecución 37234077192):** aprobó **69 de 81** en tres emuladores. Pasan a ✅ 18 filas: abrir con y abrir como, apps predeterminadas, ocultar y lista de ocultos, accesos directos, nivel de compresión, doble panel, barra lateral y barra de herramientas, ajustes de pantalla, botón de pestañas, buscador de Inicio, búsqueda avanzada, uso del almacenamiento en la barra de estado, reproductor, editor de texto, instalar y desinstalar por lotes, aviso de permisos, copia antes de desinstalar y limpiar carpetas, y archivo remoto editado que se sube solo. Además pasó el SMB contra Samba en el CI.
 
-- fijar arriba;
-- subcategorías;
-- analizador de permisos;
-- aviso e informe de archivos nuevos;
-- aviso de poco espacio;
-- listas de reproducción;
-- copia automática al SFTP real.
+De los 12 fallos, 10 eran de la prueba y están corregidos:
 
-Los 10 fallos eran de la prueba y están corregidos en `df93f9f`:
+- leer archivos con paréntesis en el nombre (`exec-out cat`);
+- `screenrecord` no deja un MP4 terminado en el emulador del CI (ahora los vídeos se generan con PyAV);
+- la ruta copiada es `/storage/emulated/0/…`, no `/sdcard/…`;
+- tocar un menú mientras se anima;
+- listas desplazadas y botones fuera de la pantalla;
+- un píxel de muestra que caía en un texto;
+- dos fallos en cascada porque otra prueba no dejaba el estado como estaba.
 
-- el menú lateral se tocaba antes de abrirse;
-- había listas que solo se buscaban hacia abajo;
-- una ficha marcada se leía en el nodo equivocado;
-- la pantalla de apps predeterminadas de Android 15 es de `permissioncontroller`;
-- se leía un archivo del servidor justo mientras la app lo sustituía;
-- `am start -W` superó 30 s.
+Los otros 2 eran **errores reales de la app**, ya corregidos (ver la tabla de abajo).
 
-Las 27 comprobaciones nuevas de este punto de control esperan su primera pasada.
+Las comprobaciones nuevas de este punto de control (idioma, Chromecast, intro/outro y las corregidas) esperan la próxima pasada.
 
 ### Pruebas JVM
 
-Hay 235 pruebas en 46 archivos. En local pasan todas menos 9, que necesitan rclone y 7-Zip; en el CI pasan también.
+Hay 236 pruebas en 46 archivos. En local pasan todas menos 9, que necesitan rclone y 7-Zip; en el CI pasan también.
 
 ## Errores reales que encontraron las pruebas
 
@@ -76,6 +71,8 @@ Hay 235 pruebas en 46 archivos. En local pasan todas menos 9, que necesitan rclo
 | NFS | Las carpetas y archivos nuevos quedaban con permisos 000. Además, tras renombrar el temporal, el objeto viejo seguía apuntando al archivo y «borrar el temporal» se llevaba el archivo bueno | Prueba contra nfs-ganesha |
 | ZIP sin compresión | zip4j fallaba en modo STORE si no se indicaba el tamaño | Prueba JVM de niveles de compresión |
 | Recorte de imagen | Arrastrar una esquina más allá de la opuesta daba la vuelta al recuadro | Prueba JVM de `ImageCrop` |
+| NFS en la interfaz | La pantalla de conexiones empieza en la carpeta exportada y NfsFs la pedía dentro de la propia exportación: «file handle is null» y no se listaba nada | Emulador contra nfs-ganesha |
+| Enviar leyendo un QR | El enlace del QR (lo abre la cámara) creaba una segunda pantalla con su propio estado y se perdían los archivos elegidos | Emulador |
 | Subtítulos del editor de vídeo | Entre dos subtítulos el texto quedaba vacío y Media3 intentaba crear una imagen de ancho 0: la exportación fallaba si el primer subtítulo no empezaba en 0 | Leyendo el código de `TextOverlay` de Media3 al añadir la intro; la comprobación nueva del emulador lo cubre |
 | Aviso de poco espacio | Al activarlo había que esperar a la revisión de cada hora; ahora revisa al momento | Emulador |
 | Búsqueda avanzada (anterior) | Siempre mostraba 0 resultados | Emulador |
@@ -115,7 +112,7 @@ Hay 235 pruebas en 46 archivos. En local pasan todas menos 9, que necesitan rclo
 
 ## Trabajo que falta
 
-1. **Pasada del emulador** de las 36 filas en 🟡, ya escritas: corregir lo que falle y pasar a ✅ lo que apruebe.
+1. **Pasada del emulador** de las 18 filas en 🟡, ya escritas: corregir lo que falle y pasar a ✅ lo que apruebe.
 2. **Más idiomas:** el catálogo admite cualquier idioma; hoy hay español e inglés.
 3. **Nubes:** registrar el acceso OAuth de la aplicación y comprobar cada operación con cuentas reales (Drive, Dropbox, OneDrive, Box, Yandex, S3, Baidu, SugarSync).
 4. **Hardware y root, imposibles en el CI:** un Chromecast físico (el protocolo se prueba con un receptor de prueba), punto de acceso Wi-Fi, Android TV por ADB, Bluetooth OBEX (cliente con un dispositivo real; servidor por hacer), USB OTG, tarjeta SD y funciones root.

@@ -637,6 +637,7 @@ private class SmbFs(c: Connection) : RemoteFs {
  */
 internal class NfsFs(c: Connection) : RemoteFs {
     private val nfs: com.emc.ecs.nfsclient.nfs.nfs3.Nfs3
+    private val export = c.root.ifBlank { "/" }.trimEnd('/').ifEmpty { "/" }
 
     init {
         val (uid, gid) = NfsFs.parseIds(c.user)
@@ -649,7 +650,7 @@ internal class NfsFs(c: Connection) : RemoteFs {
     }
 
     private fun file(path: String) =
-        com.emc.ecs.nfsclient.nfs.io.Nfs3File(nfs, if (path.startsWith("/")) path else "/$path")
+        com.emc.ecs.nfsclient.nfs.io.Nfs3File(nfs, NfsFs.inside(export, path))
 
     override fun list(path: String): List<RemoteEntry> =
         file(path).listFiles().map { child ->
@@ -707,6 +708,21 @@ internal class NfsFs(c: Connection) : RemoteFs {
 
         private fun attributes(mode: Long) =
             com.emc.ecs.nfsclient.nfs.NfsSetAttributes().apply { setMode(mode) }
+
+        /**
+         * Ruta dentro de la exportación. La app recorre el servidor con rutas que empiezan por la carpeta
+         * exportada (la «carpeta inicial» de la conexión, como en los demás protocolos), pero para NFS esa
+         * carpeta es la raíz del montaje: «/srv/datos/a.txt» es «/a.txt».
+         */
+        fun inside(export: String, path: String): String {
+            val absolute = if (path.startsWith("/")) path else "/$path"
+            if (export == "/") return absolute
+            return when {
+                absolute == export || absolute == "$export/" -> "/"
+                absolute.startsWith("$export/") -> absolute.substring(export.length)
+                else -> absolute
+            }
+        }
 
         /** «1000:1000» → (1000, 1000); vacío o mal escrito → «nobody» (65534:65534). */
         fun parseIds(text: String): Pair<Int, Int> {
