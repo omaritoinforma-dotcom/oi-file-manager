@@ -5,6 +5,11 @@ package com.omaritoinforma.oiarchivos.ui.screens
 import android.os.Environment
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +27,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Archive
@@ -36,11 +42,16 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.SdCard
+import androidx.compose.material.icons.filled.Eject
+import androidx.compose.material.icons.filled.Screenshot
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Slideshow
+import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -62,6 +73,18 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.omaritoinforma.oiarchivos.data.FileCategory
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import com.omaritoinforma.oiarchivos.data.FileItem
+import com.omaritoinforma.oiarchivos.data.Categories
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import com.omaritoinforma.oiarchivos.data.HomeLayout
+import com.omaritoinforma.oiarchivos.data.HomeSection
+import com.omaritoinforma.oiarchivos.data.QuickTile
 import com.omaritoinforma.oiarchivos.data.Location
 import com.omaritoinforma.oiarchivos.data.StorageVolumeInfo
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
@@ -70,6 +93,7 @@ import com.omaritoinforma.oiarchivos.ui.components.SectionTitle
 import com.omaritoinforma.oiarchivos.util.PathUtil
 import com.omaritoinforma.oiarchivos.util.formatSize
 import kotlin.math.roundToInt
+import com.omaritoinforma.oiarchivos.data.tr
 
 private data class Tile(
     val label: String,
@@ -86,59 +110,141 @@ fun HomeScreen(vm: MainViewModel, openDrawer: () -> Unit) {
             TopAppBar(
                 title = { Text("OI Archivos") },
                 navigationIcon = {
-                    IconButton(onClick = openDrawer) { Icon(Icons.Filled.Menu, "Menú") }
+                    IconButton(onClick = openDrawer) { Icon(Icons.Filled.Menu, tr("Menú")) }
                 },
                 actions = {
                     IconButton(onClick = { vm.goTo(Screen.Settings) }) {
-                        Icon(Icons.Filled.Settings, "Ajustes")
+                        Icon(Icons.Filled.Settings, tr("Ajustes"))
                     }
                 },
             )
         },
     ) { padding ->
+        val ctx = LocalContext.current
+        var newFiles by remember { mutableStateOf<List<FileItem>>(emptyList()) }
+        val showNew = HomeSection.NEW_FILES.name !in vm.homeHidden.value
+        LaunchedEffect(showNew, vm.volumes.size) {
+            newFiles =
+                if (!showNew) emptyList()
+                else
+                    withContext(Dispatchers.IO) {
+                        HomeLayout.newFiles(
+                            runCatching { Categories.query(ctx, FileCategory.RECENT, false) }
+                                .getOrDefault(emptyList()))
+                    }
+        }
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            items(vm.volumes.toList(), key = { "vol:" + it.path }) { v ->
-                StorageCard(v) { vm.openFolder(v.path) }
-            }
-            item { SectionTitle("Categorías") }
-            item { TileGrid(categoryTiles(vm)) }
-            item { SectionTitle("Accesos rápidos") }
-            item { TileGrid(quickTiles(vm)) }
-            if (vm.bookmarks.isNotEmpty()) {
-                item { SectionTitle("Marcadores") }
-                items(vm.bookmarks.toList(), key = { "bm:$it" }) { b ->
-                    ListItem(
-                        headlineContent = { Text(PathUtil.displayName(b)) },
-                        supportingContent = {
-                            Text(b, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        },
-                        leadingContent = {
-                            Icon(
-                                Icons.Filled.Bookmark,
-                                null,
-                                tint = MaterialTheme.colorScheme.primary)
-                        },
-                        trailingContent = {
-                            IconButton(onClick = { vm.toggleBookmark(b) }) {
-                                Icon(Icons.Filled.Close, "Quitar marcador")
+            if (vm.homeSearch.value)
+                item(key = "search") {
+                    var query by remember { mutableStateOf("") }
+                    val go = { if (query.isNotBlank()) vm.searchEverywhere(query.trim()) }
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        placeholder = { Text(tr("Buscar archivos…")) },
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Filled.Search, null) },
+                        trailingIcon = {
+                            IconButton(onClick = go) {
+                                Icon(Icons.Filled.Search, tr("Buscar en todo el almacenamiento"))
                             }
                         },
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        modifier =
-                            Modifier.clip(RoundedCornerShape(12.dp)).clickable { vm.openFolder(b) },
-                    )
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { go() }),
+                        shape = RoundedCornerShape(28.dp),
+                        modifier = Modifier.fillMaxWidth())
+                }
+            val sections = HomeLayout.visible(vm.homeOrder.value, vm.homeHidden.value)
+            if (sections.isEmpty())
+                item {
+                    Text(
+                        tr("Inicio está vacío. Para volver a mostrar algo: Ajustes → Pantalla de inicio."),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            sections.forEach { section ->
+                when (section) {
+                    HomeSection.STORAGE ->
+                        items(vm.volumes.toList(), key = { "vol:" + it.path }) { v ->
+                            StorageCard(v, onEject = { vm.ejectRequest = v.path }) { vm.openFolder(v.path) }
+                        }
+                    HomeSection.CATEGORIES -> {
+                        val tiles = categoryTiles(vm, vm.homeHiddenTiles.value)
+                        if (tiles.isNotEmpty()) {
+                            item(key = "title:cat") { SectionTitle(tr("Categorías")) }
+                            item(key = "tiles:cat") { TileGrid(tiles) }
+                        }
+                    }
+                    HomeSection.QUICK -> {
+                        val tiles = quickTiles(vm, vm.homeHiddenTiles.value)
+                        if (tiles.isNotEmpty()) {
+                            item(key = "title:quick") { SectionTitle(tr("Accesos rápidos")) }
+                            item(key = "tiles:quick") { TileGrid(tiles) }
+                        }
+                    }
+                    HomeSection.NEW_FILES ->
+                        if (newFiles.isNotEmpty()) {
+                            item(key = "title:new") { SectionTitle(tr("Archivos nuevos")) }
+                            items(newFiles, key = { "new:" + it.path }) { f ->
+                                ListItem(
+                                    headlineContent = {
+                                        Text(f.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    },
+                                    supportingContent = {
+                                        Text(
+                                            "${formatSize(f.size)} · ${f.file.parent.orEmpty()}",
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis)
+                                    },
+                                    leadingContent = {
+                                        Icon(
+                                            Icons.Filled.History,
+                                            null,
+                                            tint = MaterialTheme.colorScheme.primary)
+                                    },
+                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                    modifier =
+                                        Modifier.clip(RoundedCornerShape(12.dp)).clickable { vm.openFile(f.path) },
+                                )
+                            }
+                        }
+                    HomeSection.BOOKMARKS ->
+                        if (vm.bookmarks.isNotEmpty()) {
+                            item(key = "title:bm") { SectionTitle(tr("Marcadores")) }
+                            items(vm.bookmarks.toList(), key = { "bm:$it" }) { b ->
+                                ListItem(
+                                    headlineContent = { Text(PathUtil.displayName(b)) },
+                                    supportingContent = {
+                                        Text(b, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    },
+                                    leadingContent = {
+                                        Icon(
+                                            Icons.Filled.Bookmark,
+                                            null,
+                                            tint = MaterialTheme.colorScheme.primary)
+                                    },
+                                    trailingContent = {
+                                        IconButton(onClick = { vm.toggleBookmark(b) }) {
+                                            Icon(Icons.Filled.Close, tr("Quitar marcador"))
+                                        }
+                                    },
+                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                                    modifier =
+                                        Modifier.clip(RoundedCornerShape(12.dp)).clickable { vm.openFolder(b) },
+                                )
+                            }
+                        }
                 }
             }
         }
     }
 }
 
-private fun categoryTiles(vm: MainViewModel): List<Tile> =
-    FileCategory.entries.map { c ->
+private fun categoryTiles(vm: MainViewModel, hidden: Set<String>): List<Tile> =
+    HomeLayout.categories(hidden).map { c ->
         val (icon, color) =
             when (c) {
                 FileCategory.IMAGES -> Icons.Filled.Image to Color(0xFF43A047)
@@ -147,6 +253,12 @@ private fun categoryTiles(vm: MainViewModel): List<Tile> =
                 FileCategory.DOCUMENTS -> Icons.Filled.Description to Color(0xFF1E88E5)
                 FileCategory.APKS -> Icons.Filled.Android to Color(0xFF7CB342)
                 FileCategory.ARCHIVES -> Icons.Filled.Archive to Color(0xFF8D6E63)
+                FileCategory.EBOOKS -> Icons.AutoMirrored.Filled.MenuBook to Color(0xFF6D4C41)
+                FileCategory.SCREENSHOTS -> Icons.Filled.Screenshot to Color(0xFF00897B)
+                FileCategory.RECORDINGS -> Icons.Filled.Mic to Color(0xFFD81B60)
+                FileCategory.WORD -> Icons.Filled.Description to Color(0xFF1565C0)
+                FileCategory.EXCEL -> Icons.Filled.TableChart to Color(0xFF2E7D32)
+                FileCategory.POWERPOINT -> Icons.Filled.Slideshow to Color(0xFFEF6C00)
                 FileCategory.RECENT -> Icons.Filled.History to Color(0xFFFB8C00)
             }
         Tile(c.label, icon, color) { vm.navigate(Location.Category(c)) }
@@ -156,31 +268,45 @@ private fun categoryTiles(vm: MainViewModel): List<Tile> =
 private fun publicDir(type: String): String =
     Environment.getExternalStoragePublicDirectory(type).absolutePath
 
-private fun quickTiles(vm: MainViewModel): List<Tile> =
-    listOf(
-        Tile("Descargas", Icons.Filled.Download, Color(0xFF1E88E5)) {
-            vm.openFolder(publicDir(Environment.DIRECTORY_DOWNLOADS))
-        },
-        Tile("Cámara", Icons.Filled.CameraAlt, Color(0xFF00897B)) {
-            vm.openFolder(publicDir(Environment.DIRECTORY_DCIM))
-        },
-        Tile("Imágenes", Icons.Filled.Collections, Color(0xFF43A047)) {
-            vm.openFolder(publicDir(Environment.DIRECTORY_PICTURES))
-        },
-        Tile("Documentos", Icons.Filled.Description, Color(0xFF3949AB)) {
-            vm.openFolder(publicDir(Environment.DIRECTORY_DOCUMENTS))
-        },
-        Tile("Papelera", Icons.Filled.Delete, Color(0xFF757575)) { vm.goTo(Screen.Trash) },
-        Tile("Apps", Icons.Filled.Apps, Color(0xFF7CB342)) { vm.goTo(Screen.Apps) },
-        Tile("Red / nube", Icons.Filled.Dns, Color(0xFF1E88E5)) { vm.goTo(Screen.Connections) },
-        Tile("Analizar", Icons.Filled.SdCard, Color(0xFF8E24AA)) {
-            vm.goTo(Screen.Analysis(PathUtil.internalRoot))
-        },
-        Tile("Historial", Icons.Filled.History, Color(0xFFFB8C00)) { vm.goTo(Screen.History) },
-        Tile("Transferir", Icons.Filled.Download, Color(0xFF00897B)) { vm.goTo(Screen.Transfers) },
-        Tile("Raíz", Icons.Filled.Dns, Color(0xFF6D4C41)) { vm.openFolder("/") },
-        Tile("Ajustes", Icons.Filled.Settings, Color(0xFF546E7A)) { vm.goTo(Screen.Settings) },
-    )
+private fun quickTiles(vm: MainViewModel, hidden: Set<String>): List<Tile> =
+    HomeLayout.quick(hidden).map { t ->
+        when (t) {
+            QuickTile.DOWNLOADS ->
+                Tile(t.label, Icons.Filled.Download, Color(0xFF1E88E5)) {
+                    vm.openFolder(publicDir(Environment.DIRECTORY_DOWNLOADS))
+                }
+            QuickTile.CAMERA ->
+                Tile(t.label, Icons.Filled.CameraAlt, Color(0xFF00897B)) {
+                    vm.openFolder(publicDir(Environment.DIRECTORY_DCIM))
+                }
+            QuickTile.PICTURES ->
+                Tile(t.label, Icons.Filled.Collections, Color(0xFF43A047)) {
+                    vm.openFolder(publicDir(Environment.DIRECTORY_PICTURES))
+                }
+            QuickTile.DOCUMENTS ->
+                Tile(t.label, Icons.Filled.Description, Color(0xFF3949AB)) {
+                    vm.openFolder(publicDir(Environment.DIRECTORY_DOCUMENTS))
+                }
+            QuickTile.TRASH ->
+                Tile(t.label, Icons.Filled.Delete, Color(0xFF757575)) { vm.goTo(Screen.Trash) }
+            QuickTile.APPS ->
+                Tile(t.label, Icons.Filled.Apps, Color(0xFF7CB342)) { vm.goTo(Screen.Apps) }
+            QuickTile.NETWORK ->
+                Tile(t.label, Icons.Filled.Dns, Color(0xFF1E88E5)) { vm.goTo(Screen.Connections) }
+            QuickTile.ANALYZE ->
+                Tile(t.label, Icons.Filled.SdCard, Color(0xFF8E24AA)) {
+                    vm.goTo(Screen.Analysis(PathUtil.internalRoot))
+                }
+            QuickTile.HISTORY ->
+                Tile(t.label, Icons.Filled.History, Color(0xFFFB8C00)) { vm.goTo(Screen.History) }
+            QuickTile.TRANSFERS ->
+                Tile(t.label, Icons.Filled.Download, Color(0xFF00897B)) { vm.goTo(Screen.Transfers) }
+            QuickTile.ROOT ->
+                Tile(t.label, Icons.Filled.Dns, Color(0xFF6D4C41)) { vm.openFolder("/") }
+            QuickTile.SETTINGS ->
+                Tile(t.label, Icons.Filled.Settings, Color(0xFF546E7A)) { vm.goTo(Screen.Settings) }
+        }
+    }
 
 @Composable
 private fun TileGrid(tiles: List<Tile>) {
@@ -220,7 +346,7 @@ private fun TileView(t: Tile, modifier: Modifier) {
 }
 
 @Composable
-private fun StorageCard(v: StorageVolumeInfo, onClick: () -> Unit) {
+private fun StorageCard(v: StorageVolumeInfo, onEject: () -> Unit, onClick: () -> Unit) {
     val used = (v.total - v.free).coerceAtLeast(0)
     val fraction = if (v.total > 0) used.toFloat() / v.total else 0f
     Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
@@ -235,7 +361,7 @@ private fun StorageCard(v: StorageVolumeInfo, onClick: () -> Unit) {
                 Column(Modifier.weight(1f)) {
                     Text(v.name, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "${formatSize(v.free)} libres de ${formatSize(v.total)}",
+                        tr("{0} libres de {1}", formatSize(v.free), formatSize(v.total)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -243,6 +369,8 @@ private fun StorageCard(v: StorageVolumeInfo, onClick: () -> Unit) {
                 Text(
                     "${(fraction * 100).roundToInt()} %",
                     style = MaterialTheme.typography.titleMedium)
+                if (v.removable)
+                    IconButton(onClick = onEject) { Icon(Icons.Filled.Eject, contentDescription = tr("Expulsar «{0}»", v.name)) }
             }
             Spacer(Modifier.height(12.dp))
             LinearProgressIndicator(

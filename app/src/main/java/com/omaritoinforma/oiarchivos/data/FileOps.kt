@@ -85,17 +85,18 @@ object FileOps {
         conflict: Conflict,
         report: (OpProgress) -> Unit,
     ): TransferResult {
-        val verb = if (move) "mover" else "copiar"
-        val tracker = Tracker(if (move) "Moviendo" else "Copiando", report)
+        val tracker = Tracker(if (move) tr("Moviendo") else tr("Copiando"), report)
         val destCanon = destDir.canonicalPath
         for (s in sources) {
             val sc = s.canonicalPath
             if (s.isDirectory && (destCanon == sc || destCanon.startsWith(sc + File.separator))) {
-                throw IOException("No se puede $verb «${s.name}» dentro de sí misma")
+                throw IOException(
+                    if (move) tr("No se puede mover «{0}» dentro de sí misma", s.name)
+                    else tr("No se puede copiar «{0}» dentro de sí misma", s.name))
             }
         }
         if (!destDir.exists() && !destDir.mkdirs())
-            throw IOException("No se pudo crear la carpeta de destino")
+            throw IOException(tr("No se pudo crear la carpeta de destino"))
 
         val targets = mutableListOf<File>()
         val roots =
@@ -133,7 +134,7 @@ object FileOps {
                     Conflict.OVERWRITE ->
                         if (target.isDirectory != s.isDirectory) {
                             throw IOException(
-                                "«${target.name}» es de otro tipo; renómbralo o conserva ambos")
+                                tr("«{0}» es de otro tipo; renómbralo o conserva ambos", target.name))
                         }
                 }
             }
@@ -165,24 +166,24 @@ object FileOps {
                 Conflict.RENAME -> dst = uniqueName(dst.parentFile!!, dst.name)
                 Conflict.OVERWRITE ->
                     if (dst.isDirectory != src.isDirectory)
-                        throw IOException("Tipos incompatibles: ${dst.name}")
+                        throw IOException(tr("Tipos incompatibles: {0}", dst.name))
             }
         }
         var skipped = 0
         if (src.isDirectory) {
-            if (!dst.exists() && !dst.mkdirs()) throw IOException("No se pudo crear «${dst.name}»")
-            val children = src.listFiles() ?: throw IOException("No se puede leer «${src.name}»")
+            if (!dst.exists() && !dst.mkdirs()) throw IOException(tr("No se pudo crear «{0}»", dst.name))
+            val children = src.listFiles() ?: throw IOException(tr("No se puede leer «{0}»", src.name))
             for (child in children) skipped +=
                 copyRecursive(child, File(dst, child.name), t, conflict, move)
             dst.setLastModified(src.lastModified())
             // Keep the original folder if any of its children were skipped.
             if (move && src.list()?.isEmpty() == true && !src.delete())
-                throw IOException("No se pudo borrar ${src.name}")
+                throw IOException(tr("No se pudo borrar {0}", src.name))
         } else {
             copyFile(src, dst, t)
             currentCoroutineContext().ensureActive()
             if (move && !src.delete())
-                throw IOException("Copiado, pero no se pudo borrar el original: ${src.name}")
+                throw IOException(tr("Copiado, pero no se pudo borrar el original: {0}", src.name))
         }
         return skipped
     }
@@ -212,7 +213,7 @@ object FileOps {
                 src.length() != originalSize ||
                 src.lastModified() != originalModified) {
                 throw IOException(
-                    "El archivo cambió durante la copia: ${src.name}; vuelve a intentarlo")
+                    tr("El archivo cambió durante la copia: {0}; vuelve a intentarlo", src.name))
             }
             temp.setLastModified(originalModified)
             currentCoroutineContext().ensureActive()
@@ -226,7 +227,7 @@ object FileOps {
     /** Devuelve cuántos elementos fallaron. */
     suspend fun deleteAll(files: List<File>, toTrash: Boolean, report: (OpProgress) -> Unit): Int {
         var failed = 0
-        val title = if (toTrash) "Moviendo a la papelera" else "Eliminando"
+        val title = if (toTrash) tr("Moviendo a la papelera") else tr("Eliminando")
         for ((i, f) in files.withIndex()) {
             currentCoroutineContext().ensureActive()
             report(OpProgress(title, f.name, doneFiles = i, totalFiles = files.size))

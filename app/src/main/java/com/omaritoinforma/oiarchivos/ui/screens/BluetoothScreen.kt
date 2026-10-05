@@ -32,7 +32,7 @@ fun BluetoothScreen(vm: MainViewModel) {
         if (Build.VERSION.SDK_INT >= 31 &&
             ctx.checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) !=
                 PackageManager.PERMISSION_GRANTED) {
-            error = "Concede el permiso de dispositivos cercanos"
+            error = tr("Concede el permiso de dispositivos cercanos")
             return
         }
         runCatching {
@@ -40,11 +40,11 @@ fun BluetoothScreen(vm: MainViewModel) {
                     (ctx.getSystemService(android.content.Context.BLUETOOTH_SERVICE)
                             as BluetoothManager)
                         .adapter
-                        ?: throw IllegalStateException("Este teléfono no dispone de Bluetooth")
-                if (!adapter.isEnabled) throw IllegalStateException("Activa Bluetooth")
+                        ?: throw IllegalStateException(tr("Este teléfono no dispone de Bluetooth"))
+                if (!adapter.isEnabled) throw IllegalStateException(tr("Activa Bluetooth"))
                 devices =
                     adapter.bondedDevices
-                        .map { (it.name ?: "Dispositivo") to it.address }
+                        .map { (it.name ?: tr("Dispositivo")) to it.address }
                         .sortedBy { it.first }
                 error = null
             }
@@ -54,23 +54,23 @@ fun BluetoothScreen(vm: MainViewModel) {
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { load() }
     LaunchedEffect(Unit) { load() }
     ToolPage(
-        "Explorador Bluetooth",
+        tr("Explorador Bluetooth"),
         vm,
-        actions = { TextButton(onClick = { load() }) { Text("Actualizar") } }) { pad ->
+        actions = { TextButton(onClick = { load() }) { Text(tr("Actualizar")) } }) { pad ->
             LazyColumn(
                 Modifier.fillMaxSize().padding(pad),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     item {
                         Text(
-                            "Elige un equipo vinculado que ofrezca el servicio de transferencia de archivos OBEX FTP. El equipo remoto debe autorizar el acceso a su carpeta.")
+                            tr("Elige un equipo vinculado que ofrezca el servicio de transferencia de archivos OBEX FTP. El equipo remoto debe autorizar el acceso a su carpeta."))
                     }
                     item {
                         TextButton(
                             onClick = {
                                 ctx.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
                             }) {
-                                Text("Vincular o activar Bluetooth")
+                                Text(tr("Vincular o activar Bluetooth"))
                             }
                     }
                     if (Build.VERSION.SDK_INT >= 31 &&
@@ -81,7 +81,7 @@ fun BluetoothScreen(vm: MainViewModel) {
                                 onClick = {
                                     permission.launch(Manifest.permission.BLUETOOTH_CONNECT)
                                 }) {
-                                    Text("Conceder permiso")
+                                    Text(tr("Conceder permiso"))
                                 }
                         }
                     error?.let { item { Text(it, color = MaterialTheme.colorScheme.error) } }
@@ -112,14 +112,14 @@ fun BluetoothScreen(vm: MainViewModel) {
                                             vm.goTo(Screen.Remote(connection.id))
                                         }
                                         .onFailure {
-                                            vm.toast(it.message ?: "No se pudo guardar el equipo")
+                                            vm.toast(it.message ?: tr("No se pudo guardar el equipo"))
                                         }
                                 })
                     }
                     if (devices.isEmpty() && error == null)
                         item {
                             Text(
-                                "No hay equipos vinculados. Abre los ajustes Bluetooth y vincula uno, luego pulsa Actualizar.")
+                                tr("No hay equipos vinculados. Abre los ajustes Bluetooth y vincula uno, luego pulsa Actualizar."))
                         }
                 }
         }

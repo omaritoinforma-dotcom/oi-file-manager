@@ -93,7 +93,7 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                     else "$graph/items/${encode(path)}/children"
                 while (url.isNotEmpty()) {
                     if (!url.startsWith("https://graph.microsoft.com/"))
-                        throw IOException("Respuesta inesperada de OneDrive")
+                        throw IOException(tr("Respuesta inesperada de OneDrive"))
                     val result = json(url)
                     val arr = result.getJSONArray("value")
                     for (i in 0 until arr.length()) {
@@ -109,7 +109,7 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                     if (out.size >= 50000) break
                 }
             }
-            else -> throw IOException("Proveedor no compatible")
+            else -> throw IOException(tr("Proveedor no compatible"))
         }
         return out
     }
@@ -127,7 +127,7 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                             "GET"))
                 else {
                     if (mime.startsWith("application/vnd.google-apps."))
-                        throw IOException("Google no permite exportar este tipo de documento")
+                        throw IOException(tr("Google no permite exportar este tipo de documento"))
                     http.response(http.open("$drive/files/${encode(path)}?alt=media", "GET"))
                 }
             }
@@ -142,15 +142,15 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                 if (c.responseCode in 300..399) {
                     val url =
                         c.getHeaderField("Location")
-                            ?: throw IOException("OneDrive no devolvió una descarga")
+                            ?: throw IOException(tr("OneDrive no devolvió una descarga"))
                     c.disconnect()
                     if (URL(url).protocol != "https")
-                        throw IOException("Descarga de OneDrive sin HTTPS")
+                        throw IOException(tr("Descarga de OneDrive sin HTTPS"))
                     // This preauthenticated URL must never receive the Microsoft account token.
                     Http("").response(Http("").open(url, "GET"))
                 } else http.response(c)
             }
-            else -> throw IOException("Proveedor no compatible")
+            else -> throw IOException(tr("Proveedor no compatible"))
         }
 
     override fun mkdir(parent: String, name: String): String {
@@ -183,7 +183,7 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                             .put("folder", JSONObject())
                             .put("@microsoft.graph.conflictBehavior", "fail"))
                     .getString("id")
-            else -> throw IOException("Proveedor no compatible")
+            else -> throw IOException(tr("Proveedor no compatible"))
         }
     }
 
@@ -214,9 +214,9 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                     http.response(start).close()
                     val url =
                         start.getHeaderField("Location")
-                            ?: throw IOException("No se pudo iniciar la subida")
+                            ?: throw IOException(tr("No se pudo iniciar la subida"))
                     if (!url.startsWith("https://www.googleapis.com/"))
-                        throw IOException("Destino de subida inesperado")
+                        throw IOException(tr("Destino de subida inesperado"))
                     val c =
                         http.open(
                             url, "PUT", mapOf("Content-Type" to "application/octet-stream"), size)
@@ -286,7 +286,7 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                     else if (final) break
                     offset += n
                     if (n == 0 && offset < size)
-                        throw IOException("El archivo cambió durante la subida")
+                        throw IOException(tr("El archivo cambió durante la subida"))
                 }
                 path
             }
@@ -320,14 +320,14 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                                             .put("@microsoft.graph.conflictBehavior", "fail")
                                             .put("name", name)))
                             .getString("uploadUrl")
-                    if (URL(upload).protocol != "https") throw IOException("Subida sin HTTPS")
+                    if (URL(upload).protocol != "https") throw IOException(tr("Subida sin HTTPS"))
                     val chunk = ByteArray(10 * 320 * 1024)
                     var offset = 0L
                     var id = ""
                     try {
                         while (offset < size) {
                             val n = readChunk(input, chunk)
-                            if (n == 0) throw IOException("El archivo cambió durante la subida")
+                            if (n == 0) throw IOException(tr("El archivo cambió durante la subida"))
                             val c =
                                 Http("")
                                     .open(
@@ -347,7 +347,7 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                             id = response.optString("id")
                             offset += n
                         }
-                        if (id.isBlank()) throw IOException("OneDrive no confirmó la subida")
+                        if (id.isBlank()) throw IOException(tr("OneDrive no confirmó la subida"))
                         id
                     } catch (e: Exception) {
                         runCatching { Http("").request(upload, "DELETE") }
@@ -355,7 +355,7 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                     }
                 }
             }
-            else -> throw IOException("Proveedor no compatible")
+            else -> throw IOException(tr("Proveedor no compatible"))
         }
     }
 
@@ -373,7 +373,7 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                         .put("autorename", false))
             Protocol.ONEDRIVE ->
                 patch("$graph/items/${encode(entry.path)}", JSONObject().put("name", name))
-            else -> throw IOException("Proveedor no compatible")
+            else -> throw IOException(tr("Proveedor no compatible"))
         }
     }
 
@@ -388,7 +388,7 @@ internal class CloudFs(private val account: Connection) : RemoteFs {
                 patch("$drive/files/${encode(entry.path)}", JSONObject().put("trashed", true))
             Protocol.DROPBOX -> drop("files/delete_v2", JSONObject().put("path", entry.path))
             Protocol.ONEDRIVE -> http.request("$graph/items/${encode(entry.path)}", "DELETE")
-            else -> throw IOException("Proveedor no compatible")
+            else -> throw IOException(tr("Proveedor no compatible"))
         }
     }
 

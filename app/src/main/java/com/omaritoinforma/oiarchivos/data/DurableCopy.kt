@@ -10,13 +10,13 @@ import kotlinx.coroutines.ensureActive
 /** A local copy/move journal with a commit record written before replacing a destination. */
 class DurableCopy
 private constructor(
-    val id: String,
-    val destination: String,
+    override val id: String,
+    override val destination: String,
     val move: Boolean,
     private val roots: List<String>,
     private val entries: MutableList<Entry>,
     private val journal: File
-) {
+) : DurableJob {
     private data class Entry(
         val source: String,
         val target: String,
@@ -30,13 +30,13 @@ private constructor(
         var digest: String = ""
     )
 
-    val title
-        get() = if (move) "Moviendo" else "Copiando"
+    override val title
+        get() = if (move) tr("Moviendo") else tr("Copiando")
 
-    val completed
+    override val completed
         get() = entries.count { it.phase == 3 && !it.directory }
 
-    val count
+    override val count
         get() = entries.count { !it.directory && it.phase != 4 }
 
     private fun partial(index: Int) =
@@ -70,7 +70,7 @@ private constructor(
             }
         }
 
-    fun discard() {
+    override fun discard() {
         entries.indices.forEach { index ->
             val part = partial(index)
             if (!Files.isSymbolicLink(part.toPath())) part.delete()
@@ -85,7 +85,7 @@ private constructor(
             target.canonicalPath != entry.target ||
             !entry.target.startsWith(destination + File.separator) ||
             Files.isSymbolicLink(target.toPath()))
-            throw IOException("La ruta de destino cambió desde que se inició la transferencia")
+            throw IOException(tr("La ruta de destino cambió desde que se inició la transferencia"))
         return target
     }
 
@@ -96,7 +96,7 @@ private constructor(
             !source.isFile ||
             source.length() != entry.size ||
             source.lastModified() != entry.modified)
-            throw IOException("El original cambió: ${source.name}. Se conserva sin borrar.")
+            throw IOException(tr("El original cambió: {0}. Se conserva sin borrar.", source.name))
         return source
     }
 
@@ -114,7 +114,7 @@ private constructor(
         return hash.digest().joinToString("") { "%02x".format(it) }
     }
 
-    suspend fun run(report: (OpProgress) -> Unit): OperationResult {
+    override suspend fun run(report: (OpProgress) -> Unit): OperationResult {
         val tracker = Tracker(title, report)
         tracker.totalFiles = count
         tracker.totalBytes = entries.filter { !it.directory && it.phase != 4 }.sumOf { it.size }
@@ -124,7 +124,7 @@ private constructor(
             val target = checkedTarget(entry)
             if (entry.directory) {
                 if (!target.isDirectory && !target.mkdirs())
-                    throw IOException("No se pudo crear ${target.name}")
+                    throw IOException(tr("No se pudo crear {0}", target.name))
                 entry.phase = 3
                 continue
             }
@@ -132,14 +132,14 @@ private constructor(
             if (entry.phase >= 3) {
                 if (!target.isFile || digest(target) != entry.digest)
                     throw IOException(
-                        "Un archivo ya copiado cambió o fue eliminado: ${target.name}")
+                        tr("Un archivo ya copiado cambió o fue eliminado: {0}", target.name))
                 tracker.addBytes(entry.size)
                 tracker.fileDone()
                 continue
             }
             val part = partial(index)
             if (Files.isSymbolicLink(part.toPath()))
-                throw IOException("El archivo parcial fue sustituido por un enlace")
+                throw IOException(tr("El archivo parcial fue sustituido por un enlace"))
             if (entry.phase == 1) {
                 // The process may have died between rename and persisting its completion.
                 if (!part.exists() && target.isFile && digest(target) == entry.digest) {
@@ -147,14 +147,14 @@ private constructor(
                     save()
                 } else if (!part.isFile || digest(part) != entry.digest)
                     throw IOException(
-                        "La copia parcial cambió; descarta esta transferencia y vuelve a intentarlo")
+                        tr("La copia parcial cambió; descarta esta transferencia y vuelve a intentarlo"))
             }
             if (entry.phase == 0) {
                 val source = checkSource(entry)
                 if (!target.parentFile!!.isDirectory && !target.parentFile!!.mkdirs())
-                    throw IOException("No se pudo crear el destino")
+                    throw IOException(tr("No se pudo crear el destino"))
                 val resumeAt = if (part.exists()) part.length() else 0L
-                if (resumeAt > entry.size) throw IOException("Copia parcial no válida")
+                if (resumeAt > entry.size) throw IOException(tr("Copia parcial no válida"))
                 val hash = MessageDigest.getInstance("SHA-256")
                 source.inputStream().use { input ->
                     // Validate the entire persisted prefix against the still-unchanged original.
@@ -169,7 +169,7 @@ private constructor(
                                 DataInputStream(input).readFully(a, 0, n)
                                 DataInputStream(old).readFully(b, 0, n)
                                 if (!(0 until n).all { a[it] == b[it] })
-                                    throw IOException("El original o la copia parcial cambió")
+                                    throw IOException(tr("El original o la copia parcial cambió"))
                                 hash.update(a, 0, n)
                                 tracker.addBytes(n.toLong())
                                 remaining -= n
@@ -190,7 +190,7 @@ private constructor(
                         out.fd.sync()
                     }
                     if (bytes != entry.size)
-                        throw IOException("El original cambió durante la copia")
+                        throw IOException(tr("El original cambió durante la copia"))
                 }
                 checkSource(entry)
                 entry.digest = hash.digest().joinToString("") { "%02x".format(it) }
@@ -204,10 +204,10 @@ private constructor(
                     if (!target.isFile ||
                         target.length() != entry.oldSize ||
                         target.lastModified() != entry.oldModified)
-                        throw IOException("El destino cambió; se conservan ambos archivos")
+                        throw IOException(tr("El destino cambió; se conservan ambos archivos"))
                 } else if (target.exists())
                     throw IOException(
-                        "Se creó otro archivo en el destino; se conserva sin sustituir")
+                        tr("Se creó otro archivo en el destino; se conserva sin sustituir"))
                 part.setLastModified(entry.modified)
                 SafeFiles.commit(part, target, entry.replace)
                 entry.phase = 2
@@ -216,10 +216,10 @@ private constructor(
             if (entry.phase == 2 && move && File(entry.source).exists()) {
                 val source = checkSource(entry)
                 if (digest(source) != entry.digest || digest(target) != entry.digest)
-                    throw IOException("El original o el destino cambió; el original se conserva")
+                    throw IOException(tr("El original o el destino cambió; el original se conserva"))
                 currentCoroutineContext().ensureActive()
                 if (!source.delete())
-                    throw IOException("Copiado, pero no se pudo borrar el original: ${source.name}")
+                    throw IOException(tr("Copiado, pero no se pudo borrar el original: {0}", source.name))
             }
             entry.phase = 3
             save()
@@ -253,7 +253,7 @@ private constructor(
             conflict: Conflict
         ): DurableCopy {
             if (!directory.isDirectory && !directory.mkdirs())
-                throw IOException("No se pudo guardar la transferencia")
+                throw IOException(tr("No se pudo guardar la transferencia"))
             val dest = destination.canonicalFile
             val roots =
                 sources
@@ -265,15 +265,15 @@ private constructor(
                                 root.canonicalPath.startsWith(other.canonicalPath + File.separator)
                         }
                     }
-            if (roots.isEmpty()) throw IOException("Selecciona al menos un archivo")
+            if (roots.isEmpty()) throw IOException(tr("Selecciona al menos un archivo"))
             if (roots.any {
                 it.isDirectory &&
                     (dest == it.canonicalFile ||
                         dest.path.startsWith(it.canonicalPath + File.separator))
             })
-                throw IOException("No puedes copiar una carpeta dentro de sí misma")
+                throw IOException(tr("No puedes copiar una carpeta dentro de sí misma"))
             if (!destination.isDirectory && !destination.mkdirs())
-                throw IOException("Destino no válido")
+                throw IOException(tr("Destino no válido"))
             val entries = ArrayList<Entry>()
             val reserved = hashSetOf<String>()
             fun unique(initial: File): File {
@@ -294,14 +294,14 @@ private constructor(
                 return target
             }
             fun plan(source: File, initial: File, depth: Int = 0) {
-                if (depth > 128) throw IOException("La carpeta supera 128 niveles")
+                if (depth > 128) throw IOException(tr("La carpeta supera 128 niveles"))
                 SafeFiles.requireRegular(source)
                 if (!source.isFile && !source.isDirectory)
-                    throw IOException("No se copian archivos especiales: ${source.name}")
+                    throw IOException(tr("No se copian archivos especiales: {0}", source.name))
                 val src = source.canonicalFile
                 var target = initial.canonicalFile
                 if (!target.path.startsWith(dest.path + File.separator))
-                    throw IOException("El destino contiene un enlace fuera de la carpeta elegida")
+                    throw IOException(tr("El destino contiene un enlace fuera de la carpeta elegida"))
                 val same = src == target
                 val existing = target.exists() || target.path in reserved
                 var skip = same && move
@@ -310,7 +310,7 @@ private constructor(
                 else if (existing && !(src.isDirectory && target.isDirectory)) {
                     if (conflict == Conflict.SKIP) skip = true
                     else if (src.isDirectory != target.isDirectory)
-                        throw IOException("Tipos incompatibles: ${target.name}")
+                        throw IOException(tr("Tipos incompatibles: {0}", target.name))
                 }
                 reserved += target.path
                 entries +=
@@ -325,10 +325,10 @@ private constructor(
                         target.lastModified(),
                         if (skip) 4 else 0)
                 if (entries.size > 100000)
-                    throw IOException("Selecciona menos de 100.000 elementos por transferencia")
+                    throw IOException(tr("Selecciona menos de 100.000 elementos por transferencia"))
                 if (src.isDirectory && !skip)
                     for (child in
-                        src.listFiles() ?: throw IOException("No se pudo leer ${src.name}")) {
+                        src.listFiles() ?: throw IOException(tr("No se pudo leer {0}", src.name))) {
                         if (!Files.isSymbolicLink(child.toPath()))
                             plan(child, File(target, child.name), depth + 1)
                     }
@@ -347,18 +347,18 @@ private constructor(
 
         fun load(file: File): DurableCopy {
             if (file.length() > 32 * 1024 * 1024)
-                throw IOException("Registro de transferencia demasiado grande")
+                throw IOException(tr("Registro de transferencia demasiado grande"))
             DataInputStream(file.inputStream().buffered()).use { input ->
                 if (input.readUTF() != "OI-COPY-2")
-                    throw IOException("Registro de transferencia no válido")
+                    throw IOException(tr("Registro de transferencia no válido"))
                 val id = input.readUTF()
                 if (UUID.fromString(id).toString() + ".job" != file.name)
-                    throw IOException("Identificador de transferencia no válido")
+                    throw IOException(tr("Identificador de transferencia no válido"))
                 val destination = input.readUTF()
                 val move = input.readBoolean()
                 fun count(): Int =
                     input.readInt().also {
-                        if (it !in 0..100000) throw IOException("Registro no válido")
+                        if (it !in 0..100000) throw IOException(tr("Registro no válido"))
                     }
                 val roots = List(count()) { input.readUTF() }
                 val entries =
@@ -376,7 +376,7 @@ private constructor(
                             input.readUTF())
                     }
                 if (entries.any { it.size < 0 || it.phase !in 0..4 })
-                    throw IOException("Registro de transferencia no válido")
+                    throw IOException(tr("Registro de transferencia no válido"))
                 return DurableCopy(id, destination, move, roots, entries, file)
             }
         }

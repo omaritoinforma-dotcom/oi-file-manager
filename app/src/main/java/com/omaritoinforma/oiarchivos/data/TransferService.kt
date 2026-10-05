@@ -28,7 +28,7 @@ data class TransferRecord(
 
 data class OperationResult(val message: String?, val changed: List<File> = emptyList())
 
-/** Operations belong to the service, not to a Compose screen or Activity. */
+/** Las operaciones pertenecen al servicio, no a una pantalla de Compose ni a la Activity. */
 class TransferService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var job: Job? = null
@@ -56,9 +56,8 @@ class TransferService : Service() {
         startForeground(11, notification(this, OpProgress(pendingTitle)))
         if (job?.isActive == true) return START_NOT_STICKY
         val work = pendingWork
-        val durable = pendingDurable
         pendingWork = null
-        pendingDurable = null
+        userCanceled = false
         if (work == null) {
             finish()
             return START_NOT_STICKY
@@ -97,10 +96,11 @@ class TransferService : Service() {
                     record(
                         this@TransferService,
                         TransferRecord(id, title, System.currentTimeMillis(), "Completado", detail))
+                    notifyDone(title, detail, failed = false)
                     completion.value = System.nanoTime() to detail
                 } catch (e: CancellationException) {
                     if (userCanceled)
-                        withContext(NonCancellable + Dispatchers.IO) { durable?.discard() }
+                        withContext(NonCancellable + Dispatchers.IO) { activeDurable?.discard() }
                     record(
                         this@TransferService,
                         TransferRecord(
@@ -115,6 +115,7 @@ class TransferService : Service() {
                     record(
                         this@TransferService,
                         TransferRecord(id, title, System.currentTimeMillis(), "Error", detail))
+                    notifyDone(title, detail, failed = true)
                     completion.value = System.nanoTime() to "Error: $detail"
                 } finally {
                     finish()
@@ -123,8 +124,39 @@ class TransferService : Service() {
         return START_NOT_STICKY
     }
 
+    /**
+     * Aviso al terminar, como en ES: queda en la barra de notificaciones hasta tocarlo, salvo que
+     * esté activado «Cerrar la notificación al terminar».
+     */
+    private fun notifyDone(title: String, detail: String, failed: Boolean) {
+        if (Prefs(this).closeNotificationWhenDone) return
+        val open =
+            PendingIntent.getActivity(
+                this,
+                4,
+                Intent(this, MainActivity::class.java)
+                    .putExtra("screen", "transfers")
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val notification =
+            NotificationCompat.Builder(this, "transfers")
+                .setSmallIcon(
+                    if (failed) android.R.drawable.stat_notify_error
+                    else android.R.drawable.stat_sys_download_done)
+                .setContentTitle(if (failed) "$title: error" else "$title: terminado")
+                .setContentText(detail)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(detail))
+                .setContentIntent(open)
+                .setAutoCancel(true)
+                .build()
+        runCatching {
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager).notify(DONE_ID, notification)
+        }
+    }
+
     private fun finish() {
         interruptedDetail = ""
+        activeDurable = null
         progress.value = null
         paused.value = false
         supportsPause.value = false
@@ -144,24 +176,37 @@ class TransferService : Service() {
     }
 
     companion object {
+        /** Identificador del aviso de tarea terminada (el de progreso es el 11). */
+        const val DONE_ID = 12
         val progress = MutableStateFlow<OpProgress?>(null)
         val completion = MutableStateFlow<Pair<Long, String>?>(null)
         val paused = MutableStateFlow(false)
         val supportsPause = MutableStateFlow(false)
-        private var pendingDurable: DurableCopy? = null
+        @Volatile private var activeDurable: DurableJob? = null
         private var pendingWork: (suspend ((OpProgress) -> Unit) -> OperationResult)? = null
         private var pendingTitle = "Operación"
         @Volatile private var busy = false
 
-        @Synchronized
+        /** Verdadero mientras hay una operación en curso. */
+        val isBusy: Boolean
+            get() = busy
+
         fun submit(
             ctx: Context,
             title: String,
             work: suspend ((OpProgress) -> Unit) -> OperationResult
+        ): Boolean = start(ctx, title, false, work)
+
+        @Synchronized
+        private fun start(
+            ctx: Context,
+            title: String,
+            pausable: Boolean,
+            work: suspend ((OpProgress) -> Unit) -> OperationResult
         ): Boolean {
             if (busy) return false
             busy = true
-            supportsPause.value = pendingDurable != null
+            supportsPause.value = pausable
             pendingWork = work
             pendingTitle = title
             progress.value = OpProgress(title)
@@ -188,17 +233,24 @@ class TransferService : Service() {
 
         fun jobsDirectory(ctx: Context) = File(ctx.filesDir, "transfer-jobs")
 
-        @Synchronized
-        fun submitDurable(ctx: Context, job: DurableCopy): Boolean {
-            if (busy) return false
-            pendingDurable = job
-            return try {
-                submit(ctx, job.title) { job.run(it) }
-            } catch (e: Exception) {
-                pendingDurable = null
-                throw e
+        fun submitDurable(ctx: Context, job: DurableJob): Boolean =
+            submitDurable(ctx, job.title) { job }
+
+        /**
+         * [plan] se ejecuta en el servicio en un hilo de E/S, para poder listar carpetas remotas. En
+         * cuanto existe el registro se puede pausar, y cancelar descarta sus archivos parciales.
+         */
+        fun submitDurable(ctx: Context, title: String, plan: suspend () -> DurableJob): Boolean =
+            start(ctx, title, true) { report ->
+                val job = plan()
+                activeDurable = job
+                job.run(report)
             }
-        }
+
+        /** Copias locales y transferencias de red/nube pendientes por una pausa, un error o un cierre. */
+        fun pendingJobs(ctx: Context): List<DurableJob> =
+            DurableCopy.pending(jobsDirectory(ctx)) +
+                DurableRemote.pending(jobsDirectory(ctx), RemoteFiles::connectById)
 
         fun createChannel(ctx: Context) {
             (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
@@ -241,7 +293,7 @@ class TransferService : Service() {
                         (p.doneBytes * 100 / p.totalBytes).toInt().coerceIn(0, 100)
                     else 0,
                     p.totalBytes <= 0)
-                .addAction(0, "Cancelar", cancel)
+                .addAction(0, tr("Cancelar"), cancel)
                 .apply {
                     if (supportsPause.value)
                         addAction(0, if (paused.value) "Reanudar" else "Pausar", pause)

@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draganddrop.*
 import androidx.compose.ui.unit.dp
+import com.omaritoinforma.oiarchivos.data.tr
 
 private const val FILE_DRAG_MIME = "application/x-oi-files"
 private data class LocalFileDrag(val paths: List<String>)
@@ -23,12 +24,12 @@ private data class LocalFileDrag(val paths: List<String>)
 @Composable
 fun FileDragHandle(paths: List<String>) {
     val currentPaths by rememberUpdatedState(paths)
-    Icon(Icons.Default.DragIndicator, "Mantén pulsado y arrastra al otro panel",
+    Icon(Icons.Default.DragIndicator, tr("Mantén pulsado y arrastra al otro panel"),
         Modifier.padding(12.dp).dragAndDropSource {
             detectTapGestures(onLongPress = {
                 val selected = currentPaths.distinct().take(100000)
                 if (selected.isNotEmpty()) startTransfer(DragAndDropTransferData(
-                    ClipData("Archivos", arrayOf(FILE_DRAG_MIME), ClipData.Item("${selected.size} elementos")),
+                    ClipData(tr("Archivos"), arrayOf(FILE_DRAG_MIME), ClipData.Item(tr("{0} elementos", selected.size))),
                     localState = LocalFileDrag(selected)))
             })
         })

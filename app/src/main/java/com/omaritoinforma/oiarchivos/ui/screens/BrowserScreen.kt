@@ -4,6 +4,7 @@ package com.omaritoinforma.oiarchivos.ui.screens
 
 import android.content.Context
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -29,11 +31,20 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Cast
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.CheckBox
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.Badge
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentCut
@@ -49,6 +60,7 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SelectAll
@@ -61,6 +73,7 @@ import androidx.compose.material.icons.filled.ViewHeadline
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
@@ -69,6 +82,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -108,6 +122,7 @@ import com.omaritoinforma.oiarchivos.ui.components.Breadcrumb
 import com.omaritoinforma.oiarchivos.ui.components.FileRow
 import com.omaritoinforma.oiarchivos.ui.components.GridCell
 import com.omaritoinforma.oiarchivos.ui.components.MenuItem
+import com.omaritoinforma.oiarchivos.util.FileKind
 import com.omaritoinforma.oiarchivos.util.Kinds
 import com.omaritoinforma.oiarchivos.util.Opener
 import com.omaritoinforma.oiarchivos.util.PathUtil
@@ -117,7 +132,7 @@ fun locationTitle(loc: Location): String =
     when (loc) {
         is Location.Folder -> PathUtil.displayName(loc.path)
         is Location.Category -> loc.category.label
-        is Location.Search -> "Buscar: ${loc.query}"
+        is Location.Search -> tr("Buscar: {0}", loc.query)
     }
 
 @Composable
@@ -129,12 +144,12 @@ fun BrowserScreen(vm: MainViewModel, openDrawer: () -> Unit) {
     }
     val ctx = LocalContext.current
     val loc = tab.location
-    val inSelection = tab.selected.isNotEmpty()
+    val inSelection = tab.selected.isNotEmpty() || tab.selectMode
     var dialog by remember { mutableStateOf<BrowserDialog?>(null) }
     var searching by remember { mutableStateOf(false) }
 
     fun openItem(item: FileItem) {
-        if (tab.selected.isNotEmpty()) {
+        if (inSelection) {
             vm.toggleSelect(item)
             return
         }
@@ -173,16 +188,16 @@ fun BrowserScreen(vm: MainViewModel, openDrawer: () -> Unit) {
             }
         },
         bottomBar = {
-            if (inSelection) {
+            if (tab.selected.isNotEmpty()) {
                 SelectionBottomBar(vm, tab, ctx) { dialog = it }
-            } else if (vm.clipboard != null && loc is Location.Folder) {
+            } else if (!inSelection && vm.clipboard != null && loc is Location.Folder) {
                 PasteBar(vm)
             }
         },
         floatingActionButton = {
             if (!inSelection && loc is Location.Folder) {
                 FloatingActionButton(onClick = { dialog = BrowserDialog.CreateMenu }) {
-                    Icon(Icons.Filled.Add, "Crear")
+                    Icon(Icons.Filled.Add, tr("Crear"))
                 }
             }
         },
@@ -199,9 +214,9 @@ fun BrowserScreen(vm: MainViewModel, openDrawer: () -> Unit) {
                 if (!tab.loading && tab.items.isEmpty()) {
                     EmptyState(
                         when (loc) {
-                            is Location.Folder -> "Esta carpeta está vacía"
-                            is Location.Category -> "No hay archivos en esta categoría"
-                            is Location.Search -> "Sin resultados"
+                            is Location.Folder -> tr("Esta carpeta está vacía")
+                            is Location.Category -> tr("No hay archivos en esta categoría")
+                            is Location.Search -> tr("Sin resultados")
                         },
                     )
                 } else {
@@ -231,10 +246,26 @@ private fun BrowserTopBar(
     val context = LocalContext.current
     var menu by remember { mutableStateOf(false) }
     TopAppBar(
-        navigationIcon = { IconButton(onClick = openDrawer) { Icon(Icons.Filled.Menu, "Menú") } },
-        title = { Text(locationTitle(loc), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        navigationIcon = { IconButton(onClick = openDrawer) { Icon(Icons.Filled.Menu, tr("Menú")) } },
+        title = {
+            if (vm.toolbarShowName.value)
+                Text(locationTitle(loc), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        },
         actions = {
-            IconButton(onClick = onSearch) { Icon(Icons.Filled.Search, "Buscar") }
+            IconButton(onClick = onSearch) { Icon(Icons.Filled.Search, tr("Buscar")) }
+            if (vm.showSelectButton.value)
+                IconButton(onClick = vm::startSelecting) {
+                    Icon(Icons.Filled.CheckBox, tr("Seleccionar"))
+                }
+            if (vm.showWindowsButton.value) {
+                var tabsDialog by remember { mutableStateOf(false) }
+                IconButton(onClick = { tabsDialog = true }) {
+                    BadgedBox(badge = { Badge { Text("${vm.tabs.size}") } }) {
+                        Icon(Icons.Filled.Tab, tr("Pestañas"))
+                    }
+                }
+                if (tabsDialog) TabsDialog(vm) { tabsDialog = false }
+            }
             IconButton(onClick = { vm.cycleViewMode() }) {
                 @Suppress("DEPRECATION")
                 val icon =
@@ -243,59 +274,59 @@ private fun BrowserTopBar(
                         ViewMode.DETAILS -> Icons.Filled.ViewList
                         ViewMode.GRID -> Icons.Filled.GridView
                     }
-                Icon(icon, "Cambiar vista")
+                Icon(icon, tr("Cambiar vista"))
             }
             Box {
                 IconButton(onClick = { menu = true }) {
-                    Icon(Icons.Filled.MoreVert, "Más opciones")
+                    Icon(Icons.Filled.MoreVert, tr("Más opciones"))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    MenuItem("Búsqueda avanzada", Icons.Filled.Search) {
+                    MenuItem(tr("Búsqueda avanzada"), Icons.Filled.Search) {
                         menu = false
                         vm.goTo(
                             Screen.AdvancedSearch(
                                 (loc as? Location.Folder)?.path ?: PathUtil.internalRoot))
                     }
-                    MenuItem("Analizar esta carpeta", Icons.Filled.Info) {
+                    MenuItem(tr("Analizar esta carpeta"), Icons.Filled.Info) {
                         menu = false
                         vm.goTo(
                             Screen.Analysis(
                                 (loc as? Location.Folder)?.path ?: PathUtil.internalRoot))
                     }
-                    MenuItem("Doble panel", Icons.Filled.ViewList) {
+                    MenuItem(tr("Doble panel"), Icons.Filled.ViewList) {
                         menu = false
                         vm.goTo(
                             Screen.DualPane(
                                 (loc as? Location.Folder)?.path ?: PathUtil.internalRoot))
                     }
-                    MenuItem("Red, nube y USB", Icons.Filled.Link) {
+                    MenuItem(tr("Red, nube y USB"), Icons.Filled.Link) {
                         menu = false
                         vm.goTo(Screen.Connections)
                     }
                     if (NetworkClipboard.value != null && loc is Location.Folder) {
-                        MenuItem("Pegar desde red / nube", Icons.Filled.Download) {
+                        MenuItem(tr("Pegar desde red / nube"), Icons.Filled.Download) {
                             menu = false
                             vm.pasteNetwork(loc.path)
                         }
                     }
-                    MenuItem("Ordenar…", Icons.Filled.Sort) {
+                    MenuItem(tr("Ordenar…"), Icons.Filled.Sort) {
                         menu = false
                         onDialog(BrowserDialog.Sort)
                     }
                     MenuItem(
-                        if (vm.showHidden) "Ocultar archivos ocultos"
-                        else "Mostrar archivos ocultos",
+                        if (vm.showHidden) tr("Ocultar archivos ocultos")
+                        else tr("Mostrar archivos ocultos"),
                         if (vm.showHidden) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
                     ) {
                         menu = false
                         vm.toggleHidden()
                     }
                     if (loc is Location.Folder) {
-                        MenuItem("Carpeta superior", Icons.Filled.ArrowUpward) {
+                        MenuItem(tr("Carpeta superior"), Icons.Filled.ArrowUpward) {
                             menu = false
                             vm.up()
                         }
-                        MenuItem("Acceso directo en Android", Icons.Filled.OpenInNew) {
+                        MenuItem(tr("Acceso directo en Android"), Icons.Filled.OpenInNew) {
                             menu = false
                             runCatching {
                                     com.omaritoinforma.oiarchivos.util.FolderActions.pin(
@@ -305,26 +336,26 @@ private fun BrowserTopBar(
                         }
                         val marked = loc.path in vm.bookmarks
                         MenuItem(
-                            if (marked) "Quitar de marcadores" else "Agregar a marcadores",
+                            if (marked) tr("Quitar de marcadores") else tr("Agregar a marcadores"),
                             if (marked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
                         ) {
                             menu = false
                             vm.toggleBookmark(loc.path)
                         }
                     }
-                    MenuItem("Nueva pestaña", Icons.Filled.Tab) {
+                    MenuItem(tr("Nueva pestaña"), Icons.Filled.Tab) {
                         menu = false
                         vm.addTab()
                     }
-                    MenuItem("Seleccionar todo", Icons.Filled.SelectAll) {
+                    MenuItem(tr("Seleccionar todo"), Icons.Filled.SelectAll) {
                         menu = false
                         vm.selectAll()
                     }
-                    MenuItem("Actualizar", Icons.Filled.Refresh) {
+                    MenuItem(tr("Actualizar"), Icons.Filled.Refresh) {
                         menu = false
                         vm.refresh()
                     }
-                    MenuItem("Inicio", Icons.Filled.Home) {
+                    MenuItem(tr("Inicio"), Icons.Filled.Home) {
                         menu = false
                         vm.goHome()
                     }
@@ -340,19 +371,19 @@ private fun SelectionTopBar(vm: MainViewModel, tab: TabState) {
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = vm::clearSelection) {
-                Icon(Icons.Filled.Close, "Cancelar selección")
+                Icon(Icons.Filled.Close, tr("Cancelar selección"))
             }
         },
-        title = { Text("${tab.selected.size} seleccionado(s)") },
+        title = { Text(tr("{0} seleccionado(s)", tab.selected.size)) },
         actions = {
             IconButton(onClick = vm::selectRange) {
-                Icon(Icons.Filled.UnfoldMore, "Seleccionar rango")
+                Icon(Icons.Filled.UnfoldMore, tr("Seleccionar rango"))
             }
-            IconButton(onClick = vm::selectAll) { Icon(Icons.Filled.SelectAll, "Seleccionar todo") }
+            IconButton(onClick = vm::selectAll) { Icon(Icons.Filled.SelectAll, tr("Seleccionar todo")) }
             Box {
-                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Más") }
+                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, tr("Más")) }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    MenuItem("Invertir selección", Icons.Filled.SelectAll) {
+                    MenuItem(tr("Invertir selección"), Icons.Filled.SelectAll) {
                         menu = false
                         vm.invertSelection()
                     }
@@ -377,14 +408,14 @@ private fun SearchTopBar(onSubmit: (String) -> Unit, onClose: () -> Unit) {
     TopAppBar(
         navigationIcon = {
             IconButton(onClick = onClose) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, "Cerrar búsqueda")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, tr("Cerrar búsqueda"))
             }
         },
         title = {
             TextField(
                 value = query,
                 onValueChange = { query = it },
-                placeholder = { Text("Buscar aquí y en subcarpetas…") },
+                placeholder = { Text(tr("Buscar aquí y en subcarpetas…")) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { submit() }),
@@ -398,7 +429,7 @@ private fun SearchTopBar(onSubmit: (String) -> Unit, onClose: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().focusRequester(focus),
             )
         },
-        actions = { IconButton(onClick = submit) { Icon(Icons.Filled.Search, "Buscar") } },
+        actions = { IconButton(onClick = submit) { Icon(Icons.Filled.Search, tr("Buscar")) } },
     )
 }
 
@@ -413,75 +444,209 @@ private fun SelectionBottomBar(
     val single = selectedItems.singleOrNull()
     val files = selectedItems.filter { !it.isDirectory }
     var menu by remember { mutableStateOf(false) }
-    BottomAppBar {
-        BarAction(Icons.Filled.ContentCopy, "Copiar", Modifier.weight(1f)) {
-            vm.copySelection(move = false)
-        }
-        BarAction(Icons.Filled.ContentCut, "Cortar", Modifier.weight(1f)) {
-            vm.copySelection(move = true)
-        }
-        BarAction(Icons.Filled.Delete, "Eliminar", Modifier.weight(1f)) {
-            setDialog(BrowserDialog.Delete(selectedItems))
-        }
-        BarAction(Icons.Filled.Edit, "Renombrar", Modifier.weight(1f)) {
-            setDialog(
-                if (single != null) BrowserDialog.Rename(single)
-                else BrowserDialog.BatchRename(selectedItems))
-        }
-        Box(Modifier.weight(1f)) {
-            BarAction(Icons.Filled.MoreVert, "Más", Modifier.fillMaxWidth()) { menu = true }
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                if (files.isNotEmpty()) {
-                    MenuItem("Compartir", Icons.Filled.Share) {
-                        menu = false
-                        Opener.share(ctx, files.map { it.file })
+    var ringtone by remember { mutableStateOf<java.io.File?>(null) }
+    var playlistPaths by remember { mutableStateOf<List<String>?>(null) }
+    var openAs by remember { mutableStateOf<java.io.File?>(null) }
+    openAs?.let { target ->
+        AlertDialog(
+            onDismissRequest = { openAs = null },
+            title = { Text(tr("Abrir como")) },
+            text = {
+                Column {
+                    com.omaritoinforma.oiarchivos.util.OpenAs.entries.forEach { type ->
+                        ListItem(
+                            headlineContent = { Text(type.label) },
+                            modifier =
+                                Modifier.clickable {
+                                    openAs = null
+                                    vm.clearSelection()
+                                    if (type.mime == null) vm.openEditor(target.path)
+                                    else Opener.open(ctx, target, chooser = true, mimeType = type.mime)
+                                })
                     }
                 }
-                MenuItem("Comprimir en ZIP", Icons.Filled.Archive) {
-                    menu = false
-                    setDialog(BrowserDialog.Compress(selectedItems))
+            },
+            confirmButton = { TextButton(onClick = { openAs = null }) { Text(tr("Cancelar")) } })
+    }
+    playlistPaths?.let { paths -> AddToPlaylistDialog(vm, paths) { playlistPaths = null } }
+    ringtone?.let { audio ->
+        AlertDialog(
+            onDismissRequest = { ringtone = null },
+            title = { Text(tr("Poner como tono")) },
+            text = {
+                Column {
+                    com.omaritoinforma.oiarchivos.util.Ringtones.Kind.entries.forEach { kind ->
+                        ListItem(
+                            headlineContent = { Text(kind.label) },
+                            modifier =
+                                Modifier.clickable {
+                                    ringtone = null
+                                    vm.clearSelection()
+                                    vm.setRingtone(audio, kind)
+                                })
+                    }
                 }
+            },
+            confirmButton = { TextButton(onClick = { ringtone = null }) { Text(tr("Cancelar")) } })
+    }
+    val barActions = ToolbarLayout.actions(vm.toolbarActions.value)
+    fun perform(action: ToolbarAction) {
+        when (action) {
+            ToolbarAction.COPY -> vm.copySelection(move = false)
+            ToolbarAction.CUT -> vm.copySelection(move = true)
+            ToolbarAction.DELETE -> setDialog(BrowserDialog.Delete(selectedItems))
+            ToolbarAction.RENAME ->
+                setDialog(
+                    if (single != null) BrowserDialog.Rename(single)
+                    else BrowserDialog.BatchRename(selectedItems))
+            ToolbarAction.SHARE ->
+                if (files.isEmpty()) vm.toast(tr("Solo se pueden compartir archivos, no carpetas"))
+                else Opener.share(ctx, files.map { it.file })
+            ToolbarAction.COMPRESS -> setDialog(BrowserDialog.Compress(selectedItems))
+            ToolbarAction.PIN -> vm.togglePin(selectedItems)
+            ToolbarAction.PROPERTIES -> setDialog(BrowserDialog.Properties(selectedItems))
+        }
+    }
+    BottomAppBar {
+        barActions.forEach { action ->
+            BarAction(barIcon(action), action.label, Modifier.weight(1f)) { perform(action) }
+        }
+        Box(Modifier.weight(1f)) {
+            BarAction(Icons.Filled.MoreVert, tr("Más"), Modifier.fillMaxWidth()) { menu = true }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                // Lo que se quitó de la barra no se pierde: pasa a este menú.
+                listOf(ToolbarAction.COPY, ToolbarAction.CUT, ToolbarAction.DELETE, ToolbarAction.RENAME)
+                    .filter { it !in barActions }
+                    .forEach { action ->
+                        MenuItem(action.label, barIcon(action)) {
+                            menu = false
+                            perform(action)
+                        }
+                    }
+                if (selectedItems.isNotEmpty() && ToolbarAction.PIN !in barActions)
+                    MenuItem(
+                        if (selectedItems.all { it.path in vm.pinned }) tr("Quitar de fijados")
+                        else tr("Fijar arriba"),
+                        Icons.Filled.PushPin) {
+                            menu = false
+                            vm.togglePin(selectedItems)
+                        }
+                if (selectedItems.isNotEmpty()) {
+                    val allHidden = selectedItems.all { it.name.startsWith(".") }
+                    MenuItem(
+                        if (allHidden) tr("Dejar de ocultar") else tr("Ocultar"),
+                        Icons.Filled.VisibilityOff) {
+                            menu = false
+                            if (allHidden) vm.unhideFiles(selectedItems.map { it.file })
+                            else vm.hideItems(selectedItems.filter { !it.name.startsWith(".") })
+                        }
+                }
+                if (vm.clipboard != null)
+                    MenuItem(tr("Añadir al portapapeles"), Icons.Filled.ContentCopy) {
+                        menu = false
+                        vm.addSelectionToClipboard()
+                    }
+                if (files.isNotEmpty()) {
+                    if (ToolbarAction.SHARE !in barActions)
+                        MenuItem(tr("Compartir"), Icons.Filled.Share) {
+                            menu = false
+                            Opener.share(ctx, files.map { it.file })
+                        }
+                    MenuItem(tr("Enviar a otro teléfono"), Icons.Filled.Share) {
+                        menu = false
+                        vm.nearbyFiles = files.map { it.path }
+                        vm.clearSelection()
+                        vm.goTo(Screen.Nearby)
+                    }
+                    if (files.all { it.extension.equals("apk", ignoreCase = true) })
+                        MenuItem(
+                            if (files.size == 1) tr("Instalar APK") else tr("Instalar {0} APK", files.size),
+                            Icons.Filled.Android) {
+                                menu = false
+                                vm.installApks(files.map { it.file })
+                            }
+                    if (files.all { it.extension.equals("apk", ignoreCase = true) })
+                        MenuItem(tr("Instalar en Android TV"), Icons.Filled.Tv) {
+                            menu = false
+                            vm.clearSelection()
+                            vm.installOnTv(files.map { it.file })
+                        }
+                    if (files.all { Kinds.of(it) in setOf(FileKind.AUDIO, FileKind.VIDEO) })
+                        MenuItem(tr("Añadir a lista de reproducción"), Icons.AutoMirrored.Filled.PlaylistAdd) {
+                            menu = false
+                            playlistPaths = files.map { it.path }
+                        }
+                    val media = files.singleOrNull()?.takeIf {
+                        Kinds.of(it) in setOf(FileKind.IMAGE, FileKind.AUDIO, FileKind.VIDEO)
+                    }
+                    if (media != null)
+                        MenuItem(tr("Enviar a la TV"), Icons.Filled.Cast) {
+                            menu = false
+                            vm.clearSelection()
+                            vm.castTo(
+                                com.omaritoinforma.oiarchivos.data.StreamServer.LocalSource(media.file))
+                        }
+                }
+                if (ToolbarAction.COMPRESS !in barActions)
+                    MenuItem(tr("Comprimir en ZIP"), Icons.Filled.Archive) {
+                        menu = false
+                        setDialog(BrowserDialog.Compress(selectedItems))
+                    }
                 if (single != null && ArchiveTools.supports(single.file)) {
-                    MenuItem("Extraer aquí", Icons.Filled.Unarchive) {
+                    MenuItem(tr("Extraer aquí"), Icons.Filled.Unarchive) {
                         menu = false
                         vm.extract(single)
                     }
                 }
                 if (single != null && !single.isDirectory) {
                     MenuItem(
-                        if (single.extension == "oienc") "Descifrar con contraseña"
-                        else "Cifrar con contraseña",
+                        if (single.extension == "oienc") tr("Descifrar con contraseña")
+                        else tr("Cifrar con contraseña"),
                         Icons.Filled.Info) {
                             menu = false
                             setDialog(BrowserDialog.Encrypt(single, single.extension == "oienc"))
                         }
                     if (single.extension == "apk")
-                        MenuItem("Inspeccionar APK", Icons.Filled.Info) {
+                        MenuItem(tr("Inspeccionar APK"), Icons.Filled.Info) {
                             menu = false
                             setDialog(BrowserDialog.InspectApk(single))
                         }
+                    if (Kinds.ofExt(single.extension) == FileKind.IMAGE)
+                        MenuItem(tr("Recortar o girar imagen"), Icons.Filled.Image) {
+                            menu = false
+                            vm.goTo(Screen.ImageEdit(single.path))
+                        }
                     if (Kinds.ofExt(single.extension) ==
                         com.omaritoinforma.oiarchivos.util.FileKind.IMAGE)
-                        MenuItem("Establecer fondo de pantalla", Icons.Filled.Image) {
+                        MenuItem(tr("Establecer fondo de pantalla"), Icons.Filled.Image) {
                             menu = false
-                            vm.runTask("Estableciendo fondo") {
+                            vm.runTask(tr("Estableciendo fondo")) {
                                 com.omaritoinforma.oiarchivos.util.FolderActions.wallpaper(
                                     ctx, single.file)
-                                OperationResult("Fondo de pantalla actualizado")
+                                OperationResult(tr("Fondo de pantalla actualizado"))
                             }
                         }
-                    MenuItem("Abrir con…", Icons.Filled.OpenInNew) {
+                    if (Kinds.ofExt(single.extension) == FileKind.AUDIO)
+                        MenuItem(tr("Poner como tono"), Icons.Filled.Notifications) {
+                            menu = false
+                            ringtone = single.file
+                        }
+                    MenuItem(tr("Abrir con…"), Icons.Filled.OpenInNew) {
                         menu = false
                         Opener.open(ctx, single.file, chooser = true)
                     }
-                    MenuItem("Editar como texto", Icons.Filled.Edit) {
+                    MenuItem(tr("Abrir como…"), Icons.Filled.OpenInNew) {
+                        menu = false
+                        openAs = single.file
+                    }
+                    MenuItem(tr("Editar como texto"), Icons.Filled.Edit) {
                         menu = false
                         vm.clearSelection()
                         vm.openEditor(single.path)
                     }
                 }
                 if (single != null && tab.location !is Location.Folder) {
-                    MenuItem("Abrir ubicación", Icons.Filled.FolderOpen) {
+                    MenuItem(tr("Abrir ubicación"), Icons.Filled.FolderOpen) {
                         menu = false
                         vm.clearSelection()
                         vm.openFolder(single.file.parent ?: "/")
@@ -490,27 +655,27 @@ private fun SelectionBottomBar(
                 if (single != null && single.isDirectory) {
                     val marked = single.path in vm.bookmarks
                     MenuItem(
-                        if (marked) "Quitar de marcadores" else "Agregar a marcadores",
+                        if (marked) tr("Quitar de marcadores") else tr("Agregar a marcadores"),
                         Icons.Filled.Bookmark) {
                             menu = false
                             vm.toggleBookmark(single.path)
                         }
-                    MenuItem("Abrir en pestaña nueva", Icons.Filled.Tab) {
+                    MenuItem(tr("Abrir en pestaña nueva"), Icons.Filled.Tab) {
                         menu = false
                         vm.clearSelection()
                         vm.addTab(Location.Folder(single.path))
                     }
                 }
                 if (selectedItems.size > 1) {
-                    MenuItem("Renombrar en lote", Icons.Filled.Edit) {
+                    MenuItem(tr("Renombrar en lote"), Icons.Filled.Edit) {
                         menu = false
                         setDialog(BrowserDialog.BatchRename(selectedItems))
                     }
                 }
                 if (single != null)
                     MenuItem(
-                        if (single.name.startsWith('.')) "Mostrar (quitar punto)"
-                        else "Ocultar (añadir punto)",
+                        if (single.name.startsWith('.')) tr("Mostrar (quitar punto)")
+                        else tr("Ocultar (añadir punto)"),
                         Icons.Filled.Visibility) {
                             menu = false
                             vm.rename(
@@ -519,45 +684,89 @@ private fun SelectionBottomBar(
                                 else "." + single.name)
                         }
                 if (single?.isDirectory == true)
-                    MenuItem("Alternar .nomedia", Icons.Filled.VisibilityOff) {
+                    MenuItem(tr("Alternar .nomedia"), Icons.Filled.VisibilityOff) {
                         menu = false
-                        vm.runTask("Actualizando .nomedia") {
+                        vm.runTask(tr("Actualizando .nomedia")) {
                             val marker = java.io.File(single.file, ".nomedia")
                             val ok =
                                 if (marker.exists()) marker.delete() else marker.createNewFile()
-                            if (!ok) throw java.io.IOException("No se pudo cambiar .nomedia")
+                            if (!ok) throw java.io.IOException(tr("No se pudo cambiar .nomedia"))
                             OperationResult(
-                                "Configuración de medios actualizada", listOf(single.file))
+                                tr("Configuración de medios actualizada"), listOf(single.file))
                         }
                     }
-                MenuItem("Copiar ruta", Icons.Filled.Link) {
+                MenuItem(tr("Copiar ruta"), Icons.Filled.Link) {
                     menu = false
                     Opener.copyText(ctx, selectedItems.joinToString("\n") { it.path })
-                    vm.toast("Ruta copiada")
+                    vm.toast(tr("Ruta copiada"))
                 }
-                MenuItem("Propiedades", Icons.Filled.Info) {
-                    menu = false
-                    setDialog(BrowserDialog.Properties(selectedItems))
-                }
+                if (ToolbarAction.PROPERTIES !in barActions)
+                    MenuItem(tr("Propiedades"), Icons.Filled.Info) {
+                        menu = false
+                        setDialog(BrowserDialog.Properties(selectedItems))
+                    }
             }
         }
     }
 }
 
+private fun barIcon(action: ToolbarAction) =
+    when (action) {
+        ToolbarAction.COPY -> Icons.Filled.ContentCopy
+        ToolbarAction.CUT -> Icons.Filled.ContentCut
+        ToolbarAction.DELETE -> Icons.Filled.Delete
+        ToolbarAction.RENAME -> Icons.Filled.Edit
+        ToolbarAction.SHARE -> Icons.Filled.Share
+        ToolbarAction.COMPRESS -> Icons.Filled.Archive
+        ToolbarAction.PIN -> Icons.Filled.PushPin
+        ToolbarAction.PROPERTIES -> Icons.Filled.Info
+    }
+
 @Composable
 private fun PasteBar(vm: MainViewModel) {
     val clip = vm.clipboard ?: return
+    var showList by remember { mutableStateOf(false) }
     BottomAppBar {
         Text(
-            "${clip.paths.size} elemento(s) para ${if (clip.move) "mover" else "copiar"}",
-            modifier = Modifier.weight(1f).padding(start = 8.dp),
+            if (clip.move) tr("{0} elemento(s) para mover · Ver", clip.paths.size)
+            else tr("{0} elemento(s) para copiar · Ver", clip.paths.size),
+            modifier =
+                Modifier.weight(1f).padding(start = 8.dp).clickable { showList = true },
             style = MaterialTheme.typography.bodyMedium,
         )
-        TextButton(onClick = { vm.clipboard = null }) { Text("Cancelar") }
+        TextButton(onClick = { vm.clipboard = null }) { Text(tr("Cancelar")) }
         Button(onClick = { vm.paste() }, modifier = Modifier.padding(end = 8.dp)) {
-            Text("Pegar aquí")
+            Text(tr("Pegar aquí"))
         }
     }
+    if (showList)
+        AlertDialog(
+            onDismissRequest = { showList = false },
+            title = { Text(tr("Portapapeles")) },
+            text = {
+                LazyColumn(Modifier.heightIn(max = 360.dp)) {
+                    items(clip.paths, key = { it }) { path ->
+                        ListItem(
+                            headlineContent = { Text(java.io.File(path).name) },
+                            supportingContent = { Text(java.io.File(path).parent.orEmpty()) },
+                            trailingContent = {
+                                IconButton(onClick = { vm.removeFromClipboard(path) }) {
+                                    Icon(Icons.Filled.Close, tr("Quitar {0}", java.io.File(path).name))
+                                }
+                            })
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showList = false }) { Text(tr("Cerrar")) } },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        vm.clipboard = null
+                        showList = false
+                    }) {
+                        Text(tr("Vaciar"))
+                    }
+            })
 }
 
 @Composable
@@ -588,24 +797,65 @@ private fun TabsRow(vm: MainViewModel) {
                         modifier = Modifier.widthIn(max = 140.dp),
                     )
                     IconButton(onClick = { vm.closeTab(i) }, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Filled.Close, "Cerrar pestaña", Modifier.size(16.dp))
+                        Icon(Icons.Filled.Close, tr("Cerrar pestaña"), Modifier.size(16.dp))
                     }
                 }
             }
         }
-        item { IconButton(onClick = { vm.addTab() }) { Icon(Icons.Filled.Add, "Nueva pestaña") } }
+        item { IconButton(onClick = { vm.addTab() }) { Icon(Icons.Filled.Add, tr("Nueva pestaña")) } }
     }
+}
+
+/** Las pestañas abiertas: tocar una cambia a ella, la X la cierra y «Nueva pestaña» abre otra. */
+@Composable
+private fun TabsDialog(vm: MainViewModel, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(tr("Pestañas abiertas")) },
+        text = {
+            Column {
+                vm.tabs.toList().forEachIndexed { i, t ->
+                    ListItem(
+                        headlineContent = {
+                            Text(locationTitle(t.location), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        },
+                        leadingContent = {
+                            if (i == vm.activeTab) Icon(Icons.Filled.Check, tr("Pestaña actual"))
+                        },
+                        trailingContent = {
+                            IconButton(onClick = { vm.closeTab(i) }) {
+                                Icon(Icons.Filled.Close, tr("Cerrar la pestaña {0}", locationTitle(t.location)))
+                            }
+                        },
+                        modifier =
+                            Modifier.clickable {
+                                vm.selectTab(i)
+                                onDismiss()
+                            })
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    vm.addTab()
+                    onDismiss()
+                }) {
+                    Text(tr("Nueva pestaña"))
+                }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cerrar")) } })
 }
 
 @Composable
 private fun LocationHeader(vm: MainViewModel, tab: TabState, loc: Location) {
     when (loc) {
         is Location.Folder -> Breadcrumb(loc.path) { vm.openFolder(it) }
-        is Location.Category -> HeaderText("${loc.category.label} · ${tab.items.size} archivos")
+        is Location.Category -> HeaderText(tr("{0} · {1} archivos", loc.category.label, tab.items.size))
         is Location.Search ->
             HeaderText(
-                "«${loc.query}» en ${PathUtil.displayName(loc.root)} · ${tab.items.size} resultados" +
-                    (if (tab.loading) " (buscando…)" else ""),
+                tr("«{0}» en {1} · {2} resultados", loc.query, loc.category?.label ?: PathUtil.displayName(loc.root), tab.items.size) +
+                    (if (tab.loading) tr(" (buscando…)") else ""),
             )
     }
 }

@@ -6,6 +6,11 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+# En un PR solo cuenta la última versión: un push nuevo cancela la ejecución anterior y ahorra
+# minutos de Actions. Las ejecuciones de main nunca se cancelan.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,12 +25,54 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Preparar 7-Zip para las pruebas de RAR cifrado
         run: python3 scripts/build_archives.py --host
+      - name: Iniciar servidores SFTP, FTP, FTPS y WebDAV reales para las pruebas de red
+        env:
+          OI_REMOTE_FTPS: "1"
+        run: |
+          curl -sSfL -o rclone.zip https://downloads.rclone.org/v1.75.1/rclone-v1.75.1-linux-amd64.zip
+          echo "982b5aa772841168f8e380f139e9e787b2a105403e32b94da8676a0e1c0a13ab  rclone.zip" | sha256sum -c -
+          unzip -q rclone.zip
+          python3 -m pip install --quiet cryptography pyftpdlib pyopenssl
+          RCLONE="$PWD/rclone-v1.75.1-linux-amd64/rclone" python3 scripts/remote_servers.py start >> "$GITHUB_ENV"
+      - name: Iniciar un servidor SMB real (Samba, SMB 2/3 con firma obligatoria)
+        run: |
+          # Comparte la misma carpeta que los demás servidores; el cliente de la app solo usa el puerto 445.
+          scripts/smb_samba.sh start "$PWD/build/remote-servers/data" oi "$(python3 -c 'import secrets; print(secrets.token_urlsafe(16))')" >> "$GITHUB_ENV"
+      - name: Iniciar un servidor NFS real (nfs-ganesha, NFS 3)
+        run: |
+          # Exporta la misma carpeta que los demás servidores; escucha en 127.0.0.1.
+          scripts/nfs_ganesha.sh start "$PWD/build/remote-servers/data" >> "$GITHUB_ENV"
+      - name: Clave de firma de las versiones
+        env:
+          KEYSTORE_B64: ${{ secrets.OI_RELEASE_KEYSTORE_B64 }}
+          PASSWORD: ${{ secrets.OI_RELEASE_PASSWORD }}
+          ALIAS: ${{ secrets.OI_RELEASE_KEY_ALIAS }}
+        run: |
+          # Sin el secreto (forks), se firma con la clave de depuración; las versiones de main lo exigen.
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/oi-release.jks"
+            echo "::add-mask::$PASSWORD"
+            {
+              echo "OI_RELEASE_KEYSTORE=$RUNNER_TEMP/oi-release.jks"
+              echo "OI_RELEASE_PASSWORD=$PASSWORD"
+              echo "OI_RELEASE_KEY_ALIAS=${ALIAS:-oiarchivos}"
+            } >> "$GITHUB_ENV"
+          fi
+          if [ "${{ github.ref }}" = "refs/heads/main" ] && [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "OI_REQUIRE_RELEASE_KEY=1" >> "$GITHUB_ENV"
+          fi
       - name: Pruebas y compilación
         env:
           OI_ARCHIVE_TEST_EXECUTABLE: ${{ github.workspace }}/build/native-archives/--host/7zz
+          LANG: C.UTF-8
+          LC_ALL: C.UTF-8
         run: |
           chmod +x gradlew
           ./gradlew testDebugUnitTest assembleRelease lintDebug --stacktrace
+          # Huella del certificado con el que quedó firmado el APK (para comprobarla al instalar).
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner"
+          "$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | grep -i "SHA-256" || true
+          rm -f "$RUNNER_TEMP/oi-release.jks"
       - name: Guardar informes de pruebas
         if: always()
         uses: actions/upload-artifact@v4
@@ -44,7 +91,13 @@ jobs:
   smoke:
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Las ~80 comprobaciones del emulador se reparten en tres emuladores nuevos: en una sola sesión de más de
+    # una hora el emulador se degradaba (la pantalla dejaba de responder y fallaban comprobaciones sin culpa de la app).
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ["1", "2", "3"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -55,11 +108,58 @@ jobs:
         with:
           name: OI-Archivos-apk
           path: apk
+      - name: Iniciar un servidor SFTP real y lento para la reanudación en Android
+        env:
+          OI_REMOTE_BWLIMIT: 256k
+        run: |
+          curl -sSfL -o rclone.zip https://downloads.rclone.org/v1.75.1/rclone-v1.75.1-linux-amd64.zip
+          echo "982b5aa772841168f8e380f139e9e787b2a105403e32b94da8676a0e1c0a13ab  rclone.zip" | sha256sum -c -
+          unzip -q rclone.zip
+          # PyAV decodifica en el equipo de CI los fotogramas de los vídeos que exporta la app (intro y outro).
+          python3 -m pip install --quiet cryptography av==18.1.0
+          RCLONE="$PWD/rclone-v1.75.1-linux-amd64/rclone" python3 scripts/remote_servers.py start >> "$GITHUB_ENV"
+      - name: Servidor NFS real para la conexión NFS de Android
+        run: |
+          scripts/nfs_ganesha.sh start "$PWD/build/remote-servers/data" >> "$GITHUB_ENV"
+      - name: Servidor FTP en el puerto estándar para la búsqueda en la red local
+        run: |
+          # Responde como un servidor FTP en el 21; el emulador lo ve en 10.0.2.2:21.
+          sudo nohup python3 -c 'import socketserver as s
+          class H(s.BaseRequestHandler):
+              def handle(self): self.request.sendall(b"220 OI prueba\r\n")
+          s.ThreadingTCPServer.allow_reuse_address = True
+          s.ThreadingTCPServer(("127.0.0.1", 21), H).serve_forever()' > /dev/null 2>&1 &
+          sleep 1
+          timeout 5 bash -c 'exec 3<>/dev/tcp/127.0.0.1/21 && head -c 3 <&3'
       - name: Permitir aceleración del emulador
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: Preparar imagen Android 15 con reintentos
+        shell: bash
+        run: |
+          set -euo pipefail
+          package='system-images;android-35;google_apis;x86_64'
+          sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          # sdkmanager no está en el PATH del runner: se usa el de cmdline-tools del SDK.
+          sdkmanager="$(command -v sdkmanager || ls "$sdk_root"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -1 || true)"
+          if [ -z "$sdkmanager" ]; then
+            echo "No se encontró sdkmanager en $sdk_root" >&2
+            exit 1
+          fi
+          yes | "$sdkmanager" --licenses >/dev/null || true
+          for attempt in 1 2 3; do
+            if "$sdkmanager" --install "$package"; then
+              exit 0
+            fi
+            echo "Fallo al instalar la imagen en el intento $attempt; limpiando la descarga parcial" >&2
+            rm -rf "$sdk_root/system-images/android-35/google_apis/x86_64"
+            rm -rf "$sdk_root/.temp" "$HOME/.android/cache"
+            sleep $((attempt * 3))
+          done
+          echo "No se pudo instalar la imagen de Android 15 tras 3 intentos" >&2
+          exit 1
       - name: Verificar la aplicación en Android 15
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -69,12 +169,12 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: python3 scripts/smoke_android.py
+          script: OI_SHARD=${{ matrix.shard }}/3 python3 scripts/smoke_android.py; smoke=$?; OI_SHARD=${{ matrix.shard }}/3 python3 scripts/android_features.py; features=$?; exit $((smoke | features))
       - name: Guardar evidencia del emulador
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: OI-Archivos-Android15
+          name: OI-Archivos-Android15-${{ matrix.shard }}
           path: smoke-output/
           if-no-files-found: ignore
   release:

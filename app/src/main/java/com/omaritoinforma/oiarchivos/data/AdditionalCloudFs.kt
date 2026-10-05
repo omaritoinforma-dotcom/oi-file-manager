@@ -61,7 +61,7 @@ internal object CloudXml {
             val n = input.read(buffer)
             if (n < 0) break
             if (out.size() + n > limit)
-                throw IOException("Respuesta del proveedor demasiado grande")
+                throw IOException(tr("Respuesta del proveedor demasiado grande"))
             out.write(buffer, 0, n)
         }
         return out.toByteArray()
@@ -107,11 +107,11 @@ internal class BaiduFs(private val c: Connection) : RemoteFs {
     private fun checked(result: JSONObject): JSONObject {
         val errno = result.optInt("errno", 0)
         if (errno != 0 || result.has("error_code"))
-            throw IOException("Baidu rechazó la operación (${result.optInt("error_code", errno)})")
+            throw IOException(tr("Baidu rechazó la operación ({0})", result.optInt("error_code", errno)))
         val info = result.optJSONArray("info")
         if (info != null &&
             (0 until info.length()).any { info.getJSONObject(it).optInt("errno", 0) != 0 })
-            throw IOException("Baidu no completó la operación")
+            throw IOException(tr("Baidu no completó la operación"))
         return result
     }
 
@@ -140,13 +140,13 @@ internal class BaiduFs(private val c: Connection) : RemoteFs {
                         f.optLong("size", -1))
             }
             if (list.length() < 1000) return out
-            if (out.size >= 50000) throw IOException("La carpeta supera 50.000 elementos")
+            if (out.size >= 50000) throw IOException(tr("La carpeta supera 50.000 elementos"))
         }
     }
 
     override fun read(path: String): InputStream {
         if (path !in ids) list(path.substringBeforeLast('/').ifBlank { "/" })
-        val id = ids[path] ?: throw IOException("El archivo ya no existe")
+        val id = ids[path] ?: throw IOException(tr("El archivo ya no existe"))
         val link =
             json(
                     "$api/multimedia",
@@ -157,7 +157,7 @@ internal class BaiduFs(private val c: Connection) : RemoteFs {
         val parsed = URL(link)
         if (parsed.protocol != "https" ||
             !(parsed.host.endsWith(".baidu.com") || parsed.host.endsWith(".baidupcs.com")))
-            throw IOException("Descarga de Baidu no válida")
+            throw IOException(tr("Descarga de Baidu no válida"))
         return http.response(
             http.open(link, "GET", mapOf("User-Agent" to "pan.baidu.com OIArchivos")))
     }
@@ -204,11 +204,11 @@ internal class BaiduFs(private val c: Connection) : RemoteFs {
                     if (n < 0) break
                     copied += n
                     if (copied > 64L * 1024 * 1024 * 1024 || (size >= 0 && copied > size))
-                        throw IOException("Tamaño de subida no válido")
+                        throw IOException(tr("Tamaño de subida no válido"))
                     output.write(buffer, 0, n)
                 }
                 if (size >= 0 && copied != size)
-                    throw IOException("El archivo cambió durante la subida")
+                    throw IOException(tr("El archivo cambió durante la subida"))
             }
             val chunk = ByteArray(4 * 1024 * 1024)
             val hashes = ArrayList<String>()
@@ -240,7 +240,7 @@ internal class BaiduFs(private val c: Connection) : RemoteFs {
             RandomAccessFile(temp, "r").use { source ->
                 for (i in 0 until needed.length()) {
                     val index = needed.getInt(i)
-                    if (index !in hashes.indices) throw IOException("Respuesta de subida no válida")
+                    if (index !in hashes.indices) throw IOException(tr("Respuesta de subida no válida"))
                     source.seek(index.toLong() * chunk.size)
                     val bytes =
                         minOf(chunk.size.toLong(), temp.length() - source.filePointer).toInt()
@@ -274,7 +274,7 @@ internal class BaiduFs(private val c: Connection) : RemoteFs {
                                 checked(JSONObject(String(CloudXml.bounded(it), Charsets.UTF_8)))
                             }
                         if (!response.getString("md5").equals(hashes[index], true))
-                            throw IOException("Baidu devolvió una suma de comprobación distinta")
+                            throw IOException(tr("Baidu devolvió una suma de comprobación distinta"))
                     } finally {
                         connection.disconnect()
                     }
@@ -340,7 +340,7 @@ internal class SugarSyncFs(private val c: Connection) : RemoteFs {
             if (root.getAttribute("hasMore") != "true") return out
             val next = root.getAttribute("end").toIntOrNull() ?: (start + children.size)
             if (next <= start || next >= 50000)
-                throw IOException("La carpeta supera 50.000 elementos o no admite paginación")
+                throw IOException(tr("La carpeta supera 50.000 elementos o no admite paginación"))
             start = next
         }
     }
@@ -351,8 +351,8 @@ internal class SugarSyncFs(private val c: Connection) : RemoteFs {
     private fun create(parent: String, name: String, folder: Boolean): String {
         SafeFiles.requireName(name)
         if (parent == "/" || !URL(endpoint(parent)).path.startsWith("/folder/"))
-            throw IOException("Abre una carpeta de SugarSync antes de crear archivos")
-        if (list(parent).any { it.name == name }) throw IOException("El destino ya existe")
+            throw IOException(tr("Abre una carpeta de SugarSync antes de crear archivos"))
+        if (list(parent).any { it.name == name }) throw IOException(tr("El destino ya existe"))
         val body =
             CloudXml.body(
                     if (folder) "folder" else "file",
@@ -366,7 +366,7 @@ internal class SugarSyncFs(private val c: Connection) : RemoteFs {
             http.response(connection).close()
             return endpoint(
                 connection.getHeaderField("Location")
-                    ?: throw IOException("SugarSync no devolvió el archivo creado"))
+                    ?: throw IOException(tr("SugarSync no devolvió el archivo creado")))
         } finally {
             connection.disconnect()
         }
@@ -402,7 +402,7 @@ internal class SugarSyncFs(private val c: Connection) : RemoteFs {
         val document = doc(entry.path)
         val display =
             document.documentElement.getElementsByTagName("displayName").item(0)
-                ?: throw IOException("Respuesta de SugarSync no válida")
+                ?: throw IOException(tr("Respuesta de SugarSync no válida"))
         display.textContent = name
         http.request(endpoint(entry.path), "PUT", CloudXml.serialize(document), headers)
     }
@@ -419,6 +419,6 @@ internal fun sugarEndpoint(url: String): String {
         endpoint.port !in listOf(-1, 443) ||
         endpoint.userInfo != null ||
         endpoint.ref != null)
-        throw IOException("Dirección de SugarSync no válida")
+        throw IOException(tr("Dirección de SugarSync no válida"))
     return endpoint.toString()
 }

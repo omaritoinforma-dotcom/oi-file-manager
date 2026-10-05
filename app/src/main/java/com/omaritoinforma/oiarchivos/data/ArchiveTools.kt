@@ -9,6 +9,7 @@ import kotlinx.coroutines.ensureActive
 import net.lingala.zip4j.ZipFile
 import net.lingala.zip4j.io.outputstream.ZipOutputStream
 import net.lingala.zip4j.model.ZipParameters
+import net.lingala.zip4j.model.enums.CompressionMethod
 import net.lingala.zip4j.model.enums.EncryptionMethod
 import org.apache.commons.compress.archivers.sevenz.SevenZFile
 import org.apache.commons.compress.archivers.sevenz.SevenZOutputFile
@@ -19,6 +20,26 @@ import org.apache.commons.compress.compressors.CompressorStreamFactory
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream
 
 data class ArchiveEntry(val name: String, val size: Long, val directory: Boolean)
+
+/** Nivel de compresión al crear ZIP, 7z o tar.gz («Nivel de compresión» de ES). */
+enum class CompressionLevel(private val labelEs: String, val sevenZip: Int, val gzip: Int) {
+    STORE(trKey("Sin compresión"), 0, 0),
+    FAST(trKey("Rápida"), 1, 1),
+    NORMAL(trKey("Normal"), 5, 6),
+    MAXIMUM(trKey("Máxima"), 9, 9);
+
+    val label: String
+        get() = tr(labelEs)
+
+    val zip: net.lingala.zip4j.model.enums.CompressionLevel
+        get() =
+            when (this) {
+                STORE -> net.lingala.zip4j.model.enums.CompressionLevel.NO_COMPRESSION
+                FAST -> net.lingala.zip4j.model.enums.CompressionLevel.FASTEST
+                NORMAL -> net.lingala.zip4j.model.enums.CompressionLevel.NORMAL
+                MAXIMUM -> net.lingala.zip4j.model.enums.CompressionLevel.ULTRA
+            }
+}
 
 object ArchiveTools {
     const val MAX_BYTES = 64L * 1024 * 1024 * 1024
@@ -64,21 +85,22 @@ object ArchiveTools {
         sources: List<File>,
         target: File,
         password: String,
+        level: CompressionLevel = CompressionLevel.NORMAL,
         report: (OpProgress) -> Unit
     ) {
         if (target.extension.lowercase() == "7z" && NativeArchives.available) {
-            NativeArchives.compress(sources, target, password, report)
+            NativeArchives.compress(sources, target, password, report, level)
             return
         }
         if (target.extension.lowercase() == "7z" ||
             target.name.lowercase().endsWith(".tar") ||
             target.name.lowercase().endsWith(".tar.gz")) {
             if (password.isNotEmpty())
-                throw IOException("La contraseña de creación está disponible para ZIP")
-            compressOther(sources, target, report)
+                throw IOException(tr("La contraseña de creación está disponible para ZIP"))
+            compressOther(sources, target, report, level)
             return
         }
-        val t = Tracker("Comprimiendo", report)
+        val t = Tracker(tr("Comprimiendo"), report)
         val (bytes, count) = FileOps.measure(sources)
         t.totalBytes = bytes
         t.totalFiles = count
@@ -93,12 +115,19 @@ object ArchiveTools {
                             if (f == root) root.name
                             else root.name + "/" + f.relativeTo(root).invariantSeparatorsPath
                         if (f.canonicalPath == target.canonicalPath || f == temp)
-                            throw IOException("El ZIP no puede incluirse a sí mismo")
+                            throw IOException(tr("El ZIP no puede incluirse a sí mismo"))
                         out.putNextEntry(
                             ZipParameters().apply {
                                 fileNameInZip = relative + if (f.isDirectory) "/" else ""
                                 isEncryptFiles = password.isNotEmpty() && !f.isDirectory
                                 encryptionMethod = EncryptionMethod.AES
+                                compressionMethod =
+                                    if (level == CompressionLevel.STORE) CompressionMethod.STORE
+                                    else CompressionMethod.DEFLATE
+                                compressionLevel = level.zip
+                                // Al guardar sin comprimir, ZIP necesita saber el tamaño antes de escribir.
+                                if (level == CompressionLevel.STORE)
+                                    entrySize = if (f.isFile) f.length() else 0L
                             })
                         if (f.isFile) {
                             t.current = f.name
@@ -119,23 +148,27 @@ object ArchiveTools {
     private suspend fun compressOther(
         sources: List<File>,
         target: File,
-        report: (OpProgress) -> Unit
+        report: (OpProgress) -> Unit,
+        level: CompressionLevel
     ) {
         val temp = File.createTempFile(".oi-archive-", ".tmp", target.parentFile)
-        val tracker = Tracker("Comprimiendo", report)
+        val tracker = Tracker(tr("Comprimiendo"), report)
         val (bytes, count) = FileOps.measure(sources)
         tracker.totalBytes = bytes
         tracker.totalFiles = count
         try {
             if (target.extension.lowercase() == "7z")
                 SevenZOutputFile(temp).use { out ->
+                    out.setContentCompression(
+                        if (level == CompressionLevel.STORE) org.apache.commons.compress.archivers.sevenz.SevenZMethod.COPY
+                        else org.apache.commons.compress.archivers.sevenz.SevenZMethod.LZMA2)
                     for (root in sources) for (file in SafeFiles.walk(root)) {
                         currentCoroutineContext().ensureActive()
                         val name =
                             if (file == root) root.name
                             else root.name + "/" + file.relativeTo(root).invariantSeparatorsPath
                         if (file == temp || file.canonicalPath == target.canonicalPath)
-                            throw IOException("El comprimido no puede incluirse a sí mismo")
+                            throw IOException(tr("El comprimido no puede incluirse a sí mismo"))
                         out.putArchiveEntry(out.createArchiveEntry(file, name))
                         if (file.isFile) {
                             tracker.current = file.name
@@ -157,7 +190,12 @@ object ArchiveTools {
             else {
                 val raw = temp.outputStream().buffered()
                 val stream =
-                    if (target.name.lowercase().endsWith(".gz")) GzipCompressorOutputStream(raw)
+                    if (target.name.lowercase().endsWith(".gz"))
+                        GzipCompressorOutputStream(
+                            raw,
+                            org.apache.commons.compress.compressors.gzip.GzipParameters().apply {
+                                compressionLevel = level.gzip
+                            })
                     else raw
                 TarArchiveOutputStream(stream, "UTF-8").use { out ->
                     out.setLongFileMode(TarArchiveOutputStream.LONGFILE_POSIX)
@@ -165,7 +203,7 @@ object ArchiveTools {
                     for (root in sources) for (file in SafeFiles.walk(root)) {
                         currentCoroutineContext().ensureActive()
                         if (file == temp || file.canonicalPath == target.canonicalPath)
-                            throw IOException("El comprimido no puede incluirse a sí mismo")
+                            throw IOException(tr("El comprimido no puede incluirse a sí mismo"))
                         val name =
                             if (file == root) root.name
                             else root.name + "/" + file.relativeTo(root).invariantSeparatorsPath
@@ -194,24 +232,24 @@ object ArchiveTools {
         report: (OpProgress) -> Unit
     ): Int {
         if (dest.exists() || !dest.mkdirs())
-            throw IOException("La carpeta de extracción debe ser nueva")
-        val t = Tracker("Extrayendo", report)
+            throw IOException(tr("La carpeta de extracción debe ser nueva"))
+        val t = Tracker(tr("Extrayendo"), report)
         var entries = 0
         try {
             suspend fun write(name: String, directory: Boolean, size: Long, input: InputStream?) {
                 currentCoroutineContext().ensureActive()
                 if (++entries > MAX_ENTRIES)
-                    throw IOException("Demasiadas entradas en el comprimido")
+                    throw IOException(tr("Demasiadas entradas en el comprimido"))
                 val out = SafeFiles.archiveTarget(dest, name)
                 if (size > MAX_BYTES - t.doneBytes || (size > 0 && size > dest.usableSpace))
-                    throw IOException("No hay espacio suficiente para extraer")
+                    throw IOException(tr("No hay espacio suficiente para extraer"))
                 if (directory) {
                     if (!out.isDirectory && !out.mkdirs())
-                        throw IOException("No se pudo crear ${out.name}")
+                        throw IOException(tr("No se pudo crear {0}", out.name))
                 } else {
-                    if (out.exists()) throw IOException("Entrada repetida: $name")
+                    if (out.exists()) throw IOException(tr("Entrada repetida: {0}", name))
                     if (!out.parentFile!!.isDirectory && !out.parentFile!!.mkdirs())
-                        throw IOException("No se pudo crear la carpeta")
+                        throw IOException(tr("No se pudo crear la carpeta"))
                     t.current = name
                     out.outputStream().use { output ->
                         if (input != null) pump(input, output, t, MAX_BYTES)
@@ -223,7 +261,7 @@ object ArchiveTools {
                 in zipTypes ->
                     ZipFile(file, password.toCharArray()).use { zip ->
                         if (zip.isEncrypted && password.isEmpty())
-                            throw IOException("Este ZIP necesita una contraseña")
+                            throw IOException(tr("Este ZIP necesita una contraseña"))
                         for (h in zip.fileHeaders) {
                             zip.getInputStream(h).use {
                                 write(h.fileName, h.isDirectory, h.uncompressedSize, it)
@@ -236,7 +274,7 @@ object ArchiveTools {
                         val contents = NativeArchives.list(file, password)
                         t.totalBytes = contents.sumOf { it.size }
                         if (t.totalBytes > MAX_BYTES)
-                            throw IOException("El comprimido supera el límite de extracción")
+                            throw IOException(tr("El comprimido supera el límite de extracción"))
                         for (entry in contents) {
                             if (entry.directory) write(entry.name, true, 0, null)
                             else
@@ -248,7 +286,7 @@ object ArchiveTools {
                         seven(file, password).use { z ->
                             while (true) {
                                 val e = z.nextEntry ?: break
-                                if (e.isAntiItem) throw IOException("Entrada 7z no admitida")
+                                if (e.isAntiItem) throw IOException(tr("Entrada 7z no admitida"))
                                 val input =
                                     object : InputStream() {
                                         override fun read() = z.read()
@@ -259,7 +297,7 @@ object ArchiveTools {
                                 write(e.name, e.isDirectory, e.size, input)
                             }
                         }
-                    } else throw IOException("El motor RAR no está instalado")
+                    } else throw IOException(tr("El motor RAR no está instalado"))
                 }
                 else ->
                     tarOrSingle(file).use { stream ->
@@ -269,9 +307,9 @@ object ArchiveTools {
                                     val e = tar.nextTarEntry ?: break
                                     if (!e.isFile && !e.isDirectory)
                                         throw IOException(
-                                            "Enlaces y archivos especiales no se extraen")
+                                            tr("Enlaces y archivos especiales no se extraen"))
                                     if (!tar.canReadEntryData(e))
-                                        throw IOException("Entrada TAR no compatible")
+                                        throw IOException(tr("Entrada TAR no compatible"))
                                     write(e.name, e.isDirectory, e.size, tar)
                                 }
                             }
@@ -313,7 +351,7 @@ object ArchiveTools {
                     CompressorStreamFactory()
                         .createCompressorInputStream(CompressorStreamFactory.XZ, raw)
                 "tar" -> raw
-                else -> throw IOException("Formato no compatible")
+                else -> throw IOException(tr("Formato no compatible"))
             }
         } catch (e: Exception) {
             raw.close()
@@ -333,7 +371,7 @@ object ArchiveTools {
             val n = input.read(buffer)
             if (n < 0) break
             if (n > limit - t.doneBytes)
-                throw IOException("El comprimido supera el límite de extracción")
+                throw IOException(tr("El comprimido supera el límite de extracción"))
             out.write(buffer, 0, n)
             t.addBytes(n.toLong())
         }

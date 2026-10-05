@@ -8,45 +8,46 @@ import java.util.UUID
  */
 internal class RootFs : RemoteFs {
     init {
-        if (command("id -u").trim() != "0")
-            throw IOException(
-                "Root no concedido. Se necesita un dispositivo con su/Magisk y autorización del usuario.")
+        RootShell.requireRoot()
     }
 
-    private fun q(value: String): String {
-        if (value.contains('\u0000')) throw IOException("Ruta no válida")
-        return "'" + value.replace("'", "'\"'\"'") + "'"
-    }
+    private fun q(value: String) = RootShell.q(value)
 
-    private fun command(script: String, input: InputStream? = null): String {
-        val process = ProcessBuilder("su", "-c", script).redirectErrorStream(true).start()
-        try {
-            process.outputStream.use { out -> input?.copyTo(out) }
-            val result = process.inputStream.bufferedReader().use { it.readText() }
-            if (process.waitFor() != 0)
-                throw IOException(result.take(1000).ifBlank { "Operación root rechazada" })
-            return result
-        } finally {
-            process.destroy()
+    private fun command(script: String, input: InputStream? = null) = RootShell.run(script, input)
+
+    override fun list(path: String): List<RemoteEntry> = parseListing(command(listCommand(path)))
+
+    companion object {
+        fun listCommand(path: String): String {
+            val p = RootShell.q(path)
+            return "find $p -mindepth 1 -maxdepth 1 -type d -exec sh -c 'for f; do printf \"d\\0%s\\0\" \"\$f\"; done' sh {} +; " +
+                "find $p -mindepth 1 -maxdepth 1 -type f -exec sh -c 'for f; do printf \"f\\0%s\\0%s\\0\" \"\$(stat -c %s \"\$f\")\" \"\$f\"; done' sh {} +"
         }
-    }
 
-    override fun list(path: String): List<RemoteEntry> {
-        val names =
-            command("find ${q(path)} -mindepth 1 -maxdepth 1 -print0").split('\u0000').filter {
-                it.isNotBlank()
+        /**
+         * Una sola orden para toda la carpeta (antes eran tres por elemento): «d␀ruta␀» para cada
+         * carpeta y «f␀tamaño␀ruta␀» para cada archivo; los enlaces simbólicos no se muestran.
+         */
+        fun parseListing(out: String): List<RemoteEntry> {
+            val parts = out.split('\u0000')
+            val result = ArrayList<RemoteEntry>()
+            var i = 0
+            while (i < parts.size) {
+                when (parts[i]) {
+                    "d" -> if (i + 1 < parts.size) {
+                        val p = parts[i + 1]
+                        result += RemoteEntry(p, p.substringAfterLast('/'), true, 0)
+                        i += 2
+                    } else i++
+                    "f" -> if (i + 2 < parts.size) {
+                        val p = parts[i + 2]
+                        result += RemoteEntry(p, p.substringAfterLast('/'), false, parts[i + 1].trim().toLongOrNull() ?: 0)
+                        i += 3
+                    } else i++
+                    else -> i++
+                }
             }
-        return names.mapNotNull { item ->
-            val type =
-                command(
-                    "if [ -L ${q(item)} ]; then printf l; elif [ -d ${q(item)} ]; then printf d; elif [ -f ${q(item)} ]; then printf f; else printf x; fi")
-            if (type != "d" && type != "f") null
-            else
-                RemoteEntry(
-                    item,
-                    item.substringAfterLast('/'),
-                    type == "d",
-                    if (type == "d") 0 else command("stat -c %s ${q(item)}").trim().toLong())
+            return result
         }
     }
 
@@ -57,7 +58,7 @@ internal class RootFs : RemoteFs {
             override fun close() {
                 super.close()
                 try {
-                    if (process.waitFor() != 0) throw IOException("Lectura root rechazada")
+                    if (process.waitFor() != 0) throw IOException(tr("Lectura root rechazada"))
                 } finally {
                     process.destroy()
                 }
@@ -67,7 +68,7 @@ internal class RootFs : RemoteFs {
 
     override fun write(parent: String, name: String, input: InputStream, size: Long): String {
         val target = RemoteFiles.join(parent, name)
-        val temp = RemoteFiles.join(parent, ".oi-${UUID.randomUUID()}.part")
+        val temp = RemoteFiles.partName(target)
         try {
             command(
                 "set -e; test ! -e ${q(target)}; cat > ${q(temp)}; test \"\$(stat -c %s ${q(temp)})\" = ${q(size.toString())}; mv -n ${q(temp)} ${q(target)}",
@@ -87,12 +88,12 @@ internal class RootFs : RemoteFs {
     }
 
     override fun delete(entry: RemoteEntry) {
-        if (entry.path == "/") throw IOException("La raíz no se puede eliminar")
+        if (entry.path == "/") throw IOException(tr("La raíz no se puede eliminar"))
         command("rm ${if(entry.directory)"-r"else"-f"} ${q(entry.path)}")
     }
 
     fun chmod(path: String, mode: String) {
-        if (!Regex("[0-7]{3,4}").matches(mode)) throw IOException("Permisos octales no válidos")
+        if (!Regex("[0-7]{3,4}").matches(mode)) throw IOException(tr("Permisos octales no válidos"))
         command("chmod $mode ${q(path)}")
     }
 }

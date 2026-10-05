@@ -1,0 +1,91 @@
+package com.omaritoinforma.oiarchivos.data
+
+import org.junit.Assert.*
+import org.junit.Test
+
+class CategoriesTest {
+    private fun inCategory(cat: FileCategory, path: String, mime: String? = null) =
+        Categories.matches(cat, path, mime)
+
+    @Test
+    fun screenshotsAreRecognisedByFolderOrByName() {
+        val s = FileCategory.SCREENSHOTS
+        assertTrue(inCategory(s, "/storage/emulated/0/Pictures/Screenshots/a.png", "image/png"))
+        assertTrue(inCategory(s, "/storage/emulated/0/DCIM/Screenshots/a.jpg", "image/jpeg"))
+        assertTrue(inCategory(s, "/storage/emulated/0/Pictures/Capturas de pantalla/a.png", "image/png"))
+        assertTrue(inCategory(s, "/storage/emulated/0/Download/Screenshot_20261004-120000.png", "image/png"))
+        // Una foto normal o un archivo que no es imagen no cuentan.
+        assertFalse(inCategory(s, "/storage/emulated/0/DCIM/Camera/IMG_1.jpg", "image/jpeg"))
+        assertFalse(inCategory(s, "/storage/emulated/0/Pictures/Screenshots/notas.txt", "text/plain"))
+        // Una carpeta cuyo nombre solo contiene la palabra no es la de capturas.
+        assertFalse(inCategory(s, "/storage/emulated/0/Pictures/MisScreenshotsViejos/a.png", "image/png"))
+    }
+
+    @Test
+    fun recordingsAreAudioInRecorderFolders() {
+        val r = FileCategory.RECORDINGS
+        assertTrue(inCategory(r, "/storage/emulated/0/Recordings/nota.m4a", "audio/mp4"))
+        assertTrue(inCategory(r, "/storage/emulated/0/Music/Voice Recorder/a.amr", "audio/amr"))
+        assertTrue(inCategory(r, "/storage/emulated/0/Grabaciones/b.wav"))
+        assertFalse(inCategory(r, "/storage/emulated/0/Music/cancion.mp3", "audio/mpeg"))
+        assertFalse(inCategory(r, "/storage/emulated/0/Recordings/video.mp4", "video/mp4"))
+    }
+
+    @Test
+    fun officeIsSplitIntoWordExcelAndPowerPoint() {
+        assertTrue(inCategory(FileCategory.WORD, "/a/informe.DOCX"))
+        assertTrue(inCategory(FileCategory.WORD, "/a/carta.odt"))
+        assertTrue(inCategory(FileCategory.EXCEL, "/a/datos.xlsx"))
+        assertTrue(inCategory(FileCategory.EXCEL, "/a/tabla.csv"))
+        assertTrue(inCategory(FileCategory.POWERPOINT, "/a/charla.pptx"))
+        assertFalse(inCategory(FileCategory.WORD, "/a/datos.xlsx"))
+        assertFalse(inCategory(FileCategory.EXCEL, "/a/informe.docx"))
+        assertFalse(inCategory(FileCategory.POWERPOINT, "/a/informe.docx"))
+        // Documentos sigue incluyéndolo todo.
+        assertTrue(inCategory(FileCategory.DOCUMENTS, "/a/informe.docx"))
+        assertTrue(inCategory(FileCategory.DOCUMENTS, "/a/charla.pptx"))
+    }
+
+    @Test
+    fun ebooksAndTheOldCategoriesKeepWorking() {
+        assertTrue(inCategory(FileCategory.EBOOKS, "/a/libro.epub"))
+        assertTrue(inCategory(FileCategory.EBOOKS, "/a/libro.MOBI"))
+        assertFalse(inCategory(FileCategory.EBOOKS, "/a/manual.pdf"))
+        assertTrue(inCategory(FileCategory.APKS, "/a/app.apk"))
+        assertTrue(inCategory(FileCategory.ARCHIVES, "/a/x.7z"))
+        assertTrue(inCategory(FileCategory.IMAGES, "/a/x.png", "image/png"))
+        assertFalse(inCategory(FileCategory.IMAGES, "/a/x.png", "audio/mpeg"))
+    }
+
+    @Test
+    fun searchInsideACategoryFiltersByNameIgnoringCase() {
+        val items = listOf("Informe.docx", "ofertas.docx", "INFORME-2.docx").map { java.io.File("/a/$it").toItem() }
+        assertEquals(listOf("Informe.docx", "INFORME-2.docx"), Categories.byName(items, "informe").map { it.name })
+        assertEquals(emptyList<String>(), Categories.byName(items, "zzz").map { it.name })
+    }
+
+    @Test
+    fun documentTypesDecideWhatIsInDocuments() {
+        val d = FileCategory.DOCUMENTS
+        // Por omisión entra todo lo de antes.
+        for (name in listOf("a.pdf", "a.docx", "a.xlsx", "a.pptx", "a.txt", "a.md", "a.epub", "a.csv", "a.rtf"))
+            assertTrue(name, Categories.matches(d, "/x/$name"))
+        // Solo PDF y texto: lo demás sale.
+        val chosen = setOf(DocumentType.PDF, DocumentType.TEXT)
+        assertTrue(Categories.matches(d, "/x/a.PDF", null, chosen))
+        assertTrue(Categories.matches(d, "/x/notas.md", null, chosen))
+        assertFalse(Categories.matches(d, "/x/a.docx", null, chosen))
+        assertFalse(Categories.matches(d, "/x/a.csv", null, chosen))
+        assertFalse(Categories.matches(d, "/x/a.epub", null, chosen))
+        // Sin tipos no sale nada, y las demás categorías no cambian.
+        assertFalse(Categories.matches(d, "/x/a.pdf", null, emptySet()))
+        assertTrue(Categories.matches(FileCategory.WORD, "/x/a.docx", null, emptySet()))
+    }
+
+    @Test
+    fun everyDocumentExtensionBelongsToExactlyOneType() {
+        val all = DocumentType.entries.flatMap { it.extensions }
+        assertEquals(all.size, all.toSet().size)
+        assertEquals(all.toSet(), DocumentType.extensions(DocumentType.all).toSet())
+    }
+}

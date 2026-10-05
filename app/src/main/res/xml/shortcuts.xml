@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Accesos directos al mantener pulsado el icono de la app. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="servidor_ftp"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/ftp_server"
+        android:shortcutLongLabel="@string/ftp_server_start">
+        <intent
+            android:action="com.omaritoinforma.oiarchivos.SERVIDOR_FTP"
+            android:targetPackage="com.omaritoinforma.oiarchivos"
+            android:targetClass="com.omaritoinforma.oiarchivos.MainActivity" />
+    </shortcut>
+</shortcuts>

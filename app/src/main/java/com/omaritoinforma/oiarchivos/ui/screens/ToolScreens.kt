@@ -1,17 +1,24 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(
+    androidx.compose.material3.ExperimentalMaterial3Api::class,
+    androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 
 package com.omaritoinforma.oiarchivos.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.omaritoinforma.oiarchivos.data.*
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
@@ -33,7 +40,7 @@ fun ToolPage(
                 title = { Text(title) },
                 navigationIcon = {
                     IconButton(onClick = vm::back) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, tr("Atrás"))
                     }
                 },
                 actions = actions)
@@ -45,7 +52,7 @@ fun ToolPage(
 fun HistoryScreen(vm: MainViewModel) {
     var history by remember { mutableStateOf(vm.history()) }
     ToolPage(
-        "Historial de carpetas",
+        tr("Historial"),
         vm,
         actions = {
             TextButton(
@@ -53,15 +60,27 @@ fun HistoryScreen(vm: MainViewModel) {
                     vm.clearHistory()
                     history = emptyList()
                 }) {
-                    Text("Borrar")
+                    Text(tr("Borrar"))
                 }
         }) { pad ->
             LazyColumn(Modifier.fillMaxSize().padding(pad)) {
+                if (history.isEmpty())
+                    item { Text(tr("El historial está vacío."), Modifier.padding(16.dp)) }
                 items(history) { path ->
+                    val folder = remember(path) { File(path).isDirectory }
                     ListItem(
                         headlineContent = { Text(PathUtil.displayName(path)) },
                         supportingContent = { Text(path) },
-                        modifier = Modifier.clickable { vm.openFolder(path) })
+                        leadingContent = {
+                            Icon(
+                                if (folder) Icons.Filled.Folder
+                                else Icons.AutoMirrored.Filled.InsertDriveFile,
+                                contentDescription = if (folder) tr("Carpeta") else tr("Archivo"))
+                        },
+                        modifier =
+                            Modifier.clickable {
+                                if (folder) vm.openFolder(path) else vm.openFile(path)
+                            })
                 }
             }
         }
@@ -76,16 +95,16 @@ fun TransfersScreen(vm: MainViewModel) {
     var refresh by remember { mutableIntStateOf(0) }
     val queued =
         remember(completion, progress == null, refresh) {
-            DurableCopy.pending(TransferService.jobsDirectory(ctx))
+            TransferService.pendingJobs(ctx)
         }
     val paused by TransferService.paused.collectAsState()
     val pausable by TransferService.supportsPause.collectAsState()
-    ToolPage("Transferencias", vm) { pad ->
+    ToolPage(tr("Transferencias"), vm) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad)) {
             if (pausable && progress != null)
                 item {
                     TextButton(onClick = { TransferService.pause(ctx, !paused) }) {
-                        Text(if (paused) "Reanudar transferencia" else "Pausar transferencia")
+                        Text(if (paused) tr("Reanudar transferencia") else tr("Pausar transferencia"))
                     }
                 }
             if (progress == null)
@@ -101,17 +120,17 @@ fun TransfersScreen(vm: MainViewModel) {
                                     onClick = {
                                         runCatching { TransferService.submitDurable(ctx, job) }
                                             .onFailure {
-                                                vm.toast(it.message ?: "No se pudo reanudar")
+                                                vm.toast(it.message ?: tr("No se pudo reanudar"))
                                             }
                                     }) {
-                                        Text("Reanudar")
+                                        Text(tr("Reanudar"))
                                     }
                                 TextButton(
                                     onClick = {
-                                        job.discard()
+                                        runCatching { job.discard() }
                                         refresh++
                                     }) {
-                                        Text("Descartar")
+                                        Text(tr("Descartar"))
                                     }
                             }
                         })
@@ -119,7 +138,7 @@ fun TransfersScreen(vm: MainViewModel) {
             if (records.isEmpty())
                 item {
                     Text(
-                        "Las operaciones y sus resultados aparecerán aquí.",
+                        tr("Las operaciones y sus resultados aparecerán aquí."),
                         Modifier.padding(20.dp))
                 }
             items(records, key = { it.id }) { record ->
@@ -139,55 +158,75 @@ fun AdvancedSearchScreen(vm: MainViewModel, root: String) {
     var max by remember { mutableStateOf("") }
     var days by remember { mutableStateOf("") }
     var contents by remember { mutableStateOf("") }
+    var types by remember { mutableStateOf(emptySet<SearchKind>()) }
+    var hidden by remember { mutableStateOf(vm.showHidden) }
+    var subfolders by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    ToolPage("Búsqueda avanzada", vm) { pad ->
+    ToolPage(tr("Búsqueda avanzada"), vm) { pad ->
         LazyColumn(
             Modifier.fillMaxSize().padding(pad),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                item { Text("Buscar en $root y sus subcarpetas") }
+                item { Text(tr("Buscar en {0}", root)) }
+                item {
+                    Text(tr("Tipo (sin elegir, de cualquier tipo)"), style = MaterialTheme.typography.labelLarge)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SearchKind.entries.forEach { kind ->
+                            FilterChip(
+                                selected = kind in types,
+                                onClick = { types = if (kind in types) types - kind else types + kind },
+                                label = { Text(kind.label) })
+                        }
+                    }
+                }
                 item {
                     OutlinedTextField(
                         name,
                         { name = it },
-                        label = { Text("Nombre (opcional)") },
+                        label = { Text(tr("Nombre (opcional)")) },
                         modifier = Modifier.fillMaxWidth())
                 }
                 item {
                     OutlinedTextField(
                         extensions,
                         { extensions = it },
-                        label = { Text("Extensiones: jpg, mp4, pdf…") },
+                        label = { Text(tr("Extensiones: jpg, mp4, pdf…")) },
                         modifier = Modifier.fillMaxWidth())
                 }
                 item {
                     OutlinedTextField(
                         min,
                         { min = it },
-                        label = { Text("Tamaño mínimo en MB") },
+                        label = { Text(tr("Tamaño mínimo en MB")) },
                         modifier = Modifier.fillMaxWidth())
                 }
                 item {
                     OutlinedTextField(
                         max,
                         { max = it },
-                        label = { Text("Tamaño máximo en MB") },
+                        label = { Text(tr("Tamaño máximo en MB")) },
                         modifier = Modifier.fillMaxWidth())
                 }
                 item {
                     OutlinedTextField(
                         days,
                         { days = it },
-                        label = { Text("Modificados en los últimos días") },
+                        label = { Text(tr("Modificados en los últimos días")) },
                         modifier = Modifier.fillMaxWidth())
                 }
                 item {
                     OutlinedTextField(
                         contents,
                         { contents = it },
-                        label = { Text("Texto dentro del archivo") },
-                        supportingText = { Text("Archivos de texto de hasta 8 MB") },
+                        label = { Text(tr("Texto dentro del archivo")) },
+                        supportingText = { Text(tr("Archivos de texto de hasta 8 MB")) },
                         modifier = Modifier.fillMaxWidth())
+                }
+                item { SwitchRow(tr("Buscar en las subcarpetas"), subfolders) { subfolders = it } }
+                item {
+                    SwitchRow(tr("Incluir archivos y carpetas ocultos"), hidden) {
+                        if (it) vm.allowHiddenSearch { hidden = true } else hidden = false
+                    }
                 }
                 if (error != null) item { Text(error!!, color = MaterialTheme.colorScheme.error) }
                 item {
@@ -203,7 +242,7 @@ fun AdvancedSearchScreen(vm: MainViewModel, root: String) {
                                 hi < lo ||
                                 d < 0 ||
                                 d > 36500) {
-                                error = "Revisa el tamaño y el número de días"
+                                error = tr("Revisa el tamaño y el número de días")
                                 return@Button
                             }
                             val filter =
@@ -217,23 +256,40 @@ fun AdvancedSearchScreen(vm: MainViewModel, root: String) {
                                     (lo * 1048576).toLong(),
                                     if (max.isBlank()) Long.MAX_VALUE else (hi * 1048576).toLong(),
                                     if (d == 0L) 0 else System.currentTimeMillis() - d * 86400000,
-                                    contents)
-                            vm.runTask("Búsqueda avanzada") { report ->
+                                    contents,
+                                    types,
+                                    hidden,
+                                    subfolders)
+                            vm.runTask(tr("Búsqueda avanzada")) { report ->
                                 val results = AnalysisTools.search(File(root), filter, report)
                                 withContext(Dispatchers.Main) {
                                     vm.showResults(
-                                        results, root, name.ifBlank { "Filtros avanzados" })
+                                        results,
+                                        root,
+                                        name.ifBlank { tr("Filtros avanzados") },
+                                        filter)
                                 }
                                 OperationResult(
-                                    "${results.size} resultados" +
-                                        if (results.size == 5000) " (límite alcanzado)" else "")
+                                    tr("{0} resultados", results.size) +
+                                        if (results.size == 5000) tr(" (límite alcanzado)") else "")
                             }
                         }) {
-                            Text("Buscar")
+                            Text(tr("Buscar"))
                         }
                 }
             }
     }
+}
+
+@Composable
+private fun SwitchRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().toggleable(checked, role = Role.Switch, onValueChange = onChange),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(title, Modifier.weight(1f))
+            Switch(checked, null)
+        }
 }
 
 @Composable
@@ -242,43 +298,43 @@ fun AnalysisScreen(vm: MainViewModel, root: String) {
     var duplicates by remember { mutableStateOf(true) }
     val selected = remember { mutableStateMapOf<String, File>() }
     var confirm by remember { mutableStateOf(false) }
-    ToolPage("Analizar almacenamiento", vm) { pad ->
+    ToolPage(tr("Analizar almacenamiento"), vm) { pad ->
         LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = PaddingValues(16.dp)) {
             item {
                 Text(root)
                 Row {
                     Checkbox(duplicates, { duplicates = it })
-                    Text("Buscar duplicados por SHA-256", Modifier.padding(top = 12.dp))
+                    Text(tr("Buscar duplicados por SHA-256"), Modifier.padding(top = 12.dp))
                 }
             }
             item {
                 Button(
                     onClick = {
-                        vm.runTask("Analizando almacenamiento") { report ->
+                        vm.runTask(tr("Analizando almacenamiento")) { report ->
                             val analysis = AnalysisTools.analyze(File(root), duplicates, report)
                             withContext(Dispatchers.Main) {
                                 result = analysis
                                 selected.clear()
                             }
-                            OperationResult("Análisis terminado")
+                            OperationResult(tr("Análisis terminado"))
                         }
                     }) {
-                        Text("Analizar")
+                        Text(tr("Analizar"))
                     }
             }
             val r = result
             if (r != null) {
                 item {
                     Text(
-                        "${formatSize(r.bytes)} · ${r.files} archivos",
+                        tr("{0} · {1} archivos", formatSize(r.bytes), r.files),
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(vertical = 14.dp))
                     if (r.limited)
-                        Text("Resultado parcial: se alcanzó el límite de 200.000 archivos")
+                        Text(tr("Resultado parcial: se alcanzó el límite de 200.000 archivos"))
                 }
                 item {
                     Text(
-                        "Carpetas y archivos que más ocupan",
+                        tr("Carpetas y archivos que más ocupan"),
                         style = MaterialTheme.typography.titleMedium)
                 }
                 items(r.folders) { (name, bytes) ->
@@ -286,7 +342,7 @@ fun AnalysisScreen(vm: MainViewModel, root: String) {
                         headlineContent = { Text(name) },
                         trailingContent = { Text(formatSize(bytes)) })
                 }
-                item { Text("Archivos más grandes", style = MaterialTheme.typography.titleMedium) }
+                item { Text(tr("Archivos más grandes"), style = MaterialTheme.typography.titleMedium) }
                 items(r.largest, key = { "large:" + it.path }) { file ->
                     AnalysisRow(
                         file,
@@ -294,11 +350,11 @@ fun AnalysisScreen(vm: MainViewModel, root: String) {
                         { if (it) selected[file.path] = file else selected.remove(file.path) },
                         { vm.openFolder(file.parent ?: root) })
                 }
-                item { Text("Duplicados exactos", style = MaterialTheme.typography.titleMedium) }
+                item { Text(tr("Duplicados exactos"), style = MaterialTheme.typography.titleMedium) }
                 r.duplicates.forEachIndexed { i, group ->
                     item {
                         Text(
-                            "Grupo ${i+1} · ${formatSize(group.first().length())} cada uno",
+                            tr("Grupo {0} · {1} cada uno", i+1, formatSize(group.first().length())),
                             Modifier.padding(top = 12.dp))
                     }
                     items(group, key = { "dupe:$i:" + it.path }) { file ->
@@ -310,9 +366,9 @@ fun AnalysisScreen(vm: MainViewModel, root: String) {
                     }
                 }
                 item {
-                    Text("Candidatos a revisar", style = MaterialTheme.typography.titleMedium)
+                    Text(tr("Candidatos a revisar"), style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "Archivos temporales, vacíos y carpetas vacías. Revisa los seleccionados antes de eliminarlos.")
+                        tr("Archivos temporales, vacíos y carpetas vacías. Revisa los seleccionados antes de eliminarlos."))
                 }
                 items(r.candidates, key = { "temp:" + it.path }) { file ->
                     AnalysisRow(
@@ -324,7 +380,7 @@ fun AnalysisScreen(vm: MainViewModel, root: String) {
                 if (selected.isNotEmpty())
                     item {
                         Button(onClick = { confirm = true }) {
-                            Text("Enviar ${selected.size} a la papelera")
+                            Text(tr("Enviar {0} a la papelera", selected.size))
                         }
                     }
             }
@@ -333,7 +389,7 @@ fun AnalysisScreen(vm: MainViewModel, root: String) {
     if (confirm)
         AlertDialog(
             onDismissRequest = { confirm = false },
-            title = { Text("Revisar eliminación") },
+            title = { Text(tr("Revisar eliminación")) },
             text = {
                 Text(
                     selected.values.take(15).joinToString("\n") { it.path } +
@@ -347,10 +403,10 @@ fun AnalysisScreen(vm: MainViewModel, root: String) {
                         selected.clear()
                         result = null
                     }) {
-                        Text("Enviar a la papelera")
+                        Text(tr("Enviar a la papelera"))
                     }
             },
-            dismissButton = { TextButton(onClick = { confirm = false }) { Text("Cancelar") } })
+            dismissButton = { TextButton(onClick = { confirm = false }) { Text(tr("Cancelar")) } })
 }
 
 @Composable

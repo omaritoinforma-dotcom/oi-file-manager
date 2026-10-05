@@ -24,21 +24,36 @@ android {
         manifestPlaceholders["appAuthRedirectScheme"] = "com.omaritoinforma.oiarchivos.oauth"
     }
 
+    // Clave de las versiones publicadas: solo existe en los secretos del repositorio (el CI la deja en
+    // un archivo temporal y pasa su ruta y contraseña por el entorno). Sin ella, las compilaciones
+    // locales y las de forks se firman con la clave de depuración, que es pública y no sirve para
+    // publicar: con OI_REQUIRE_RELEASE_KEY=1 (las versiones de main) la compilación falla.
+    val releaseKeystore = System.getenv("OI_RELEASE_KEYSTORE")?.let { file(it) }?.takeIf { it.isFile }
+    if (releaseKeystore == null && System.getenv("OI_REQUIRE_RELEASE_KEY") == "1")
+        throw GradleException("Falta la clave de firma de las versiones (secreto OI_RELEASE_KEYSTORE_B64)")
+
     signingConfigs {
-        // Llave fija dentro del repo: cada APK nuevo se instala encima del anterior.
+        // Clave de depuración del repo: solo para pruebas.
         getByName("debug") {
             storeFile = file("debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        if (releaseKeystore != null)
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = System.getenv("OI_RELEASE_PASSWORD")
+                keyAlias = System.getenv("OI_RELEASE_KEY_ALIAS") ?: "oiarchivos"
+                keyPassword = System.getenv("OI_RELEASE_PASSWORD")
+            }
     }
 
     buildTypes {
         debug { signingConfig = signingConfigs.getByName("debug") }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 
@@ -61,6 +76,18 @@ android {
     lint {
         checkReleaseBuilds = false
         abortOnError = true
+    }
+
+    testOptions {
+        unitTests.all { test ->
+            // Para probar FTPS contra un servidor de prueba con certificado propio: un almacén de
+            // confianza con los certificados del sistema y el del servidor (scripts/remote_servers.py).
+            System.getenv("OI_REMOTE_TEST_TRUSTSTORE")?.let {
+                test.systemProperty("javax.net.ssl.trustStore", it)
+                test.systemProperty("javax.net.ssl.trustStorePassword", "changeit")
+                test.systemProperty("javax.net.ssl.trustStoreType", "JKS")
+            }
+        }
     }
 }
 
@@ -96,8 +123,14 @@ dependencies {
     implementation("commons-net:commons-net:3.11.1")
     implementation("com.github.mwiede:jsch:0.2.21")
     implementation("eu.agno3.jcifs:jcifs-ng:2.1.10")
+    // NFSv3 (Dell EMC, Apache 2.0). Trae Netty 3, commons-lang3 y slf4j.
+    implementation("com.emc.ecs:nfs-client:1.1.0")
     implementation("org.nanohttpd:nanohttpd:2.3.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+    implementation("com.google.zxing:core:3.5.3")
     testImplementation("junit:junit:4.13.2")
+    // Real org.json for JVM tests; android.jar only has stubs.
+    testImplementation("org.json:json:20240303")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
 }

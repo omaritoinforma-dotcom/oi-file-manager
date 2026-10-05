@@ -1,0 +1,27 @@
+#!/system/bin/sh
+# «su» de prueba, solo para el emulador del CI: no da root por sí mismo. Deja la orden en una
+# carpeta de intercambio y espera a que la ejecute el demonio root (daemon.sh), como hace el
+# cliente su de Magisk con su demonio. Solo acepta «su -c orden», que es lo que usa OI Archivos.
+D=/data/local/tmp/oi-su/q
+if [ "$1" != "-c" ] || [ $# -ne 2 ]; then
+  echo "su de prueba: uso «su -c orden»" >&2
+  exit 1
+fi
+id="$$-$RANDOM$RANDOM"
+printf '%s' "$2" > "$D/$id.cmd"
+cat > "$D/$id.in"
+: > "$D/$id.ready"
+n=0
+while [ ! -e "$D/$id.rc" ]; do
+  sleep 0.05
+  n=$((n + 1))
+  if [ $n -gt 2400 ]; then
+    echo "su de prueba: el demonio no respondió" >&2
+    rm -f "$D/$id".*
+    exit 1
+  fi
+done
+cat "$D/$id.out"
+rc=$(cat "$D/$id.rc")
+rm -f "$D/$id".*
+exit "$rc"

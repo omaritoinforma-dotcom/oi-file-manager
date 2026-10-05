@@ -4,11 +4,14 @@ package com.omaritoinforma.oiarchivos.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,6 +24,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.omaritoinforma.oiarchivos.data.EditorText
 import com.omaritoinforma.oiarchivos.data.SafeFiles
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
 import java.io.File
@@ -28,6 +32,7 @@ import java.nio.charset.Charset
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.omaritoinforma.oiarchivos.data.tr
 
 @Composable
 fun EditorScreen(vm: MainViewModel, path: String) {
@@ -39,12 +44,13 @@ fun EditorScreen(vm: MainViewModel, path: String) {
     var saving by remember { mutableStateOf(false) }
     var encoding by remember(path) { mutableStateOf("UTF-8") }
     var modifiedTime by remember(path) { mutableLongStateOf(0) }
-    var font by remember { mutableIntStateOf(14) }
+    var font by vm.editorFont
     var find by remember { mutableStateOf("") }
     var replace by remember { mutableStateOf("") }
     var search by remember { mutableStateOf(false) }
-    var numbers by remember { mutableStateOf(true) }
+    var numbers by vm.editorLineNumbers
     var charsetMenu by remember { mutableStateOf(false) }
+    var moreMenu by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val modified = value?.text?.let { it != original } ?: false
     LaunchedEffect(path, encoding) {
@@ -52,7 +58,7 @@ fun EditorScreen(vm: MainViewModel, path: String) {
         withContext(Dispatchers.IO) {
                 runCatching {
                     if (file.length() > 8L * 1024 * 1024)
-                        throw IllegalStateException("El editor permite archivos de hasta 8 MB")
+                        throw IllegalStateException(tr("El editor permite archivos de hasta 8 MB"))
                     file.readText(Charset.forName(encoding)) to file.lastModified()
                 }
             }
@@ -71,7 +77,7 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                     runCatching {
                         if (file.lastModified() != modifiedTime)
                             throw IllegalStateException(
-                                "El archivo cambió fuera del editor. Vuelve a abrirlo antes de guardar.")
+                                tr("El archivo cambió fuera del editor. Vuelve a abrirlo antes de guardar."))
                         SafeFiles.writeAtomic(file) {
                             it.writeText(snapshot, Charset.forName(encoding))
                         }
@@ -81,10 +87,10 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                 .onSuccess {
                     modifiedTime = it
                     original = snapshot
-                    vm.toast("Guardado")
+                    vm.toast(tr("Guardado"))
                     then()
                 }
-                .onFailure { vm.toast(it.message ?: "No se pudo guardar") }
+                .onFailure { vm.toast(it.message ?: tr("No se pudo guardar")) }
             saving = false
         }
     }
@@ -95,23 +101,68 @@ fun EditorScreen(vm: MainViewModel, path: String) {
             current.text.indexOf(find, current.selection.end, ignoreCase = true).let {
                 if (it < 0) current.text.indexOf(find, ignoreCase = true) else it
             }
-        if (pos < 0) vm.toast("No se encontró el texto")
+        if (pos < 0) vm.toast(tr("No se encontró el texto"))
         else value = current.copy(selection = TextRange(pos, pos + find.length))
     }
-    BackHandler(modified) { confirm = true }
+    // Cambios del menú y de la barra de símbolos sobre la selección actual.
+    fun change(edit: (String, Int, Int) -> Triple<String, Int, Int>) {
+        val current = value ?: return
+        val (text, start, end) = edit(current.text, current.selection.start, current.selection.end)
+        value = TextFieldValue(text, TextRange(start, end))
+    }
+    fun type(insert: String) {
+        val current = value ?: return
+        val (text, cursor) =
+            EditorText.insert(current.text, current.selection.start, current.selection.end, insert)
+        value = TextFieldValue(text, TextRange(cursor))
+    }
+    // Guardado automático (opción del editor de ES): al salir se guarda sin preguntar.
+    val leave = {
+        when {
+            !modified -> vm.back()
+            vm.editorAutoSave.value -> save { vm.back() }
+            else -> confirm = true
+        }
+    }
+    BackHandler(modified) { leave() }
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(file.name + if (modified) " •" else "") },
                 navigationIcon = {
-                    IconButton(onClick = { if (modified) confirm = true else vm.back() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Atrás")
+                    IconButton(onClick = { leave() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, tr("Atrás"))
                     }
                 },
                 actions = {
-                    TextButton(onClick = { search = !search }) { Text("Buscar") }
+                    TextButton(onClick = { search = !search }) { Text(tr("Buscar")) }
                     IconButton(onClick = { save() }, enabled = modified && !saving) {
-                        Icon(Icons.Filled.Save, "Guardar")
+                        Icon(Icons.Filled.Save, tr("Guardar"))
+                    }
+                    Box {
+                        IconButton(onClick = { moreMenu = true }, enabled = value != null && !saving) {
+                            Icon(Icons.Filled.MoreVert, tr("Más"))
+                        }
+                        DropdownMenu(moreMenu, { moreMenu = false }) {
+                            DropdownMenuItem(
+                                text = { Text(tr("Convertir a mayúsculas")) },
+                                onClick = {
+                                    moreMenu = false
+                                    change { t, a, b -> EditorText.changeCase(t, a, b, upper = true) }
+                                })
+                            DropdownMenuItem(
+                                text = { Text(tr("Convertir a minúsculas")) },
+                                onClick = {
+                                    moreMenu = false
+                                    change { t, a, b -> EditorText.changeCase(t, a, b, upper = false) }
+                                })
+                            DropdownMenuItem(
+                                text = { Text(tr("Duplicar línea")) },
+                                onClick = {
+                                    moreMenu = false
+                                    change(EditorText::duplicateLines)
+                                })
+                        }
                     }
                 })
         }) { pad ->
@@ -133,26 +184,26 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                             }
                         }
                     }
-                    TextButton(onClick = { font = (font - 1).coerceAtLeast(10) }) { Text("A−") }
-                    TextButton(onClick = { font = (font + 1).coerceAtMost(28) }) { Text("A+") }
+                    TextButton(onClick = { font = (font - 1).coerceAtLeast(10) }) { Text(tr("A−")) }
+                    TextButton(onClick = { font = (font + 1).coerceAtMost(28) }) { Text(tr("A+")) }
                     FilterChip(
-                        numbers, onClick = { numbers = !numbers }, label = { Text("Líneas") })
+                        numbers, onClick = { numbers = !numbers }, label = { Text(tr("Líneas")) })
                 }
                 if (search) {
                     OutlinedTextField(
                         find,
                         { find = it },
-                        label = { Text("Buscar") },
+                        label = { Text(tr("Buscar")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp))
                     OutlinedTextField(
                         replace,
                         { replace = it },
-                        label = { Text("Reemplazar con") },
+                        label = { Text(tr("Reemplazar con")) },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp))
                     Row {
-                        TextButton(onClick = { next() }) { Text("Siguiente") }
+                        TextButton(onClick = { next() }) { Text(tr("Siguiente")) }
                         TextButton(
                             onClick = {
                                 val current = value
@@ -173,7 +224,7 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                                     } else next()
                                 }
                             }) {
-                                Text("Reemplazar")
+                                Text(tr("Reemplazar"))
                             }
                         TextButton(
                             onClick = {
@@ -183,7 +234,7 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                                         TextFieldValue(
                                             current.text.replace(find, replace, ignoreCase = true))
                             }) {
-                                Text("Todos")
+                                Text(tr("Todos"))
                             }
                     }
                 }
@@ -197,6 +248,13 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                     else -> {
                         val current = value!!
                         val lineCount = current.text.count { it == '\n' } + 1
+                        val wrap = vm.editorWrap.value
+                        val limit = vm.editorHighlightLimit.value * 1024
+                        val highlight =
+                            vm.editorHighlight.value &&
+                                EditorText.highlightApplies(current.text.length, vm.editorHighlightLimit.value)
+                        val whitespace = vm.editorShowWhitespace.value
+                        val marker = MaterialTheme.colorScheme.outline
                         val style =
                             TextStyle(
                                 fontFamily = FontFamily.Monospace,
@@ -207,6 +265,9 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                             Modifier.weight(1f)
                                 .fillMaxWidth()
                                 .verticalScroll(rememberScrollState())
+                                .then(
+                                    if (wrap) Modifier
+                                    else Modifier.horizontalScroll(rememberScrollState()))
                                 .padding(8.dp)) {
                                 if (numbers)
                                     Text(
@@ -217,16 +278,61 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                                         modifier = Modifier.padding(end = 12.dp))
                                 BasicTextField(
                                     value = current,
-                                    onValueChange = { value = it },
+                                    onValueChange = { new ->
+                                        val old = value?.text.orEmpty()
+                                        val indented =
+                                            if (vm.editorAutoIndent.value)
+                                                com.omaritoinforma.oiarchivos.data.EditorText.autoIndent(
+                                                    old, new.text, new.selection.end)
+                                            else null
+                                        value =
+                                            if (indented == null) new
+                                            else TextFieldValue(indented.first, TextRange(indented.second))
+                                    },
                                     enabled = !saving,
                                     textStyle = style,
                                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                    keyboardOptions =
+                                        KeyboardOptions(
+                                            capitalization =
+                                                if (vm.editorAutoCapitalize.value)
+                                                    KeyboardCapitalization.Sentences
+                                                else KeyboardCapitalization.None),
                                     visualTransformation =
-                                        remember(current.text.length) { CodeColor() },
-                                    modifier = Modifier.weight(1f).heightIn(min = 300.dp))
+                                        if (highlight || whitespace)
+                                            remember(highlight, whitespace, marker, limit) {
+                                                EditorLook(highlight, whitespace, marker, limit)
+                                            }
+                                        else VisualTransformation.None,
+                                    modifier =
+                                        if (wrap) Modifier.weight(1f).heightIn(min = 300.dp)
+                                        else Modifier.widthIn(min = 300.dp).heightIn(min = 300.dp))
                             }
+                        if (vm.editorSymbolBar.value)
+                            Row(
+                                Modifier.fillMaxWidth()
+                                    .horizontalScroll(rememberScrollState())
+                                    .padding(horizontal = 4.dp)) {
+                                    TextButton(
+                                        onClick = {
+                                            type(
+                                                EditorText.tab(
+                                                    vm.editorSpacesForTab.value, vm.editorTabSize.value))
+                                        },
+                                        enabled = !saving) {
+                                            Text(tr("Tab"))
+                                        }
+                                    EditorText.symbols(vm.editorSymbols.value).forEach { symbol ->
+                                        TextButton(
+                                            onClick = { type(symbol) },
+                                            enabled = !saving,
+                                            contentPadding = PaddingValues(horizontal = 8.dp)) {
+                                                Text(symbol, fontFamily = FontFamily.Monospace)
+                                            }
+                                    }
+                                }
                         Text(
-                            "$lineCount líneas · ${current.text.length} caracteres",
+                            tr("{0} líneas · {1} caracteres", lineCount, current.text.length),
                             Modifier.padding(8.dp),
                             style = MaterialTheme.typography.labelSmall)
                     }
@@ -236,15 +342,15 @@ fun EditorScreen(vm: MainViewModel, path: String) {
     if (confirm)
         AlertDialog(
             onDismissRequest = { confirm = false },
-            title = { Text("Cambios sin guardar") },
-            text = { Text("¿Guardar antes de salir?") },
+            title = { Text(tr("Cambios sin guardar")) },
+            text = { Text(tr("¿Guardar antes de salir?")) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         confirm = false
                         save { vm.back() }
                     }) {
-                        Text("Guardar")
+                        Text(tr("Guardar"))
                     }
             },
             dismissButton = {
@@ -254,26 +360,42 @@ fun EditorScreen(vm: MainViewModel, path: String) {
                         original = value?.text.orEmpty()
                         vm.back()
                     }) {
-                        Text("Descartar")
+                        Text(tr("Descartar"))
                     }
             })
 }
 
-private class CodeColor : VisualTransformation {
+/**
+ * Aspecto del texto sin cambiar sus posiciones: colores del código (resaltado de sintaxis) y, si se
+ * pide, los espacios como «·» y los tabuladores como «→» (ES: «Mostrar espacios en blanco»).
+ */
+private class EditorLook(
+    private val highlight: Boolean,
+    private val whitespace: Boolean,
+    private val marker: Color,
+    private val limit: Int
+) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
-        if (text.length > 100000) return TransformedText(text, OffsetMapping.Identity)
-        val builder = AnnotatedString.Builder(text)
-        Regex(
-                "\\b(val|var|fun|class|object|import|package|if|else|when|return|for|while|def|function|const|let|true|false|null)\\b")
-            .findAll(text.text)
-            .forEach {
+        if (text.length > limit) return TransformedText(text, OffsetMapping.Identity)
+        val raw = text.text
+        val builder = AnnotatedString.Builder(if (whitespace) EditorText.showWhitespace(raw) else raw)
+        if (highlight) {
+            Regex(
+                    "\\b(val|var|fun|class|object|import|package|if|else|when|return|for|while|def|function|const|let|true|false|null)\\b")
+                .findAll(raw)
+                .forEach {
+                    builder.addStyle(
+                        SpanStyle(color = Color(0xFFB26CFF)), it.range.first, it.range.last + 1)
+                }
+            Regex("\"[^\"\\n]*\"").findAll(raw).forEach {
                 builder.addStyle(
-                    SpanStyle(color = Color(0xFFB26CFF)), it.range.first, it.range.last + 1)
+                    SpanStyle(color = Color(0xFF388E3C)), it.range.first, it.range.last + 1)
             }
-        Regex("\"[^\"\\n]*\"").findAll(text.text).forEach {
-            builder.addStyle(
-                SpanStyle(color = Color(0xFF388E3C)), it.range.first, it.range.last + 1)
         }
+        if (whitespace)
+            Regex("[ \\t]+").findAll(raw).forEach {
+                builder.addStyle(SpanStyle(color = marker), it.range.first, it.range.last + 1)
+            }
         return TransformedText(builder.toAnnotatedString(), OffsetMapping.Identity)
     }
 }

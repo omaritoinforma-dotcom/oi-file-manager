@@ -27,12 +27,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,6 +47,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -53,6 +56,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.omaritoinforma.oiarchivos.data.FileItem
+import com.omaritoinforma.oiarchivos.data.FolderStyle
 import com.omaritoinforma.oiarchivos.util.ApkIcons
 import com.omaritoinforma.oiarchivos.util.FileKind
 import com.omaritoinforma.oiarchivos.util.Kinds
@@ -61,9 +65,19 @@ import com.omaritoinforma.oiarchivos.util.formatDate
 import com.omaritoinforma.oiarchivos.util.formatSize
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.omaritoinforma.oiarchivos.data.tr
+
+/** «Miniaturas» de Ajustes → Pantalla: si es falso se muestran iconos en vez de vistas previas. */
+val LocalThumbnails = compositionLocalOf { true }
+
+/** «Estilo de carpetas» de Ajustes → Pantalla. */
+val LocalFolderStyle = compositionLocalOf { FolderStyle.CLASSIC }
+
+/** Rutas fijadas arriba; las filas y celdas las marcan con un alfiler. */
+val LocalPinned = compositionLocalOf<Set<String>> { emptySet() }
 
 fun subtitle(item: FileItem): String =
-    if (item.isDirectory) "${formatDate(item.lastModified)} · ${item.childCount} elementos"
+    if (item.isDirectory) tr("{0} · {1} elementos", formatDate(item.lastModified), item.childCount)
     else "${formatDate(item.lastModified)} · ${formatSize(item.size)}"
 
 @Composable
@@ -114,6 +128,14 @@ fun FileRow(
                 )
             }
         }
+        if (item.path in LocalPinned.current) {
+            Spacer(Modifier.width(8.dp))
+            Icon(
+                Icons.Filled.PushPin,
+                contentDescription = tr("Fijado"),
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.primary)
+        }
         if (!details && !item.isDirectory) {
             Spacer(Modifier.width(8.dp))
             Text(
@@ -139,6 +161,12 @@ fun GridCell(item: FileItem, selected: Boolean, onClick: () -> Unit, onLongClick
     ) {
         FileThumb(item, 64.dp, selected)
         Spacer(Modifier.height(6.dp))
+        if (item.path in LocalPinned.current)
+            Icon(
+                Icons.Filled.PushPin,
+                contentDescription = tr("Fijado"),
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary)
         Text(
             item.name,
             style = MaterialTheme.typography.bodySmall,
@@ -152,6 +180,7 @@ fun GridCell(item: FileItem, selected: Boolean, onClick: () -> Unit, onLongClick
 @Composable
 fun FileThumb(item: FileItem, size: Dp, selected: Boolean) {
     val kind = Kinds.of(item)
+    val previews = LocalThumbnails.current
     Box(Modifier.size(size), contentAlignment = Alignment.Center) {
         when {
             selected ->
@@ -163,10 +192,10 @@ fun FileThumb(item: FileItem, size: Dp, selected: Boolean) {
                 ) {
                     Icon(
                         Icons.Filled.Check,
-                        contentDescription = "Seleccionado",
+                        contentDescription = tr("Seleccionado"),
                         tint = MaterialTheme.colorScheme.onPrimary)
                 }
-            kind == FileKind.IMAGE || kind == FileKind.VIDEO -> {
+            previews && (kind == FileKind.IMAGE || kind == FileKind.VIDEO) -> {
                 val fallback = rememberVectorPainter(Kinds.icon(kind))
                 AsyncImage(
                     model = item.file,
@@ -174,15 +203,23 @@ fun FileThumb(item: FileItem, size: Dp, selected: Boolean) {
                     contentScale = ContentScale.Crop,
                     placeholder = fallback,
                     error = fallback,
-                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)),
+                    modifier =
+                        Modifier.fillMaxSize().clip(RoundedCornerShape(8.dp)).testTag("miniatura"),
                 )
             }
-            kind == FileKind.APK -> ApkThumb(item.path)
+            previews && kind == FileKind.APK -> ApkThumb(item.path)
             else ->
                 Icon(
                     Kinds.icon(kind),
                     contentDescription = null,
-                    tint = Kinds.color(kind),
+                    tint =
+                        if (kind != FileKind.FOLDER) Kinds.color(kind)
+                        else
+                            when (LocalFolderStyle.current) {
+                                FolderStyle.CLASSIC -> Kinds.color(kind)
+                                FolderStyle.ACCENT -> MaterialTheme.colorScheme.primary
+                                FolderStyle.GREY -> Color(0xFF8A8F94)
+                            },
                     modifier = Modifier.fillMaxSize(0.9f),
                 )
         }

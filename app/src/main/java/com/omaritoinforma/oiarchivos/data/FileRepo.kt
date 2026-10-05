@@ -105,7 +105,8 @@ object NaturalOrder : Comparator<String> {
 object Sorter {
     private val byName = Comparator<FileItem> { a, b -> NaturalOrder.compare(a.name, b.name) }
 
-    fun sort(list: List<FileItem>, by: SortBy, asc: Boolean): List<FileItem> {
+    /** [pinned]: rutas fijadas arriba; van antes que todo lo demás, también antes que las carpetas. */
+    fun sort(list: List<FileItem>, by: SortBy, asc: Boolean, pinned: Set<String> = emptySet()): List<FileItem> {
         val base: Comparator<FileItem> = when (by) {
             SortBy.NAME -> byName
             SortBy.DATE -> compareBy<FileItem> { it.lastModified }.then(byName)
@@ -113,6 +114,9 @@ object Sorter {
             SortBy.TYPE -> compareBy<FileItem> { it.extension }.then(byName)
         }
         val ordered = if (asc) base else base.reversed()
-        return list.sortedWith(compareByDescending<FileItem> { it.isDirectory }.then(ordered))
+        return list.sortedWith(
+            compareByDescending<FileItem> { it.path in pinned }
+                .then(compareByDescending<FileItem> { it.isDirectory })
+                .then(ordered))
     }
 }

@@ -18,6 +18,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.omaritoinforma.oiarchivos.data.tr
 
 @Composable
 fun AdditionalCloudLoginDialog(c: Connection, onDone: () -> Unit, onDismiss: () -> Unit) {
@@ -38,7 +39,7 @@ fun AdditionalCloudLoginDialog(c: Connection, onDone: () -> Unit, onDismiss: () 
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                error = e.message ?: "No se pudo autorizar la cuenta"
+                error = e.message ?: tr("No se pudo autorizar la cuenta")
             } finally {
                 busy = false
             }
@@ -46,35 +47,35 @@ fun AdditionalCloudLoginDialog(c: Connection, onDone: () -> Unit, onDismiss: () 
     }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Entrar en ${c.protocol.label}") },
+        title = { Text(tr("Entrar en {0}", c.protocol.label)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 if (c.protocol == Protocol.BAIDU) {
                     Text(
-                        "Autoriza la cuenta en Baidu con este código. El acceso se guardará cuando confirmes allí.")
+                        tr("Autoriza la cuenta en Baidu con este código. El acceso se guardará cuando confirmes allí."))
                     approval?.let { device ->
                         Text(device.userCode, style = MaterialTheme.typography.headlineMedium)
                         Row {
                             TextButton(
                                 onClick = { clipboard.setText(AnnotatedString(device.userCode)) }) {
-                                    Text("Copiar código")
+                                    Text(tr("Copiar código"))
                                 }
                             TextButton(
                                 onClick = {
                                     context.startActivity(
                                         Intent(Intent.ACTION_VIEW, Uri.parse(device.url)))
                                 }) {
-                                    Text("Abrir Baidu")
+                                    Text(tr("Abrir Baidu"))
                                 }
                         }
                     }
                 } else {
                     Text(
-                        "${c.user}\nLa contraseña se usa para autorizar esta conexión y no se guarda.")
+                        tr("{0}\nLa contraseña se usa para autorizar esta conexión y no se guarda.", c.user))
                     OutlinedTextField(
                         password,
                         { password = it },
-                        label = { Text("Contraseña de SugarSync") },
+                        label = { Text(tr("Contraseña de SugarSync")) },
                         enabled = !busy,
                         visualTransformation = PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth())
@@ -101,14 +102,14 @@ fun AdditionalCloudLoginDialog(c: Connection, onDone: () -> Unit, onDismiss: () 
                             } catch (e: CancellationException) {
                                 throw e
                             } catch (e: Exception) {
-                                error = e.message ?: "No se pudo entrar"
+                                error = e.message ?: tr("No se pudo entrar")
                             } finally {
                                 busy = false
                             }
                         }
                     }) {
-                        Text("Entrar")
+                        Text(tr("Entrar"))
                     }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cerrar") } })
+        dismissButton = { TextButton(onClick = onDismiss) { Text(tr("Cerrar")) } })
 }

@@ -11,16 +11,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.omaritoinforma.oiarchivos.data.*
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
+import com.omaritoinforma.oiarchivos.ui.Screen
 import com.omaritoinforma.oiarchivos.util.*
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun RemoteScreen(vm: MainViewModel, id: String) {
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
     var connection by remember(id) { mutableStateOf<Connection?>(null) }
     val stack = remember(id) { mutableStateListOf<String>() }
     var list by remember { mutableStateOf<List<RemoteEntry>>(emptyList()) }
@@ -63,18 +66,18 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
     val completion by TransferService.completion.collectAsState()
     LaunchedEffect(completion) { revision++ }
     ToolPage(
-        c?.label ?: "Archivos remotos",
+        c?.label ?: tr("Archivos remotos"),
         vm,
-        actions = { TextButton(onClick = { revision++ }) { Text("Actualizar") } }) { pad ->
+        actions = { TextButton(onClick = { revision++ }) { Text(tr("Actualizar")) } }) { pad ->
             Column(Modifier.fillMaxSize().padding(pad)) {
                 Row {
                     TextButton(
                         onClick = { if (stack.size > 1) stack.removeAt(stack.lastIndex) },
                         enabled = stack.size > 1) {
-                            Text("Subir")
+                            Text(tr("Subir"))
                         }
                     TextButton(onClick = { create = true }, enabled = c != null) {
-                        Text("Nueva carpeta")
+                        Text(tr("Nueva carpeta"))
                     }
                     Text(path.orEmpty(), Modifier.weight(1f).padding(12.dp), maxLines = 2)
                 }
@@ -87,7 +90,11 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                 if (c != null && path != null && (clip != null || remoteClip != null))
                     Button(
                         onClick = {
-                            vm.runTask("Pegando archivos remotos") { report ->
+                            if (remoteClip == null && clip != null) {
+                                vm.uploadDurable(c, clip.paths.map(::File), path, clip.move)
+                                return@Button
+                            }
+                            vm.runTask(tr("Pegando archivos remotos")) { report ->
                                 RemoteFiles.connect(c).use { target ->
                                     if (remoteClip != null) {
                                         if (remoteClip.connection.id == c.id &&
@@ -97,7 +104,7 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                                                         path.startsWith(it.path.trimEnd('/') + "/"))
                                             })
                                             throw java.io.IOException(
-                                                "No puedes copiar una carpeta dentro de sí misma")
+                                                tr("No puedes copiar una carpeta dentro de sí misma"))
                                         val stage =
                                             File(
                                                     ctx.cacheDir,
@@ -132,65 +139,70 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                                                     .ensureActive()
                                                 if (!source.deleteRecursively())
                                                     throw java.io.IOException(
-                                                        "Subido, pero no se pudo borrar el original")
+                                                        tr("Subido, pero no se pudo borrar el original"))
                                             }
                                         withContext(Dispatchers.Main) { vm.clipboard = null }
                                     }
                                 }
-                                OperationResult("Archivos pegados")
+                                OperationResult(tr("Archivos pegados"))
                             }
                         },
                         modifier = Modifier.padding(horizontal = 12.dp)) {
-                            Text("Pegar aquí")
+                            Text(tr("Pegar aquí"))
                         }
                 if (selected.isNotEmpty() && c != null) {
                     Row(Modifier.fillMaxWidth()) {
                         TextButton(
                             onClick = {
                                 NetworkClipboard.value =
-                                    NetworkClip(c, selected.values.toList(), false)
+                                    NetworkClip(c, selected.values.toList(), false, path.orEmpty())
                                 vm.clipboard = null
                                 selected.clear()
-                                vm.toast("Ve a la carpeta de destino y pega los archivos")
+                                vm.toast(tr("Ve a la carpeta de destino y pega los archivos"))
                             }) {
-                                Text("Copiar")
+                                Text(tr("Copiar"))
                             }
                         TextButton(
                             onClick = {
                                 NetworkClipboard.value =
-                                    NetworkClip(c, selected.values.toList(), true)
+                                    NetworkClip(c, selected.values.toList(), true, path.orEmpty())
                                 vm.clipboard = null
                                 selected.clear()
                             }) {
-                                Text("Cortar")
+                                Text(tr("Cortar"))
                             }
                         TextButton(
                             onClick = {
                                 val entries = selected.values.toList()
-                                vm.runTask("Descargando archivos") { report ->
-                                    val out = ArrayList<File>()
-                                    RemoteFiles.connect(c).use { fs ->
-                                        for (entry in entries) out +=
-                                            RemoteFiles.download(
-                                                fs,
-                                                entry,
-                                                File(PathUtil.internalRoot, "Download/OI Archivos"),
-                                                report)
-                                    }
-                                    OperationResult("Guardados en Descargas/OI Archivos", out)
-                                }
+                                if (path != null)
+                                    vm.downloadDurable(
+                                        c,
+                                        entries,
+                                        path,
+                                        File(vm.downloadFolder.value),
+                                        false)
                             }) {
-                                Text("Descargar")
+                                Text(tr("Descargar"))
                             }
+                        val media = selected.values.singleOrNull()?.takeIf { !it.directory && castable(it.name) }
+                        if (media != null)
+                            TextButton(
+                                onClick = {
+                                    selected.clear()
+                                    vm.castTo(
+                                        StreamServer.RemoteSource(c, media.path, media.name, media.size))
+                                }) {
+                                    Text("TV")
+                                }
                     }
                     Row {
                         TextButton(
                             onClick = { rename = selected.values.singleOrNull() },
                             enabled = selected.size == 1) {
-                                Text("Renombrar")
+                                Text(tr("Renombrar"))
                             }
-                        TextButton(onClick = { delete = true }) { Text("Eliminar") }
-                        TextButton(onClick = { selected.clear() }) { Text("Cancelar") }
+                        TextButton(onClick = { delete = true }) { Text(tr("Eliminar")) }
+                        TextButton(onClick = { selected.clear() }) { Text(tr("Cancelar")) }
                     }
                 }
                 LazyColumn(Modifier.weight(1f)) {
@@ -199,8 +211,8 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                             headlineContent = { Text(entry.name) },
                             supportingContent = {
                                 Text(
-                                    if (entry.directory) "Carpeta"
-                                    else if (entry.size < 0) "Tamaño desconocido"
+                                    if (entry.directory) tr("Carpeta")
+                                    else if (entry.size < 0) tr("Tamaño desconocido")
                                     else formatSize(entry.size))
                             },
                             leadingContent = {
@@ -220,18 +232,34 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                                         else if (selected.isNotEmpty()) {
                                             if (entry.path in selected) selected.remove(entry.path)
                                             else selected[entry.path] = entry
-                                        } else if (c != null) {
-                                            vm.runTask("Abriendo archivo remoto") { report ->
-                                                val preview =
-                                                    File(ctx.cacheDir, "remote-preview").apply {
-                                                        mkdirs()
+                                        } else if (c != null && streamable(entry.name)) {
+                                            // Audio y vídeo se reproducen sin descargarlos, como en ES.
+                                            scope.launch {
+                                                val url =
+                                                    withContext(Dispatchers.IO) {
+                                                        runCatching { StreamServer.url(c, entry) }
                                                     }
+                                                url.onSuccess { vm.goTo(Screen.Stream(it, entry.name)) }
+                                                    .onFailure {
+                                                        vm.toast(it.message ?: tr("No se pudo reproducir"))
+                                                    }
+                                            }
+                                        } else if (c != null) {
+                                            vm.runTask(tr("Abriendo archivo remoto")) { report ->
+                                                // Cada apertura tiene su carpeta: así se sabe qué copia es de qué archivo.
+                                                val preview =
+                                                    File(
+                                                            ctx.cacheDir,
+                                                            "remote-edit/${java.util.UUID.randomUUID()}")
+                                                        .apply { mkdirs() }
                                                 val local =
                                                     RemoteFiles.connect(c).use { fs ->
                                                         RemoteFiles.download(
                                                             fs, entry, preview, report)
                                                     }
                                                 withContext(Dispatchers.Main) {
+                                                    // Si se edita en otra app, se sube sola al volver.
+                                                    vm.trackRemoteEdit(c, path.orEmpty(), entry, local)
                                                     vm.openFile(local.path)
                                                 }
                                                 OperationResult(null)
@@ -243,46 +271,46 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
             }
         }
     if (rename != null)
-        RemoteNameDialog("Renombrar", rename!!.name, { rename = null }) { name ->
+        RemoteNameDialog(tr("Renombrar"), rename!!.name, { rename = null }) { name ->
             val entry = rename!!
             rename = null
             if (c != null)
-                vm.runTask("Renombrando") {
+                vm.runTask(tr("Renombrando")) {
                     RemoteFiles.connect(c).use { it.rename(entry, name) }
-                    OperationResult("Nombre actualizado")
+                    OperationResult(tr("Nombre actualizado"))
                 }
         }
     if (create)
-        RemoteNameDialog("Nueva carpeta", "", { create = false }) { name ->
+        RemoteNameDialog(tr("Nueva carpeta"), "", { create = false }) { name ->
             create = false
             if (c != null && path != null)
-                vm.runTask("Creando carpeta") {
+                vm.runTask(tr("Creando carpeta")) {
                     RemoteFiles.connect(c).use { it.mkdir(path, name) }
-                    OperationResult("Carpeta creada")
+                    OperationResult(tr("Carpeta creada"))
                 }
         }
     if (delete)
         AlertDialog(
             onDismissRequest = { delete = false },
-            title = { Text("Eliminar ${selected.size} elementos") },
-            text = { Text("La eliminación en servidores remotos puede ser permanente.") },
+            title = { Text(tr("Eliminar {0} elementos", selected.size)) },
+            text = { Text(tr("La eliminación en servidores remotos puede ser permanente.")) },
             confirmButton = {
                 TextButton(
                     onClick = {
                         delete = false
                         val entries = selected.values.toList()
                         if (c != null)
-                            vm.runTask("Eliminando archivos remotos") {
+                            vm.runTask(tr("Eliminando archivos remotos")) {
                                 RemoteFiles.connect(c).use { fs ->
                                     entries.forEach { fs.delete(it) }
                                 }
-                                OperationResult("Elementos eliminados")
+                                OperationResult(tr("Elementos eliminados"))
                             }
                     }) {
-                        Text("Eliminar")
+                        Text(tr("Eliminar"))
                     }
             },
-            dismissButton = { TextButton(onClick = { delete = false }) { Text("Cancelar") } })
+            dismissButton = { TextButton(onClick = { delete = false }) { Text(tr("Cancelar")) } })
 }
 
 @Composable
@@ -296,12 +324,21 @@ fun RemoteNameDialog(
     AlertDialog(
         onDismissRequest = dismiss,
         title = { Text(title) },
-        text = { OutlinedTextField(name, { name = it }, label = { Text("Nombre") }) },
+        text = { OutlinedTextField(name, { name = it }, label = { Text(tr("Nombre")) }) },
         confirmButton = {
             TextButton(
                 onClick = { submit(name.trim()) }, enabled = SafeFiles.validName(name.trim())) {
-                    Text("Guardar")
+                    Text(tr("Guardar"))
                 }
         },
-        dismissButton = { TextButton(onClick = dismiss) { Text("Cancelar") } })
+        dismissButton = { TextButton(onClick = dismiss) { Text(tr("Cancelar")) } })
 }
+
+/** Audio y vídeo que se pueden reproducir desde la red sin descargarlos. */
+private fun streamable(name: String) =
+    Kinds.ofExt(name.substringAfterLast('.', "").lowercase()) in setOf(FileKind.AUDIO, FileKind.VIDEO)
+
+/** Fotos, audio y vídeo que se pueden enviar a la TV. */
+private fun castable(name: String) =
+    Kinds.ofExt(name.substringAfterLast('.', "").lowercase()) in
+        setOf(FileKind.IMAGE, FileKind.AUDIO, FileKind.VIDEO)

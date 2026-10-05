@@ -1,11 +1,15 @@
-"""Exercise the built APK on a disposable Android 15 emulator, saving visible evidence.
+"""Prueba el APK compilado en un emulador Android 15 desechable y guarda pruebas visibles.
 
-Uses only seeded files and a local HTTP server. Cloud accounts, USB and root still
-need separate device/account verification. Run with an APK in ./apk/ and adb ready.
+Usa archivos de muestra, el servidor HTTP de la propia app y un servidor SFTP real en el
+equipo de CI (scripts/remote_servers.py, accesible en 10.0.2.2). Las cuentas en la nube,
+USB y root necesitan comprobarse aparte con un dispositivo o cuenta. Se ejecuta con un
+APK en ./apk/ y adb listo.
 """
 
 import base64
+import hashlib
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -22,10 +26,26 @@ OUTPUT.mkdir(exist_ok=True)
 CHECKS = []
 
 
-def adb(*args, check=True):
-    return subprocess.run(
-        ["adb", *args], capture_output=True, text=True, check=check, timeout=30
-    ).stdout
+# Mensajes de adb cuando se corta la conexión con el emulador (no son fallos de la app).
+TRANSPORT_ERRORS = ("device offline", "error: closed", "no devices/emulators found", "protocol fault", "device not found")
+
+
+def adb(*args, check=True, timeout=30):
+    """Ejecuta adb. Si se corta la conexión con el emulador, reintenta; si falla de verdad, el
+    error incluye lo que adb respondió (antes solo se veía el código de salida)."""
+    for attempt in range(4):
+        result = subprocess.run(["adb", *args], capture_output=True, text=True, timeout=timeout)
+        transport = any(e in (result.stderr or "") for e in TRANSPORT_ERRORS)
+        if result.returncode == 0 or not transport or attempt == 3:
+            break
+        print(f"  adb sin conexión ({result.stderr.strip()[:80]}); reintento", flush=True)
+        time.sleep(2 + attempt * 2)
+        subprocess.run(["adb", "wait-for-device"], timeout=60)
+    if check and result.returncode != 0:
+        raise AssertionError(
+            f"adb {' '.join(args)} terminó con {result.returncode}: "
+            f"{(result.stderr or result.stdout).strip()[:300]}")
+    return result.stdout
 
 
 def hierarchy():
@@ -41,6 +61,23 @@ def nodes(label, tree):
     ]
 
 
+def dismiss_system_anr(tree):
+    """En un emulador lento, otra app (el lanzador) puede mostrar «… isn't responding» encima.
+    Se cierra esa app y Android la vuelve a abrir. Si la que no responde es OI Archivos, es un
+    fallo real y la prueba se detiene."""
+    texts = [n.get("text") or "" for n in tree.iter("node")]
+    frozen = next((t for t in texts if "isn't responding" in t), None)
+    if frozen is None:
+        return False
+    assert "OI Archivos" not in frozen, f"La app dejó de responder: {frozen}"
+    for n in nodes("Close app", tree):
+        if n.get("package") == "android":
+            tap_node(n)
+            time.sleep(2)
+            return True
+    return False
+
+
 def wait(label, timeout=30):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -48,6 +85,8 @@ def wait(label, timeout=30):
         found = nodes(label, tree)
         if found:
             return found[0], tree
+        if dismiss_system_anr(tree):
+            continue
         time.sleep(0.5)
     raise AssertionError(f"Visible control not found: {label}")
 
@@ -71,18 +110,30 @@ def checkpoint(name, label):
 
 
 def launch():
-    adb("shell", "am", "force-stop", PACKAGE)
-    adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity")
+    # Con el emulador cargado, «am start -W» (espera a que la pantalla esté dibujada) puede tardar más de 30 s.
+    adb("shell", "am", "force-stop", PACKAGE, timeout=90)
+    adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity", timeout=120)
 
 
 def drawer(label):
     tap("Menú")
+    # Hay que esperar a que el menú esté abierto: si no, la pantalla de debajo puede tener un texto
+    # igual («Ajustes» o «Descargas» en Inicio) y el toque cae, mientras el menú se abre, en otra opción.
+    deadline = time.monotonic() + 15
+    while not nodes("Inicio", hierarchy()):
+        if time.monotonic() > deadline:
+            raise AssertionError("El menú lateral no se abrió")
+        time.sleep(0.5)
+    time.sleep(0.5)  # que termine la animación antes de tocar
     for _ in range(5):
         tree = hierarchy()
         found = nodes(label, tree)
         if found:
             tap_node(found[0])
             return
+        if dismiss_system_anr(tree):
+            tap("Menú")
+            continue
         adb("shell", "input", "swipe", "280", "1600", "280", "500", "400")
     raise AssertionError(f"Drawer item not found: {label}")
 
@@ -126,6 +177,129 @@ def seed_files():
             adb("push", str(file), f"/sdcard/Download/{file.name}")
 
 
+def keyboards(enable):
+    """El teclado en pantalla tapa los campos de abajo y no sale en la jerarquía de la app, así
+    que los toques para un campo acaban pulsando teclas. `input text` manda pulsaciones de
+    teclado físico, que Compose acepta sin app de teclado; por eso se desactivan mientras tanto."""
+    global KEYBOARD_PACKAGES
+    if not enable:
+        KEYBOARD_PACKAGES = sorted({i.split("/")[0] for i in adb("shell", "ime", "list", "-s").split()})
+    for package in KEYBOARD_PACKAGES:
+        adb("shell", "pm", "enable" if enable else "disable-user", "--user", "0", package)
+    time.sleep(1)
+
+
+KEYBOARD_PACKAGES = []
+
+
+def field_texts():
+    return [n.get("text") for n in hierarchy().iter("node") if n.get("class") == "android.widget.EditText"]
+
+
+def fill(label, value, current=None, clear=False, verify=True):
+    """Escribe en el campo del diálogo hallado por etiqueta, pista o valor actual, desplazando si hace falta."""
+    for _ in range(6):
+        tree = hierarchy()
+        found = nodes(label, tree) or [
+            n for n in tree.iter("node")
+            if n.get("enabled") == "true"
+            and (n.get("hint") == label or (current is not None and n.get("text") == current))
+        ]
+        if found:
+            tap_node(found[0])
+            if current is not None or clear:
+                adb("shell", "input", "keyevent", "KEYCODE_MOVE_END")
+                for _ in range(40 if clear else 8):
+                    adb("shell", "input", "keyevent", "KEYCODE_DEL")
+            adb("shell", "input", "text", "'" + value + "'")
+            # Los campos de contraseña ocultan el texto; solo se confirman los valores visibles.
+            if verify:
+                time.sleep(0.5)
+                texts = field_texts()
+                assert any(value in (t or "") for t in texts), f"«{value}» no quedó en el campo {label}: {texts}"
+            return
+        adb("shell", "input", "swipe", "540", "1300", "540", "700", "300")
+    raise AssertionError(f"Field not found: {label}")
+
+
+def remote_size(path):
+    out = adb("shell", "stat", "-c", "%s", path, check=False).strip()
+    return int(out) if out.isdigit() else -1
+
+
+def verify_network_resume():
+    """Servidor SFTP real en el equipo de CI (10.0.2.2): matar la app a mitad de descarga y reanudar."""
+    root = pathlib.Path(os.environ["OI_REMOTE_TEST_ROOT"])
+    payload = os.urandom(24 * 1024 * 1024)
+    (root / "reanudar.bin").write_bytes(payload)
+    expected = hashlib.sha256(payload).hexdigest()
+    target = "/sdcard/Download/OI Archivos/reanudar.bin"
+    adb("shell", "rm", "-rf", "'/sdcard/Download/OI Archivos'")
+    launch()
+    wait("Categorías")
+    drawer("Red, nube y USB")
+    tap("Agregar")
+    keyboards(enable=False)
+    fill("Nombre de la conexión", "SFTP prueba")
+    fill("Servidor", "10.0.2.2")
+    fill("Puerto", os.environ["OI_REMOTE_TEST_SFTP_PORT"], current="22")
+    fill("Usuario", "oi")
+    fill("Contraseña", os.environ["OI_REMOTE_TEST_PASSWORD"], verify=False)
+    fill("Huella del servidor SHA256:…", os.environ["OI_REMOTE_TEST_SFTP_FINGERPRINT"])
+    texts = field_texts()
+    for expected_text in (
+        "SFTP prueba",
+        "10.0.2.2",
+        os.environ["OI_REMOTE_TEST_SFTP_PORT"],
+        "oi",
+        os.environ["OI_REMOTE_TEST_SFTP_FINGERPRINT"],
+    ):
+        assert expected_text in texts, f"Field not filled as expected: {expected_text} in {texts}"
+    tap("Guardar")
+    deadline = time.monotonic() + 10
+    while nodes("Nueva conexión", hierarchy()):
+        assert time.monotonic() < deadline, "Connection dialog did not close after saving"
+        time.sleep(0.5)
+    keyboards(enable=True)
+    tap("SFTP prueba")
+    node, _ = wait("reanudar.bin")
+    x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds")))
+    adb("shell", "input", "swipe", *[str(v) for v in ((x1 + x2) // 2, (y1 + y2) // 2) * 2], "900")
+    tap("Descargar")
+    deadline = time.monotonic() + 90
+    part = ""
+    while not part:
+        assert time.monotonic() < deadline, "Download did not start"
+        listing = adb("shell", "ls", "-a", "'/sdcard/Download/OI Archivos/'", check=False).split()
+        names = [n for n in listing if n.startswith(".oi-resume-") and n.endswith(".part")]
+        if names and remote_size("'/sdcard/Download/OI Archivos/" + names[0] + "'") > 1024 * 1024:
+            part = names[0]
+        time.sleep(0.5)
+    checkpoint("15-network-download-running", "reanudar.bin")
+    # Se mata el proceso a mitad de la transferencia, como cuando Android recupera memoria.
+    adb("shell", "am", "force-stop", PACKAGE)
+    partial = remote_size("'/sdcard/Download/OI Archivos/" + part + "'")
+    assert 0 < partial < len(payload), partial
+    assert remote_size("'" + target + "'") < 0, "Final file must not exist before completion"
+    launch()
+    wait("Categorías")
+    drawer("Transferencias")
+    checkpoint("16-network-download-pending", "Reanudar")
+    tap("Reanudar")
+    deadline = time.monotonic() + 240
+    while remote_size("'" + target + "'") != len(payload):
+        assert time.monotonic() < deadline, "Resumed download did not finish"
+        time.sleep(1)
+    digest = adb("shell", "sha256sum", "'" + target + "'").split()[0]
+    assert digest == expected, "Resumed download differs from the server file"
+    assert (root / "reanudar.bin").exists(), "A copy must keep the server original"
+    leftovers = set(adb("shell", "ls", "-a", "'/sdcard/Download/OI Archivos/'").split()) - {".", ".."}
+    assert leftovers == {"reanudar.bin"}, leftovers
+    CHECKS.append("network-download-survives-process-death")
+    print(f"PASS: network-download-survives-process-death (partial {partial} bytes)", flush=True)
+    back_home()
+
+
 def verify_http():
     tap("Navegador / Wi-Fi")
     _, tree = wait("Detener servidor")
@@ -134,8 +308,8 @@ def verify_http():
     password = re.search(r"Contraseña: (\S+)", text).group(1)
     auth = "Basic " + base64.b64encode(f"oi:{password}".encode()).decode()
 
-    # Request the actual selected interface from inside Android. Emulator console
-    # redirection targets eth0; the server may intentionally bind the Wi-Fi IP.
+    # Se pide desde Android la interfaz elegida de verdad. La redirección de la consola
+    # del emulador apunta a eth0; el servidor puede escuchar a propósito en la IP de la Wi-Fi.
     def request(path, authorized=True, body=None, content_type=None):
         method = "POST" if body is not None else "GET"
         headers = [f"{method} {path} HTTP/1.1", f"Host: {address}:{port}", "Connection: close"]
@@ -182,7 +356,7 @@ def main():
     for label, title, name in [
         ("Red, nube y USB", "Agregar", "03-connections"),
         ("Transferencias", "Transferencias", "04-transfers"),
-        ("Historial", "Historial de carpetas", "05-history"),
+        ("Historial", "Historial", "05-history"),
     ]:
         drawer(label)
         checkpoint(name, title)
@@ -231,17 +405,33 @@ def main():
     verify_http()
     adb("shell", "input", "keyevent", "4")
     adb("shell", "input", "keyevent", "4")
-    # Verify leaving/re-entering the Activity keeps normal file browsing usable.
+    # Comprobar que salir y volver a la Activity deja el explorador usable.
     adb("shell", "input", "keyevent", "3")
-    adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity")
+    # Abrir mientras Inicio aún se anima se «entrega arriba» y deja el lanzador delante;
+    # por eso se espera a que la app haya salido de verdad del primer plano.
+    focused = lambda: PACKAGE in adb("shell", "dumpsys", "window", "displays", check=False).split("mCurrentFocus", 1)[-1][:200]
+    deadline = time.monotonic() + 15
+    while focused() and time.monotonic() < deadline:
+        time.sleep(0.5)
+    for _ in range(3):
+        adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity")
+        time.sleep(1)
+        if focused():
+            break
     checkpoint("14-resume", "smoke.txt")
+    verify_network_resume()
     crash = adb("logcat", "-d", "-b", "crash")
     assert f"Process: {PACKAGE}" not in crash, crash
 
 
-try:
-    main()
-finally:
+def run():
+    try:
+        main()
+    finally:
+        save_evidence()
+
+
+def save_evidence():
     (OUTPUT / "logcat.txt").write_text(adb("logcat", "-d"), encoding="utf-8")
     (OUTPUT / "checks.json").write_text(json.dumps(CHECKS, indent=2), encoding="utf-8")
     try:
@@ -249,3 +439,6 @@ finally:
         (OUTPUT / "last.png").write_bytes(subprocess.check_output(["adb", "exec-out", "screencap", "-p"], timeout=30))
     except Exception:
         pass
+
+if __name__ == "__main__":
+    run()

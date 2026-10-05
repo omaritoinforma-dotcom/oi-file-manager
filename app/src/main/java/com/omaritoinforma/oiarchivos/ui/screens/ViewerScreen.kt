@@ -35,6 +35,7 @@ import com.omaritoinforma.oiarchivos.util.*
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.omaritoinforma.oiarchivos.data.tr
 
 @Composable
 fun ViewerScreen(vm: MainViewModel, path: String) {
@@ -45,13 +46,15 @@ fun ViewerScreen(vm: MainViewModel, path: String) {
         vm,
         actions = {
             if (kind == FileKind.VIDEO)
-                TextButton(onClick = { vm.goTo(Screen.VideoEdit(path)) }) { Text("Editar") }
+                TextButton(onClick = { vm.goTo(Screen.VideoEdit(path)) }) { Text(tr("Editar")) }
             TextButton(onClick = { Opener.share(vm.getApplication(), listOf(file)) }) {
-                Text("Compartir")
+                Text(tr("Compartir"))
             }
         }) { pad ->
             when (kind) {
-                FileKind.IMAGE -> ImageGallery(path, Modifier.fillMaxSize().padding(pad))
+                FileKind.IMAGE ->
+                    ImageGallery(
+                        path, Modifier.fillMaxSize().padding(pad), onEdit = { vm.goTo(Screen.ImageEdit(it.path)) })
                 FileKind.PDF -> PdfViewer(file, Modifier.fillMaxSize().padding(pad))
                 else -> MediaViewer(file, Modifier.fillMaxSize().padding(pad))
             }
@@ -59,7 +62,7 @@ fun ViewerScreen(vm: MainViewModel, path: String) {
 }
 
 @Composable
-private fun ImageGallery(path: String, modifier: Modifier) {
+private fun ImageGallery(path: String, modifier: Modifier, onEdit: (File) -> Unit) {
     val images =
         remember(path) {
             File(path)
@@ -81,7 +84,7 @@ private fun ImageGallery(path: String, modifier: Modifier) {
     Column(modifier) {
         AsyncImage(
             model = images.getOrNull(index) ?: File(path),
-            contentDescription = "Imagen",
+            contentDescription = tr("Imagen"),
             contentScale = ContentScale.Fit,
             modifier =
                 Modifier.weight(1f)
@@ -108,27 +111,33 @@ private fun ImageGallery(path: String, modifier: Modifier) {
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { index-- }, enabled = index > 0) { Text("Anterior") }
+                TextButton(onClick = { index-- }, enabled = index > 0) { Text(tr("Anterior")) }
                 Text("${index+1} / ${images.size.coerceAtLeast(1)}")
                 TextButton(onClick = { index++ }, enabled = index < images.lastIndex) {
-                    Text("Siguiente")
+                    Text(tr("Siguiente"))
                 }
             }
-        TextButton(
-            onClick = {
-                zoom = 1f
-                x = 0f
-                y = 0f
-            }) {
-                Text("Restablecer zoom")
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            TextButton(
+                onClick = {
+                    zoom = 1f
+                    x = 0f
+                    y = 0f
+                }) {
+                    Text(tr("Restablecer zoom"))
+                }
+            TextButton(onClick = { onEdit(images.getOrNull(index) ?: File(path)) }) {
+                Text(tr("Editar imagen"))
             }
+        }
     }
 }
 
+/** Algo que el reproductor puede abrir: un archivo del teléfono o un enlace de streaming. */
+private class PlayItem(val uri: Uri, val id: String, val title: String)
+
 @Composable
-@androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
 private fun MediaViewer(file: File, modifier: Modifier) {
-    val ctx = LocalContext.current
     val audio = Kinds.ofExt(file.extension.lowercase()) == FileKind.AUDIO
     val files =
         remember(file) {
@@ -142,9 +151,81 @@ private fun MediaViewer(file: File, modifier: Modifier) {
                 .orEmpty()
                 .ifEmpty { listOf(file) }
         }
-    var player by remember(file) { mutableStateOf<Player?>(null) }
-    var playbackError by remember(file) { mutableStateOf<String?>(null) }
-    DisposableEffect(file, audio) {
+    val items = remember(files) { files.map { PlayItem(Uri.fromFile(it), it.path, it.name) } }
+    MediaPlayer(items, files.indexOf(file).coerceAtLeast(0), audio, modifier)
+}
+
+/**
+ * Reproduce desde la red sin descargar: el enlace es del servidor local de streaming, que lee el
+ * archivo remoto por rangos (ver StreamServer).
+ */
+@Composable
+fun StreamScreen(vm: MainViewModel, url: String, title: String) {
+    val ctx = LocalContext.current
+    val kind = Kinds.ofExt(title.substringAfterLast('.', "").lowercase())
+    val items = remember(url) { listOf(PlayItem(Uri.parse(url), url, title)) }
+    ToolPage(
+        title,
+        vm,
+        actions = {
+            TextButton(
+                onClick = {
+                    runCatching {
+                        val view =
+                            android.content.Intent(android.content.Intent.ACTION_VIEW)
+                                .setDataAndType(
+                                    Uri.parse(url),
+                                    if (kind == FileKind.AUDIO) "audio/*" else "video/*")
+                        ctx.startActivity(
+                            android.content.Intent.createChooser(view, tr("Abrir con"))
+                                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                }) {
+                    Text(tr("Abrir con…"))
+                }
+        }) { pad ->
+            Column(Modifier.fillMaxSize().padding(pad)) {
+                Text(
+                    tr("Desde la red, sin descargar"),
+                    Modifier.padding(horizontal = 16.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                MediaPlayer(items, 0, kind == FileKind.AUDIO, Modifier.weight(1f).fillMaxWidth())
+            }
+        }
+}
+
+/** Reproduce una lista guardada; las pistas que ya no están en el teléfono se saltan. */
+@Composable
+fun PlaylistPlayerScreen(vm: MainViewModel, name: String, start: Int) {
+    val files =
+        remember(name) {
+            runCatching { vm.playlists.read(name).tracks }
+                .getOrDefault(emptyList())
+                .map(::File)
+                .filter { it.isFile }
+        }
+    ToolPage(name, vm) { pad ->
+        if (files.isEmpty())
+            Text(tr("No hay pistas que reproducir."), Modifier.padding(pad).padding(16.dp))
+        else {
+            val items =
+                remember(files) { files.map { PlayItem(Uri.fromFile(it), it.path, it.name) } }
+            val audio = files.all { Kinds.ofExt(it.extension.lowercase()) == FileKind.AUDIO }
+            MediaPlayer(
+                items, start.coerceIn(0, items.lastIndex), audio, Modifier.fillMaxSize().padding(pad))
+        }
+    }
+}
+
+@Composable
+@androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
+private fun MediaPlayer(items: List<PlayItem>, start: Int, audio: Boolean, modifier: Modifier) {
+    val ctx = LocalContext.current
+    val first = items[start]
+    var player by remember(items) { mutableStateOf<Player?>(null) }
+    var playbackError by remember(items) { mutableStateOf<String?>(null) }
+    DisposableEffect(items, audio) {
         var disposed = false
         val future =
             if (audio)
@@ -159,16 +240,16 @@ private fun MediaViewer(file: File, modifier: Modifier) {
                     .buildAsync()
             else null
         fun prepare(p: Player) {
-            if (p.currentMediaItem?.mediaId != file.path || p.mediaItemCount == 0) {
+            if (p.currentMediaItem?.mediaId != first.id || p.mediaItemCount == 0) {
                 p.setMediaItems(
-                    files.map {
+                    items.map {
                         MediaItem.Builder()
-                            .setUri(Uri.fromFile(it))
-                            .setMediaId(it.path)
-                            .setMediaMetadata(MediaMetadata.Builder().setTitle(it.name).build())
+                            .setUri(it.uri)
+                            .setMediaId(it.id)
+                            .setMediaMetadata(MediaMetadata.Builder().setTitle(it.title).build())
                             .build()
                     },
-                    files.indexOf(file).coerceAtLeast(0),
+                    start,
                     0)
                 p.prepare()
             }
@@ -181,7 +262,7 @@ private fun MediaViewer(file: File, modifier: Modifier) {
                     if (!disposed)
                         runCatching { prepare(future.get()) }
                             .onFailure {
-                                playbackError = it.message ?: "No se pudo reproducir el audio"
+                                playbackError = it.message ?: tr("No se pudo reproducir el audio")
                             }
                 },
                 androidx.core.content.ContextCompat.getMainExecutor(ctx))
@@ -192,7 +273,7 @@ private fun MediaViewer(file: File, modifier: Modifier) {
             player = null
         }
     }
-    var title by remember { mutableStateOf(file.name) }
+    var title by remember { mutableStateOf(first.title) }
     var shuffle by remember(player) { mutableStateOf(player?.shuffleModeEnabled ?: false) }
     var repeat by
         remember(player) { mutableIntStateOf(player?.repeatMode ?: Player.REPEAT_MODE_OFF) }
@@ -201,7 +282,7 @@ private fun MediaViewer(file: File, modifier: Modifier) {
         val listener =
             object : Player.Listener {
                 override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
-                    title = File(item?.mediaId ?: file.path).name
+                    title = items.firstOrNull { it.id == item?.mediaId }?.title ?: first.title
                 }
             }
         currentPlayer?.addListener(listener)
@@ -227,7 +308,7 @@ private fun MediaViewer(file: File, modifier: Modifier) {
                     shuffle = !shuffle
                     player?.shuffleModeEnabled = shuffle
                 },
-                label = { Text("Aleatorio") })
+                label = { Text(tr("Aleatorio")) })
             Spacer(Modifier.width(12.dp))
             FilterChip(
                 repeat != Player.REPEAT_MODE_OFF,
@@ -238,9 +319,9 @@ private fun MediaViewer(file: File, modifier: Modifier) {
                 label = {
                     Text(
                         when (repeat) {
-                            Player.REPEAT_MODE_ONE -> "Repetir uno"
-                            Player.REPEAT_MODE_ALL -> "Repetir todos"
-                            else -> "Sin repetición"
+                            Player.REPEAT_MODE_ONE -> tr("Repetir uno")
+                            Player.REPEAT_MODE_ALL -> tr("Repetir todos")
+                            else -> tr("Sin repetición")
                         })
                 })
         }
@@ -290,15 +371,15 @@ private fun PdfViewer(file: File, modifier: Modifier) {
             image?.let {
                 Image(
                     it.asImageBitmap(),
-                    "Página ${page+1}",
+                    tr("Página {0}", page+1),
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize())
             } ?: if (error != null) Text(error!!) else CircularProgressIndicator()
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            TextButton(onClick = { page-- }, enabled = page > 0) { Text("Anterior") }
+            TextButton(onClick = { page-- }, enabled = page > 0) { Text(tr("Anterior")) }
             Text("${page+1} / $count", Modifier.padding(top = 12.dp))
-            TextButton(onClick = { page++ }, enabled = page + 1 < count) { Text("Siguiente") }
+            TextButton(onClick = { page++ }, enabled = page + 1 < count) { Text(tr("Siguiente")) }
         }
     }
 }

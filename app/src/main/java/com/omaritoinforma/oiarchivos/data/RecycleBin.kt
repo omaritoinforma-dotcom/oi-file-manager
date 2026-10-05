@@ -63,14 +63,14 @@ object RecycleBin {
 
     fun restore(e: Entry): String {
         val original = File(e.originalPath)
-        val parent = original.parentFile ?: return "Ruta original no válida"
+        val parent = original.parentFile ?: return tr("Ruta original no válida")
         parent.mkdirs()
         val target = if (original.exists()) FileOps.uniqueName(parent, original.name) else original
         val ok = e.file.renameTo(target) ||
             runCatching { e.file.copyRecursively(target, overwrite = false) && e.file.deleteRecursively() }.getOrDefault(false)
-        if (!ok) return "No se pudo restaurar «${e.name}»"
+        if (!ok) return tr("No se pudo restaurar «{0}»", e.name)
         File(metaDir, "${e.id}.json").delete()
-        return "Restaurado en ${target.parent}"
+        return tr("Restaurado en {0}", target.parent)
     }
 
     fun deleteForever(e: Entry) {
