@@ -309,6 +309,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean("home_search", true)
         set(v) = sp.edit().putBoolean("home_search", v).apply()
 
+    /** Carpeta que comparte el servidor FTP/HTTP y que reutiliza su acceso directo. */
+    var ftpShareRoot: String
+        get() = sp.getString("ftp_share_root", null) ?: "${PathUtil.internalRoot}/Download"
+        set(v) = sp.edit().putString("ftp_share_root", v).apply()
+
     /** Contraseña fija del servidor FTP; vacía = una nueva cada vez. Es del dispositivo: no va en la copia de ajustes. */
     var ftpPassword: String
         get() = sp.getString("ftp_password", "").orEmpty()
