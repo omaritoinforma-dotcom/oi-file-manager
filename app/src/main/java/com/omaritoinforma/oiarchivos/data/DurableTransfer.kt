@@ -14,5 +14,5 @@ interface DurableTransfer {
 
     suspend fun run(report: (OpProgress) -> Unit): OperationResult
 
-    fun discard()
+    suspend fun discard()
 }
