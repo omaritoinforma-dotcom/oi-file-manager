@@ -148,7 +148,7 @@ class TransferService : Service() {
         val completion = MutableStateFlow<Pair<Long, String>?>(null)
         val paused = MutableStateFlow(false)
         val supportsPause = MutableStateFlow(false)
-        private var pendingDurable: DurableCopy? = null
+        private var pendingDurable: DurableTransfer? = null
         private var pendingWork: (suspend ((OpProgress) -> Unit) -> OperationResult)? = null
         private var pendingTitle = "Operación"
         @Volatile private var busy = false
@@ -189,7 +189,7 @@ class TransferService : Service() {
         fun jobsDirectory(ctx: Context) = File(ctx.filesDir, "transfer-jobs")
 
         @Synchronized
-        fun submitDurable(ctx: Context, job: DurableCopy): Boolean {
+        fun submitDurable(ctx: Context, job: DurableTransfer): Boolean {
             if (busy) return false
             pendingDurable = job
             return try {
