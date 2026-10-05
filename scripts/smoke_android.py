@@ -404,6 +404,7 @@ def main():
     adb("shell", "appops", "set", PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     adb("shell", "pm", "grant", PACKAGE, "android.permission.POST_NOTIFICATIONS")
     seed_files()
+    start_webdav()
     launch()
     checkpoint("02-home", "Categorías")
 
@@ -537,6 +538,8 @@ def main():
     wait("smoke.wav")
     tap("Atrás")
 
+    verify_remote_recovery()
+
     drawer("Red, nube y USB")
     tap("Compartir por Wi-Fi / FTP")
     verify_http()
@@ -546,7 +549,7 @@ def main():
     # Verify leaving/re-entering the Activity keeps normal file browsing usable.
     adb("shell", "input", "keyevent", "3")
     adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity")
-    checkpoint("19-resume", "smoke.txt")
+    checkpoint("21-resume", "smoke.txt")
     crash = adb("logcat", "-d", "-b", "crash")
     assert f"Process: {PACKAGE}" not in crash, crash
 
@@ -554,6 +557,7 @@ def main():
 try:
     main()
 finally:
+    stop_webdav()
     (OUTPUT / "logcat.txt").write_text(adb("logcat", "-d"), encoding="utf-8")
     (OUTPUT / "checks.json").write_text(json.dumps(CHECKS, indent=2), encoding="utf-8")
     try:
