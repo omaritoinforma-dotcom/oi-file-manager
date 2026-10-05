@@ -816,7 +816,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             requestUnlock(tr("Lista de ocultos")) { goTo(s) }
             return
         }
-        if (s is Screen.Remote && needsNetworkUnlock(s.id)) {
+        if (needsNetworkUnlock(s)) {
             requestUnlock(tr("Conexiones de red")) { goTo(s) }
             return
         }
@@ -1690,17 +1690,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- Ajustes: contraseña ----------------
 
-    private fun needsNetworkUnlock(id: String): Boolean {
+    private fun needsNetworkUnlock(screen: Screen): Boolean {
         if (!AppLock.needsNetwork(prefs)) return false
-        // El explorador root no es un recurso de red.
-        val protocol =
-            runCatching {
-                    com.omaritoinforma.oiarchivos.data.ConnectionStore(ctx).load()
-                        .firstOrNull { it.id == id }
-                        ?.protocol
-                }
-                .getOrNull()
-        return protocol != com.omaritoinforma.oiarchivos.data.Protocol.ROOT
+        return when (screen) {
+            Screen.Connections,
+            Screen.Bluetooth,
+            Screen.Sharing,
+            Screen.Nearby,
+            Screen.Cast,
+            Screen.AdbTv -> true
+            is Screen.Remote -> {
+                // El explorador root usa la misma infraestructura de conexiones, pero no es red.
+                val protocol =
+                    runCatching {
+                            com.omaritoinforma.oiarchivos.data.ConnectionStore(ctx).load()
+                                .firstOrNull { it.id == screen.id }
+                                ?.protocol
+                        }
+                        .getOrNull()
+                protocol != com.omaritoinforma.oiarchivos.data.Protocol.ROOT
+            }
+            else -> false
+        }
     }
 
     fun requestUnlock(reason: String, onSuccess: () -> Unit) {
