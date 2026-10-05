@@ -649,7 +649,9 @@ private class DavFs(c: Connection) : RemoteFs {
     private val base = c.host.trimEnd('/')
     private val http =
         Http(
-            "Basic " + Base64.encodeToString("${c.user}:${c.secret}".toByteArray(), Base64.NO_WRAP))
+            "Basic " +
+                java.util.Base64.getEncoder()
+                    .encodeToString("${c.user}:${c.secret}".toByteArray(Charsets.UTF_8)))
 
     init {
         if (!base.startsWith("https://") && !base.startsWith("http://"))
