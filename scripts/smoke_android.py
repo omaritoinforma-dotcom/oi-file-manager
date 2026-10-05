@@ -71,13 +71,22 @@ def center(node):
 
 
 def find_scrolling(label, attempts=8):
+    tree = hierarchy()
+    found = nodes(label, tree)
+    if found:
+        return found[0]
+
+    # Reset toward the beginning of a scrollable view, then search forward.
+    for _ in range(4):
+        adb("shell", "input", "swipe", "540", "550", "540", "1550", "250")
+        time.sleep(0.15)
     for _ in range(attempts):
         tree = hierarchy()
         found = nodes(label, tree)
         if found:
             return found[0]
         adb("shell", "input", "swipe", "540", "1500", "540", "500", "300")
-        time.sleep(0.3)
+        time.sleep(0.25)
     raise AssertionError(f"Scrollable control not found: {label}")
 
 
