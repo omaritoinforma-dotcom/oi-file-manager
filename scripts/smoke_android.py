@@ -5,13 +5,16 @@ need separate device/account verification. Run with an APK in ./apk/ and adb rea
 """
 
 import base64
+import hashlib
 import json
 import math
 import pathlib
 import re
 import shutil
+import socket
 import struct
 import subprocess
+import sys
 import tempfile
 import time
 import wave
@@ -24,6 +27,69 @@ PACKAGE = "com.omaritoinforma.oiarchivos"
 OUTPUT = pathlib.Path("smoke-output")
 OUTPUT.mkdir(exist_ok=True)
 CHECKS = []
+WEBDAV_PORT = 18080
+WEBDAV_PROCESS = None
+WEBDAV_LOG = None
+WEBDAV_SHA256 = None
+WEBDAV_SIZE = 8 * 1024 * 1024
+
+
+def start_webdav():
+    global WEBDAV_PROCESS, WEBDAV_LOG, WEBDAV_SHA256
+    root = OUTPUT / "webdav-root"
+    shutil.rmtree(root, ignore_errors=True)
+    root.mkdir(parents=True)
+    payload = root / "big.bin"
+    digest = hashlib.sha256()
+    block = bytes((i * 17 + 23) % 256 for i in range(64 * 1024))
+    with payload.open("wb") as out:
+        for _ in range(WEBDAV_SIZE // len(block)):
+            out.write(block)
+            digest.update(block)
+    WEBDAV_SHA256 = digest.hexdigest()
+    WEBDAV_LOG = (OUTPUT / "webdav.log").open("w", encoding="utf-8")
+    WEBDAV_PROCESS = subprocess.Popen(
+        [
+            sys.executable,
+            "scripts/smoke_webdav_server.py",
+            "--root",
+            str(root),
+            "--port",
+            str(WEBDAV_PORT),
+            "--user",
+            "oi",
+            "--password",
+            "test",
+        ],
+        stdout=WEBDAV_LOG,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    deadline = time.monotonic() + 10
+    while time.monotonic() < deadline:
+        if WEBDAV_PROCESS.poll() is not None:
+            raise AssertionError("WebDAV fixture server exited early")
+        try:
+            with socket.create_connection(("127.0.0.1", WEBDAV_PORT), timeout=0.3):
+                return
+        except OSError:
+            time.sleep(0.1)
+    raise AssertionError("WebDAV fixture server did not start")
+
+
+def stop_webdav():
+    global WEBDAV_PROCESS, WEBDAV_LOG
+    if WEBDAV_PROCESS is not None:
+        WEBDAV_PROCESS.terminate()
+        try:
+            WEBDAV_PROCESS.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            WEBDAV_PROCESS.kill()
+            WEBDAV_PROCESS.wait(timeout=5)
+        WEBDAV_PROCESS = None
+    if WEBDAV_LOG is not None:
+        WEBDAV_LOG.close()
+        WEBDAV_LOG = None
 
 
 def adb(*args, check=True):
@@ -98,6 +164,18 @@ def type_into(label, value):
     tap_node(wait(label)[0])
     adb("shell", "input", "keyevent", "KEYCODE_MOVE_END")
     adb("shell", "input", "text", value)
+
+
+def type_into_scrolling(label, value):
+    tap_node(find_scrolling(label))
+    adb("shell", "input", "keyevent", "KEYCODE_MOVE_END")
+    adb("shell", "input", "text", value)
+
+
+def long_press(label, duration=900):
+    node = wait(label)[0]
+    x, y = center(node)
+    adb("shell", "input", "swipe", str(x), str(y), str(x), str(y), str(duration))
 
 
 def drag_row_to_right_pane(label):
