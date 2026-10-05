@@ -14,7 +14,6 @@ import com.omaritoinforma.oiarchivos.ui.MainViewModel
 import com.omaritoinforma.oiarchivos.util.*
 import java.io.File
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -90,42 +89,38 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                     Button(
                         onClick = {
                             if (remoteClip != null) {
-                                vm.runTask("Pegando archivos remotos") { report ->
-                                    RemoteFiles.connect(c).use { target ->
-                                        if (remoteClip.connection.id == c.id &&
-                                            remoteClip.entries.any {
-                                                it.path == path ||
-                                                    (it.directory &&
-                                                        path.startsWith(it.path.trimEnd('/') + "/"))
-                                            })
-                                            throw java.io.IOException(
-                                                "No puedes copiar una carpeta dentro de sí misma")
-                                        val stage =
-                                            File(
-                                                    ctx.cacheDir,
-                                                    "remote-${java.util.UUID.randomUUID()}")
-                                                .apply { mkdirs() }
-                                        try {
-                                            RemoteFiles.connect(remoteClip.connection).use { source
-                                                ->
-                                                for (entry in remoteClip.entries) {
-                                                    val local =
-                                                        RemoteFiles.download(
-                                                            source, entry, stage, report)
-                                                    RemoteFiles.upload(
-                                                        target, listOf(local), path, report)
-                                                    if (remoteClip.move) source.delete(entry)
-                                                    local.deleteRecursively()
-                                                }
+                                if (remoteClip.connection.id == c.id &&
+                                    remoteClip.entries.any {
+                                        it.path == path ||
+                                            (it.directory &&
+                                                path.startsWith(it.path.trimEnd('/') + "/"))
+                                    }) {
+                                    vm.toast("No puedes copiar una carpeta dentro de sí misma")
+                                    return@Button
+                                }
+                                val relay = remoteClip
+                                scope.launch {
+                                    try {
+                                        val job =
+                                            withContext(Dispatchers.IO) {
+                                                DurableRemoteRelay.create(
+                                                    ctx,
+                                                    TransferService.jobsDirectory(ctx),
+                                                    relay.connection,
+                                                    c,
+                                                    relay.entries,
+                                                    path,
+                                                    relay.move)
                                             }
-                                        } finally {
-                                            stage.deleteRecursively()
-                                        }
-                                        withContext(Dispatchers.Main) {
-                                            NetworkClipboard.value = null
-                                        }
+                                        NetworkClipboard.value = null
+                                        if (!TransferService.submitDurable(ctx, job))
+                                            vm.toast(
+                                                "Transferencia guardada. Ábrela desde Transferencias.")
+                                    } catch (error: Exception) {
+                                        vm.toast(
+                                            error.message
+                                                ?: "No se pudo preparar la copia entre conexiones")
                                     }
-                                    OperationResult("Archivos pegados")
                                 }
                             } else if (clip != null) {
                                 val sources = clip.paths.map(::File)
