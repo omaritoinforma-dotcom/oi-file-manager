@@ -17,8 +17,9 @@ object NearbyLink {
     const val SCHEME = "oiarchivos"
     const val HOST = "enviar"
 
-    fun build(address: String, port: Int, name: String): String =
-        "$SCHEME://$HOST?host=${enc(address)}&port=$port&nombre=${enc(name.take(60))}"
+    fun build(address: String, port: Int, name: String, wifi: String? = null, wifiKey: String = ""): String =
+        "$SCHEME://$HOST?host=${enc(address)}&port=$port&nombre=${enc(name.take(60))}" +
+            (if (wifi != null) "&wifi=${enc(wifi)}&clave=${enc(wifiKey)}" else "")
 
     /** El destino que describe [link], o null si no es un enlace válido o la dirección no es local. */
     fun parse(link: String): Nearby.Peer? {
@@ -33,6 +34,14 @@ object NearbyLink {
         val port = query["port"]?.toIntOrNull() ?: return null
         if (!isLocalAddress(host) || port !in 1024..65535) return null
         val name = query["nombre"].orEmpty().filter { !it.isISOControl() }.take(60).trim().ifEmpty { host }
+        // Red del punto de acceso del que recibe: nombre de hasta 32 bytes y clave WPA2 de 8 a 63 caracteres (o vacía).
+        val wifi = query["wifi"]
+        if (wifi != null) {
+            val key = query["clave"].orEmpty()
+            if (wifi.isEmpty() || wifi.toByteArray().size > 32 || wifi.any { it.isISOControl() }) return null
+            if (key.isNotEmpty() && (key.length !in 8..63 || key.any { it.code !in 0x20..0x7E })) return null
+            return Nearby.Peer(host, port, name, wifi, key)
+        }
         return Nearby.Peer(host, port, name)
     }
 

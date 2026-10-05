@@ -40,7 +40,11 @@ object Nearby {
             get() = files.sumOf { it.size }
     }
 
-    data class Peer(val address: String, val port: Int, val name: String)
+    /**
+     * Un teléfono que recibe. Si recibe con su propio punto de acceso, [wifi] y [wifiKey] son la red
+     * a la que hay que unirse antes de enviar (clave vacía: red abierta).
+     */
+    data class Peer(val address: String, val port: Int, val name: String, val wifi: String? = null, val wifiKey: String = "")
 
     fun offerJson(offer: Offer): String =
         JSONObject()

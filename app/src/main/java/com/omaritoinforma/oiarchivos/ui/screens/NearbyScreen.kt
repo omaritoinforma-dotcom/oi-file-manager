@@ -18,12 +18,14 @@ import com.omaritoinforma.oiarchivos.data.Nearby
 import com.omaritoinforma.oiarchivos.data.NearbyLink
 import com.omaritoinforma.oiarchivos.data.NearbyReceiver
 import com.omaritoinforma.oiarchivos.data.OperationResult
+import com.omaritoinforma.oiarchivos.data.WifiDirectLink
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
 import com.omaritoinforma.oiarchivos.util.formatSize
 import java.io.File
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.omaritoinforma.oiarchivos.data.tr
 
@@ -44,6 +46,32 @@ fun NearbyScreen(vm: MainViewModel) {
     var incoming by remember { mutableStateOf<IncomingOffer?>(null) }
     val received = remember { mutableStateListOf<String>() }
     var receiveError by remember { mutableStateOf<String?>(null) }
+    // Punto de acceso propio para recibir sin router (null: se recibe por la Wi-Fi a la que ya está conectado).
+    var hotspot by remember { mutableStateOf<WifiDirectLink.Hotspot?>(null) }
+    var startingHotspot by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    fun startHotspot() {
+        startingHotspot = true
+        receiveError = null
+        scope.launch {
+            runCatching { WifiDirectLink.startHotspot(ctx) }
+                .onSuccess {
+                    hotspot = it
+                    receiving = true
+                }
+                .onFailure { receiveError = it.message ?: tr("No se pudo crear el punto de acceso") }
+            startingHotspot = false
+        }
+    }
+    val hotspotPermission =
+        androidx.activity.compose.rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
+                if (granted) startHotspot() else receiveError = tr("Sin ese permiso Android no deja crear el punto de acceso")
+            }
+    DisposableEffect(hotspot) {
+        val current = hotspot
+        onDispose { current?.close() }
+    }
 
     DisposableEffect(receiving) {
         var server: NearbyReceiver? = null
@@ -79,6 +107,7 @@ fun NearbyScreen(vm: MainViewModel) {
         onDispose {
             incoming?.answer?.complete(false)
             server?.stop()
+            if (!receiving) hotspot = null
         }
     }
 
@@ -86,7 +115,10 @@ fun NearbyScreen(vm: MainViewModel) {
     fun sendTo(peer: Nearby.Peer) {
         val files = toSend.map(::File)
         vm.runTask(tr("Enviando a {0}", peer.name)) { report ->
-            if (Nearby.send(peer, myName, files, report)) {
+            val sent =
+                peer.wifi?.let { wifi -> WifiDirectLink.withNetwork(ctx, wifi, peer.wifiKey) { Nearby.send(peer, myName, files, report) } }
+                    ?: Nearby.send(peer, myName, files, report)
+            if (sent) {
                 withContext(Dispatchers.Main) { vm.nearbyFiles = emptyList() }
                 OperationResult(tr("Enviado a {0}", peer.name))
             } else OperationResult(tr("{0} rechazó el envío", peer.name))
@@ -121,12 +153,30 @@ fun NearbyScreen(vm: MainViewModel) {
                     else tr("El otro teléfono debe estar en la misma red Wi-Fi y tener OI Archivos."),
                     Modifier.padding(vertical = 8.dp))
                 receiveError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                Button(onClick = { receiving = !receiving }) {
+                Button(onClick = { receiving = !receiving }, enabled = !startingHotspot) {
                     Text(if (receiving) tr("Dejar de recibir") else tr("Empezar a recibir"))
                 }
-                if (receiving && address.isNotEmpty()) {
+                if (!receiving)
+                    OutlinedButton(
+                        onClick = {
+                            if (WifiDirectLink.hasHotspotPermission(ctx)) startHotspot()
+                            else hotspotPermission.launch(WifiDirectLink.hotspotPermission)
+                        },
+                        enabled = !startingHotspot,
+                        modifier = Modifier.padding(top = 8.dp)) {
+                            Text(tr("Recibir con punto de acceso (sin router)"))
+                        }
+                if (startingHotspot) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
+                val ap = hotspot
+                if (receiving && ap != null)
+                    Text(
+                        tr("Punto de acceso «{0}» creado. El otro teléfono se une solo al leer el código QR.", ap.ssid),
+                        Modifier.padding(top = 8.dp))
+                if (receiving && (address.isNotEmpty() || ap != null)) {
                     // Código QR: el otro teléfono lo lee con su cámara y el enlace abre OI Archivos para enviar.
-                    val link = NearbyLink.build(address.substringBefore(","), Nearby.PORT, myName)
+                    val link =
+                        if (ap != null) NearbyLink.build(ap.address, Nearby.PORT, myName, ap.ssid, ap.key)
+                        else NearbyLink.build(address.substringBefore(","), Nearby.PORT, myName)
                     Text(
                         tr("O que el otro teléfono lea este código QR con su cámara:"),
                         Modifier.padding(top = 12.dp))
@@ -180,7 +230,8 @@ fun NearbyScreen(vm: MainViewModel) {
                     if (toSend.isEmpty())
                         tr("Primero selecciona archivos en el explorador y usa Más → Enviar a otro teléfono; luego vuelve a leer el código.")
                     else
-                        tr("{0} archivo(s), {1}, a {2}. El otro teléfono tendrá que aceptarlos.", toSend.size, formatSize(toSend.sumOf { File(it).length() }), peer.address))
+                        tr("{0} archivo(s), {1}, a {2}. El otro teléfono tendrá que aceptarlos.", toSend.size, formatSize(toSend.sumOf { File(it).length() }), peer.address) +
+                            (peer.wifi?.let { "\n" + tr("Antes, este teléfono se unirá a su red «{0}» (Android lo preguntará).", it) } ?: ""))
             },
             confirmButton = {
                 TextButton(

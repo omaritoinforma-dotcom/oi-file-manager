@@ -13,9 +13,9 @@ La matriz completa está en [COMPARACION_ES.md](COMPARACION_ES.md). Se hizo a pa
 | Estado | Filas | Qué significa |
 | --- | ---: | --- |
 | ✅ | 58 | Implementado y comprobado en el emulador Android 15 del CI o contra un servidor real |
-| 🟡 | 23 | Implementado y conectado a la interfaz; su comprobación en el emulador ya está escrita y espera su pasada |
-| 🟠 | 1 | Parcial: envío entre teléfonos por punto de acceso Wi-Fi |
-| ❌ | 3 | Falta: servidor OBEX, punto de acceso propio y las nubes minoritarias |
+| 🟡 | 25 | Implementado y conectado a la interfaz; su comprobación en el emulador ya está escrita y espera su pasada |
+| 🟠 | 0 | Parcial |
+| ❌ | 2 | Falta: servidor OBEX por Bluetooth y las nubes minoritarias |
 
 Lo que falta en ❌ y en 🟠 necesita hardware, root o cuentas que el CI no tiene.
 
@@ -57,7 +57,7 @@ De los 12 fallos, 10 eran de la prueba y están corregidos:
 
 Los otros 2 eran **errores reales de la app**, ya corregidos (ver la tabla de abajo).
 
-Las comprobaciones nuevas de este punto de control (idioma, Chromecast, Android TV por ADB, USB y tarjeta SD, funciones root, intro/outro y las corregidas) esperan la próxima pasada.
+Las comprobaciones nuevas de este punto de control (idioma, Chromecast, Android TV por ADB, USB y tarjeta SD, funciones root, punto de acceso, intro/outro y las corregidas) esperan la próxima pasada.
 
 ### Pruebas JVM
 
@@ -110,6 +110,7 @@ Hay 236 pruebas en 46 archivos. En local pasan todas menos 9, que necesitan rclo
 - **Android TV por ADB:** cliente ADB propio (sin binarios externos) para instalar APK elegidos en el explorador, listar, abrir y desinstalar apps y usar el teléfono como mando. La primera vez la TV pregunta si permite la depuración; después basta la firma RSA de la app. Probado en la JVM y, en el emulador, contra una TV falsa que verifica la firma.
 - **Memorias USB y tarjetas SD:** aviso al conectarlas con «Abrir» y «Expulsar», aviso si se quitan sin expulsar y botón de expulsar en Inicio. Como Android no deja a las apps desmontar sin root, «Expulsar» comprueba que no quede ninguna copia en curso y abre Ajustes → Almacenamiento.
 - **Root:** quitar y devolver apps del sistema (`pm uninstall -k --user 0`), montar el sistema en lectura y escritura cuando Android lo permite y editar el hosts (con una copia montada encima si el sistema no se puede escribir). El explorador root lista cada carpeta con una sola orden. En el emulador se prueban con un su de prueba (scripts/test_root): un demonio root, como el de Magisk, ejecuta las órdenes que deja el su.
+- **Punto de acceso:** «Recibir con punto de acceso (sin router)» crea un punto de acceso local y pone su red y clave en el QR; el que envía se une a esa red solo para la app y envía por ella. El emulador no puede crear puntos de acceso (lo confirma el diagnóstico de la pasada 37257397887), así que se prueba la parte del que envía con la Wi-Fi del emulador.
 - **Idioma:** la app se puede usar en español o en inglés, o seguir el idioma del teléfono (Ajustes → Pantalla). Los textos siguen escritos en español en el código y `tr("…")` los traduce con el catálogo `assets/i18n/en.tsv`; una prueba JVM recorre el código y exige que cada texto tenga su traducción.
 - **Apps:** al desinstalar una app desde OI Archivos, propone mover a la papelera las carpetas con su nombre que dejó en la raíz del almacenamiento (como «Clean associated folders» de ES, pero solo por nombre exacto y con confirmación).
 

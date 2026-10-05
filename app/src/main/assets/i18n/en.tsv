@@ -1382,3 +1382,14 @@ Se quitan en Apps → Mostrar apps del sistema → ⋮ → Quitar app del sistem
 Ninguna	None
 «{0}» devuelta	“{0}” restored
 Devolver	Restore
+Falta el permiso para crear el punto de acceso	The permission to create the hotspot is missing
+Apaga el punto de acceso del teléfono e inténtalo otra vez	Turn off the phone's hotspot and try again
+Este teléfono no pudo crear el punto de acceso (código {0})	This phone could not create the hotspot (code {0})
+El punto de acceso no tiene dirección	The hotspot has no address
+Para unirse sola a la red hace falta Android 10 o superior: conéctate a mano a «{0}» y vuelve a leer el código	Joining the network automatically needs Android 10 or later: connect to “{0}” manually and scan the code again
+No se pudo unir a la red «{0}»	Could not join the network “{0}”
+No se pudo crear el punto de acceso	Could not create the hotspot
+Sin ese permiso Android no deja crear el punto de acceso	Without that permission Android does not allow creating the hotspot
+Recibir con punto de acceso (sin router)	Receive with a hotspot (no router)
+Punto de acceso «{0}» creado. El otro teléfono se une solo al leer el código QR.	Hotspot “{0}” created. The other phone joins it by scanning the QR code.
+Antes, este teléfono se unirá a su red «{0}» (Android lo preguntará).	First, this phone will join its network “{0}” (Android will ask).

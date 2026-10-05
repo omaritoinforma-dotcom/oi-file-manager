@@ -126,8 +126,8 @@ Fecha: 4 de octubre de 2026 (actualizada con la última pasada completa de `scri
 | Subir automáticamente un archivo remoto editado en otra app | ✅ | Al abrir un archivo de un servidor se baja una copia y, si cambia (en otra app o en el editor propio), se sube sola al volver a OI Archivos; si el servidor también cambió, se pregunta (sustituir, subir como copia o descartar). Subida segura: nunca se pierde el original aunque falle a medias. Pruebas locales con un servidor en memoria; en el emulador contra el SFTP de CI con el editor propio (otras apps usan el mismo mecanismo, no se pueden manejar desde la prueba). Aprobado en el emulador Android 15 (ejecución 37234077192). |
 | Servidor FTP para gestionar el teléfono desde el PC | 🟡 | Modo pasivo (PASV, EPSV) y activo (PORT, EPRT, solo hacia la propia dirección del cliente y puertos desde 1024, contra el ataque «FTP bounce»), puerto fijo opcional (si está ocupado lo dice) y codificación de los nombres (UTF-8, ISO-8859-1, Windows-1252, GBK, Shift_JIS; UTF8 solo se anuncia si de verdad se usa). Contraseña fija opcional (de 8 a 64 caracteres; si no, una nueva en cada inicio) y «Detener el servidor al salir de la app». Todo va en la copia de ajustes salvo la contraseña. 10 pruebas JVM con un cliente FTP real (commons-net) y comprobaciones en el emulador preparadas (puerto, contraseña fija y rechazo de la incorrecta, FEAT, OPTS y PORT por el socket; el servicio se detiene al salir). Falta el acceso directo para arrancarlo |
 | Servidor HTTP desde el navegador | ✅ | Emulador |
-| Enviar archivos entre teléfonos (ES Sender: misma Wi-Fi, punto de acceso, código QR) | 🟠 | Misma Wi-Fi: enviar y recibir comprobados en el emulador, con aceptación y SHA-256 por archivo. Código QR: el que recibe muestra un QR y el otro lo lee con su cámara, lo que abre OI Archivos listo para enviar (solo redes locales y con confirmación); comprobación en el emulador preparada. Falta el punto de acceso Wi-Fi, que el emulador no puede probar |
-| Crear un punto de acceso Wi-Fi para transferir | ❌ | |
+| Enviar archivos entre teléfonos (ES Sender: misma Wi-Fi, punto de acceso, código QR) | 🟡 | Misma Wi-Fi: enviar y recibir comprobados en el emulador, con aceptación y SHA-256 por archivo. Código QR: el que recibe muestra un QR y el otro lo lee con su cámara, lo que abre OI Archivos listo para enviar (solo redes locales y con confirmación). Punto de acceso: el que recibe crea uno local (sin router) y su QR lleva la red y la clave; el que envía se une a esa red solo para la app (Android lo pregunta) y envía por ella. Comprobación en el emulador preparada para la parte del que envía, con la Wi-Fi del emulador; el emulador no puede crear puntos de acceso (diagnóstico de la pasada 37257397887), así que crear el punto de acceso falta probarlo en un teléfono |
+| Crear un punto de acceso Wi-Fi para transferir | 🟡 | «Recibir con punto de acceso (sin router)» crea un punto de acceso local de Android (no comparte los datos móviles) y lo anuncia en el código QR. El emulador no tiene punto de acceso: su comprobación verifica que la app avisa con claridad; falta un teléfono real |
 | Enviar a la TV: DLNA/UPnP y Chromecast | 🟡 | DLNA comprobado en el emulador con una TV de prueba (reproducir, pausa, detener; solo esa TV puede leer el archivo). Chromecast con el protocolo abierto CASTV2, sin el SDK de Google: se busca por mDNS o por su IP, se abre el reproductor por omisión y se le pasa el enlace, que solo puede leer ese Chromecast; reproducir, pausa, posición y detener. Probado en la JVM contra un receptor de prueba y, con TLS, contra el receptor en Python que usa el emulador; comprobación en el emulador preparada. Falta probarlo con un Chromecast físico |
 | Instalar y gestionar una Android TV por ADB | 🟡 | Cliente ADB propio por red (puerto 5555), sin binarios externos: clave RSA de la app, la TV pregunta «¿Permitir la depuración?» la primera vez y luego basta la firma. Instalar uno o varios APK desde el explorador (por streaming en Android 7+, con copia sync y pm install en los viejos), listar, abrir y desinstalar apps y mando a distancia (cruceta, Aceptar, Atrás, Inicio, volumen, encendido). Probado en la JVM contra un adbd de prueba que verifica la firma; comprobación en el emulador preparada contra una TV falsa que verifica la firma RSA en Python. Falta probarlo con una Android TV física |
 | Bluetooth: compartir y explorar (cliente OBEX) | 🟡 | Falta un dispositivo real |
@@ -160,15 +160,15 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | Estado | Filas |
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 58 |
-| 🟡 Implementadas; su comprobación en el emulador está escrita y espera su pasada | 23 |
-| 🟠 Parciales | 1 |
-| ❌ Faltan | 3 |
+| 🟡 Implementadas; su comprobación en el emulador está escrita y espera su pasada | 25 |
+| 🟠 Parciales | 0 |
+| ❌ Faltan | 2 |
 | **Total de filas** | **85** |
 
 **OI Archivos no cubre todavía el mínimo.** Lo que falta, por valor para el usuario:
 
-1. Enviar entre teléfonos por punto de acceso Wi-Fi (misma Wi-Fi y código QR ya están).
-2. Lo que exige hardware, root o cuentas que el CI no tiene: servidor OBEX, punto de acceso propio y nubes minoritarias.
+1. Lo que exige hardware o cuentas que el CI no tiene: servidor OBEX por Bluetooth y nubes minoritarias.
+2. Comprobar en teléfonos reales lo que el emulador no tiene: punto de acceso, Bluetooth, Chromecast y Android TV físicos, Magisk.
 
 Las filas en 🟡 pasan a ✅ cuando las aprueba una pasada del emulador en el CI.
 

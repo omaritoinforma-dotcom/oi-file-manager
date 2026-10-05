@@ -3982,6 +3982,59 @@ def nearby_qr():
         server.shutdown()
 
 
+@check("enviar-por-punto-de-acceso")
+def nearby_hotspot():
+    """El emulador no puede crear un punto de acceso (diagnóstico del bloque 1), pero sí unirse a una
+    red solo para la app: se prueba el que envía con un QR que lleva la red «AndroidWifi» del emulador."""
+    received = {}
+    server = nearby_peer_server(received)
+    try:
+        payload = "enviado uniéndose a la red del QR"
+        push_bytes(payload.encode("utf-8"), f"{DIR}/ap_envio.txt")
+        open_test_folder()
+        long_press(find("ap_envio.txt").get("text"))
+        more("Enviar a otro teléfono")
+        wait("Empezar a recibir")
+        adb("shell", "am", "start", "-W", "-a", "android.intent.action.VIEW", "-d",
+            "oiarchivos://enviar?host=10.0.2.2\\&port=42137\\&nombre=PC%20con%20punto\\&wifi=AndroidWifi\\&clave=",
+            ui.PACKAGE)
+        wait_text("Antes, este teléfono se unirá a su red «AndroidWifi»")
+        tap_last("Enviar")
+        # Android pregunta si se permite unirse a la red pedida.
+        deadline = time.monotonic() + 60
+        while 0 not in received and time.monotonic() < deadline:
+            tree = hierarchy()
+            button = (nodes("Connect", tree) or nodes("Conectar", tree) or [None])[0]
+            if button is not None:
+                evidence("punto-de-acceso-android-pregunta")
+                tap_node(button)
+            time.sleep(1)
+        assert 0 in received, "El archivo no llegó tras unirse a la red del QR"
+        assert received[0] == payload.encode("utf-8"), received[0]
+    finally:
+        server.shutdown()
+    # El que recibe: el emulador no tiene punto de acceso, así que la app debe decirlo con claridad.
+    sh("pm", "grant", ui.PACKAGE, "android.permission.NEARBY_WIFI_DEVICES", check=False)
+    launch_home()
+    ui.drawer("Red, nube y USB")
+    tap("Enviar a otro teléfono")
+    tap(find("Recibir con punto de acceso (sin router)").get("text"))
+    deadline = time.monotonic() + 40
+    outcome = None
+    while outcome is None and time.monotonic() < deadline:
+        texts = [n.get("text") or "" for n in hierarchy().iter("node")]
+        if any("oiarchivos://enviar?" in t and "wifi=" in t for t in texts):
+            outcome = "creado"
+        elif any("punto de acceso" in t and ("no pudo" in t or "Apaga" in t or "dirección" in t) for t in texts):
+            outcome = "rechazado"
+        time.sleep(1)
+    evidence("punto-de-acceso-receptor")
+    (OUTPUT / "punto-de-acceso-receptor.txt").write_text(str(outcome), encoding="utf-8")
+    assert outcome is not None, "Ni QR con la red ni aviso claro al crear el punto de acceso"
+    if outcome == "creado":
+        tap("Dejar de recibir")
+
+
 def center_y(node):
     y1, y2 = (int(v) for v in re.findall(r"\d+", node.get("bounds"))[1::2])
     return (y1 + y2) // 2

@@ -58,4 +58,30 @@ class NearbyLinkTest {
         val bitmap = BinaryBitmap(HybridBinarizer(RGBLuminanceSource(size * scale, size * scale, pixels)))
         assertEquals(link, QRCodeReader().decode(bitmap).text)
     }
+
+    @Test
+    fun aHotspotLinkCarriesTheNetworkToJoin() {
+        val link = NearbyLink.build("192.168.49.1", 42137, "Ana", "AndroidShare_1234", "clave segura 9")
+        assertEquals(Nearby.Peer("192.168.49.1", 42137, "Ana", "AndroidShare_1234", "clave segura 9"), NearbyLink.parse(link))
+        // Red abierta: clave vacía.
+        assertEquals("", NearbyLink.parse(NearbyLink.build("192.168.49.1", 42137, "Ana", "Abierta"))!!.wifiKey)
+        val base = "oiarchivos://enviar?host=192.168.49.1&port=42137&nombre=Ana"
+        assertNull(NearbyLink.parse("$base&wifi=&clave=12345678"))
+        assertNull(NearbyLink.parse("$base&wifi=" + "x".repeat(33) + "&clave=12345678"))
+        assertNull(NearbyLink.parse("$base&wifi=Red&clave=corta"))
+        assertNull(NearbyLink.parse("$base&wifi=Red%0A&clave=12345678"))
+        assertNull(NearbyLink.parse("$base&wifi=Red&clave=" + "c".repeat(64)))
+        // Sin «wifi», la clave se ignora y se envía por la red actual.
+        assertNull(NearbyLink.parse("$base&clave=12345678")!!.wifi)
+    }
+
+    @Test
+    fun theHotspotAddressIsTheNewInterface() {
+        val before = setOf("wlan0", "eth0")
+        assertEquals("192.168.49.1", WifiDirectLink.hotspotAddress(before, mapOf("wlan0" to "10.0.2.16", "eth0" to "10.0.2.15", "ap0" to "192.168.49.1")))
+        assertEquals("10.42.0.1", WifiDirectLink.hotspotAddress(before, mapOf("wlan0" to "10.0.2.16", "swlan0" to "10.42.0.1")))
+        // Si la interfaz ya existía, se reconoce por su nombre.
+        assertEquals("192.168.43.1", WifiDirectLink.hotspotAddress(setOf("wlan0", "ap0"), mapOf("wlan0" to "10.0.2.16", "ap0" to "192.168.43.1")))
+        assertNull(WifiDirectLink.hotspotAddress(before, mapOf("wlan0" to "10.0.2.16", "eth0" to "10.0.2.15")))
+    }
 }
