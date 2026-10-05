@@ -1398,3 +1398,5 @@ Bluetooth (OBEX FTP)	Bluetooth (OBEX FTP)
 Compartiendo «{0}» por Bluetooth como «{1}». Los equipos emparejados la ven en su explorador Bluetooth (OBEX FTP).	Sharing “{0}” over Bluetooth as “{1}”. Paired devices see it in their Bluetooth file browser (OBEX FTP).
 Pueden subir, renombrar y borrar.	They can upload, rename and delete.
 Solo pueden ver y descargar.	They can only view and download.
+Apagado	Off
+No se pudo iniciar el servidor	Could not start the server

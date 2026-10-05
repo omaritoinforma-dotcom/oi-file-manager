@@ -29,7 +29,7 @@ import com.omaritoinforma.oiarchivos.data.tr
 @Composable
 fun SharingScreen(vm: MainViewModel) {
     val ctx = LocalContext.current
-    var root by remember { mutableStateOf(PathUtil.internalRoot + "/Download") }
+    var root by remember { mutableStateOf(com.omaritoinforma.oiarchivos.data.Prefs(ctx).ftpRoot) }
     val state by ShareService.state.collectAsState()
     val error by ShareService.error.collectAsState()
     var port by remember { mutableStateOf(vm.ftpPort.value.takeIf { it != 0 }?.toString().orEmpty()) }

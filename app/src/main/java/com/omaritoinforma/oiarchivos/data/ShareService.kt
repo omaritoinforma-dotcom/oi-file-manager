@@ -112,6 +112,7 @@ class ShareService : Service() {
             error.value = e.message
             stopSelf()
         }
+        FtpTileService.refresh(this)
         return START_NOT_STICKY
     }
 
@@ -124,6 +125,7 @@ class ShareService : Service() {
         ftp?.close()
         bluetooth?.close()
         state.value = null
+        FtpTileService.refresh(this)
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()
     }
@@ -138,6 +140,7 @@ class ShareService : Service() {
         val error = MutableStateFlow<String?>(null)
 
         fun start(ctx: Context, root: String, mode: String) {
+            if (mode == "FTP") Prefs(ctx).ftpRoot = root
             ContextCompat.startForegroundService(
                 ctx,
                 Intent(ctx, ShareService::class.java).putExtra("root", root).putExtra("mode", mode))

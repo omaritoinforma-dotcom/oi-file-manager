@@ -167,6 +167,9 @@ class TabState(start: Location) {
     }
 }
 
+/** Acción del acceso directo «Servidor FTP» (res/xml/shortcuts.xml). */
+const val FTP_SHORTCUT = "com.omaritoinforma.oiarchivos.SERVIDOR_FTP"
+
 class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val ctx: Context
         get() = getApplication()
@@ -677,6 +680,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         intent.getStringExtra("folder")?.let { if (File(it).isDirectory) openFolder(it) }
+        // Acceso directo «Servidor FTP» del icono de la app: abre Compartir por red y lo arranca.
+        if (intent.action == FTP_SHORTCUT) {
+            intent.action = null
+            goTo(Screen.Sharing)
+            if (com.omaritoinforma.oiarchivos.data.ShareService.state.value == null)
+                runCatching { com.omaritoinforma.oiarchivos.data.ShareService.start(ctx, prefs.ftpRoot, "FTP") }
+                    .onFailure { toast(it.message ?: tr("No se pudo iniciar el servidor")) }
+        }
         intent.getStringExtra("eject")?.let {
             ejectRequest = it
             intent.removeExtra("eject")

@@ -64,6 +64,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -91,6 +92,16 @@
             android:foregroundServiceType="dataSync" />
         <service android:name=".data.ShareService" android:exported="false"
             android:foregroundServiceType="dataSync" />
+        <!-- Mosaico de ajustes rápidos para encender o apagar el servidor FTP. -->
+        <service android:name=".data.FtpTileService" android:exported="true"
+            android:label="@string/ftp_server"
+            android:icon="@android:drawable/stat_sys_upload"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data android:name="android.service.quicksettings.TOGGLEABLE_TILE" android:value="true" />
+        </service>
         <receiver android:name=".data.AppInstallReceiver" android:exported="false" />
         <receiver android:name=".data.RemovableStorageReceiver" android:exported="true">
             <intent-filter>

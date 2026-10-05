@@ -3733,6 +3733,57 @@ def ftp_stops_on_exit():
         set_switch("Detener el servidor al salir de la app", False)
 
 
+@check("servidor-ftp-mosaico-y-acceso-directo")
+def ftp_tile_and_shortcut():
+    """El servidor FTP se arranca sin abrir la app: mosaico de ajustes rápidos y acceso directo del icono."""
+    component = f"{ui.PACKAGE}/.data.FtpTileService"
+
+    def running():
+        return "ShareService" in sh("dumpsys", "activity", "services", ui.PACKAGE, check=False)
+
+    def ftp_answers():
+        # La dirección sale en la pantalla Compartir por red; el servidor debe saludar con «220».
+        # Sin launch_home(): reinicia la app y pararía el servidor que se quiere comprobar.
+        adb("shell", "am", "start", "-W", "-n", f"{ui.PACKAGE}/.MainActivity", timeout=60)
+        for _ in range(4):
+            if nodes("Menú", hierarchy()):
+                break
+            adb("shell", "input", "keyevent", "4")
+            time.sleep(1)
+        ui.drawer("Red, nube y USB")
+        tap("Compartir por Wi-Fi / FTP")
+        text = find_text("ftp://")
+        match = re.search(r"ftp://([\d.]+):(\d+)", text)
+        assert match, f"Sin dirección FTP en pantalla: {text}"
+        hello = sh("sh", "-c", q(f"echo QUIT | toybox nc -w 3 {match.group(1)} {match.group(2)}"), check=False)
+        assert hello.startswith("220"), f"El servidor FTP no saludó: {hello[:120]}"
+
+    try:
+        # 1) Mosaico: lo añade la prueba (como haría el usuario) y se toca dos veces.
+        sh("cmd", "statusbar", "add-tile", component, check=False)
+        time.sleep(2)
+        sh("cmd", "statusbar", "click-tile", component)
+        until(running, "El mosaico no arrancó el servidor FTP", 30)
+        ftp_answers()
+        evidence("ftp-desde-el-mosaico")
+        sh("cmd", "statusbar", "click-tile", component)
+        until(lambda: not running(), "El mosaico no detuvo el servidor FTP", 30)
+        # 2) Acceso directo del icono: el sistema lo publica desde res/xml/shortcuts.xml.
+        assert "servidor_ftp" in sh("dumpsys", "shortcut", check=False), "Android no publicó el acceso directo"
+        adb("shell", "am", "start", "-W", "-a", "com.omaritoinforma.oiarchivos.SERVIDOR_FTP",
+            "-n", f"{ui.PACKAGE}/.MainActivity", timeout=60)
+        until(running, "El acceso directo no arrancó el servidor FTP", 30)
+        wait("Detener servidor", timeout=30)
+        evidence("ftp-desde-el-acceso-directo")
+        tap("Detener servidor")
+        until(lambda: not running(), "El servidor FTP siguió en marcha", 30)
+    finally:
+        if running():
+            sh("am", "stopservice", "-n", f"{ui.PACKAGE}/.data.ShareService", check=False)
+        sh("cmd", "statusbar", "remove-tile", component, check=False)
+        sh("cmd", "statusbar", "collapse", check=False)
+
+
 @check("documentos-elegir-tipos")
 def document_types():
     def count():

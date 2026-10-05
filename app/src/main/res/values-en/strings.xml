@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">OI Archivos</string>
+    <string name="ftp_server">FTP server</string>
+    <string name="ftp_server_start">Start the FTP server</string>
+</resources>

@@ -310,6 +310,11 @@ class Prefs(context: Context) {
         set(v) = sp.edit().putBoolean("home_search", v).apply()
 
     /** Contraseña fija del servidor FTP; vacía = una nueva cada vez. Es del dispositivo: no va en la copia de ajustes. */
+    /** Carpeta compartida la última vez por FTP; la usan el mosaico y el acceso directo. */
+    var ftpRoot: String
+        get() = sp.getString("ftp_root", null)?.takeIf { java.io.File(it).isDirectory } ?: "${PathUtil.internalRoot}/Download"
+        set(v) = sp.edit().putString("ftp_root", v).apply()
+
     var ftpPassword: String
         get() = sp.getString("ftp_password", "").orEmpty()
         set(v) = sp.edit().putString("ftp_password", v).apply()
