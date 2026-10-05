@@ -25,8 +25,15 @@ jobs:
         run: |
           set -euo pipefail
 
-          response="$(
-            curl -fsS https://api.anthropic.com/v1/oauth/token \
+          # Print the non-secret claims Anthropic matches against the federation rule
+          # (the signed token itself is never printed).
+          payload="$(cut -d. -f2 <<<"$JWT" | tr '_-' '/+')"
+          while (( ${#payload} % 4 )); do payload+="="; done
+          base64 -d <<<"$payload" | jq '{iss, aud, sub, repository, repository_owner, ref, workflow_ref, environment}'
+
+          body="$(mktemp)"
+          status="$(
+            curl -sS -o "$body" -w '%{http_code}' https://api.anthropic.com/v1/oauth/token \
               -H "content-type: application/json" \
               --data @- <<JSON
           {
@@ -40,4 +47,6 @@ jobs:
           JSON
           )"
 
-          echo "$response" | jq 'with_entries(if (.key | test("token$")) then .value = "<redacted>" else . end)'
+          echo "HTTP $status"
+          jq 'with_entries(if (.key | test("token$")) then .value = "<redacted>" else . end)' "$body" || cat "$body"
+          [[ "$status" == 2* ]]
