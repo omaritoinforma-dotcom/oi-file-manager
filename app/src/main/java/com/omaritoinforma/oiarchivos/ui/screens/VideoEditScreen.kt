@@ -1,5 +1,11 @@
 package com.omaritoinforma.oiarchivos.ui.screens
 
+import androidx.compose.ui.Alignment
+
+import androidx.compose.ui.semantics.Role
+
+import androidx.compose.foundation.selection.toggleable
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
@@ -137,16 +143,22 @@ fun VideoEditScreen(vm: MainViewModel, path: String) {
                     }
                 }
                 item {
-                    Row {
-                        Checkbox(crop, { crop = it })
-                        Text(tr("Recortar 12,5 % de cada borde"), Modifier.padding(top = 12.dp))
-                    }
+                    // Toda la fila marca la casilla, no solo el cuadrito.
+                    Row(
+                        Modifier.fillMaxWidth().toggleable(crop, role = Role.Checkbox, onValueChange = { crop = it }),
+                        verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(crop, null)
+                            Text(tr("Recortar 12,5 % de cada borde"))
+                        }
                 }
                 item {
-                    Row {
-                        Checkbox(mute, { mute = it })
-                        Text(tr("Quitar audio original"), Modifier.padding(top = 12.dp))
-                    }
+                    // Toda la fila marca la casilla, no solo el cuadrito.
+                    Row(
+                        Modifier.fillMaxWidth().toggleable(mute, role = Role.Checkbox, onValueChange = { mute = it }),
+                        verticalAlignment = Alignment.CenterVertically) {
+                            Checkbox(mute, null)
+                            Text(tr("Quitar audio original"))
+                        }
                 }
                 item {
                     OutlinedTextField(

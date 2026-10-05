@@ -782,6 +782,126 @@ def video_intro_outro():
     evidence("editor-de-video-intro-y-outro-exportado")
 
 
+def tone_wav(frequency, seconds, rate=44100):
+    """WAV mono de 16 bits con un tono puro."""
+    import io
+
+    out = io.BytesIO()
+    with wave.open(out, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(b"".join(struct.pack("<h", int(9000 * math.sin(2 * math.pi * frequency * i / rate)))
+                               for i in range(int(seconds * rate))))
+    return out.getvalue()
+
+
+def dominant_frequency(data, start=1.0, end=2.5):
+    """Frecuencia del audio de un MP4 entre [start] y [end] s, contando los cruces por cero."""
+    import av
+
+    samples, rate = [], 0
+    with tempfile.TemporaryDirectory() as tmp:
+        path = pathlib.Path(tmp) / "video.mp4"
+        path.write_bytes(data)
+        with av.open(str(path)) as container:
+            assert container.streams.audio, "El vídeo no tiene audio"
+            for frame in container.decode(audio=0):
+                if frame.time is None or frame.time < start or frame.time > end:
+                    continue
+                rate = frame.sample_rate
+                kind, count = frame.format.name.rstrip("p"), frame.samples
+                raw = bytes(frame.planes[0])
+                if kind == "flt":
+                    samples += struct.unpack(f"<{count}f", raw[:4 * count])
+                elif kind == "s16":
+                    samples += struct.unpack(f"<{count}h", raw[:2 * count])
+    assert len(samples) > rate // 2 > 0, "Muy poco audio para medir la frecuencia"
+    crossings = sum(1 for a, b in zip(samples, samples[1:]) if (a < 0) != (b < 0))
+    return crossings / 2 / (len(samples) / rate)
+
+
+def frame_pixel(image, x, y):
+    """Color (r, g, b) de un píxel de un fotograma decodificado por analyze_mp4."""
+    width, height, stride, data = image
+    at = int(y) * stride + 3 * int(x)
+    return tuple(data[at:at + 3])
+
+
+@check("editor-de-video-musica-imagen-superpuesta-y-fondo")
+def video_music_overlay_background():
+    folder = f"{DIR}/oimusica"
+    sh("rm", "-rf", q(folder), check=False)
+    sh("mkdir", "-p", q(folder))
+    with tempfile.TemporaryDirectory() as tmp:
+        # Vídeo vertical gris de 4 s con un tono de 440 Hz.
+        source = pathlib.Path(tmp) / "gris.mp4"
+        synthetic_video(source)
+        adb("push", str(source), f"{folder}/gris.mp4")
+    push_bytes(tone_wav(880, 5), f"{folder}/musica.wav")
+    push_bytes(png_image(100, 100, lambda x, y: (0, 200, 83)), f"{folder}/logo.png")
+    push_bytes(png_image(64, 64, lambda x, y: (170, 0, 255)), f"{folder}/fondo.png")
+    launch_home()
+    open_test_folder()
+    tap_node(find("oimusica"))
+    tap("gris.mp4")
+    tap("Editar")
+    wait("Inicio en segundos")
+    # Música de 880 Hz en lugar del audio original (440 Hz).
+    tap_node(find("Quitar audio original"))
+    fill("Ruta de música para añadir (opcional)", f"{folder}/musica.wav")
+    # Imagen superpuesta verde (arriba a la derecha, al 30 % del cuadro).
+    fill("Imagen superpuesta (ruta opcional)", f"{folder}/logo.png")
+    # Lienzo cuadrado con imagen de fondo morada: el vídeo vertical deja bandas a los lados.
+    for _ in range(4):
+        if nodes("Lienzo: Cuadrado 1080 × 1080", hierarchy()):
+            break
+        tap(find_text("Lienzo: "))
+        time.sleep(0.5)
+    wait("Lienzo: Cuadrado 1080 × 1080")
+    fill("Imagen de fondo (ruta opcional)", f"{folder}/fondo.png")
+    evidence("editor-de-video-musica-formulario")
+    tap_node(find("Exportar MP4"))
+    path = f"{folder}/gris-editado.mp4"
+    until(lambda: exists(path) and mp4_info(read_bytes(path)), "No se creó el vídeo con música y fondo", 300)
+    data = read_bytes(path)
+    info = mp4_info(data)
+    assert (info["width"], info["height"]) == (1080, 1080), f"Lienzo de {info['width']}×{info['height']}"
+    frame = analyze_mp4(data, times=(2.0,))["at"][2.0]
+    band, middle, logo = frame_pixel(frame, 60, 900), frame_pixel(frame, 540, 700), frame_pixel(frame, 864, 216)
+    assert similar(band, (170, 0, 255)), f"Las bandas no son la imagen de fondo: {band}"
+    assert similar(middle, (128, 128, 128)), f"El vídeo no está en el centro: {middle}"
+    assert similar(logo, (0, 200, 83)), f"No se ve la imagen superpuesta arriba a la derecha: {logo}"
+    hz = dominant_frequency(data)
+    assert 800 <= hz <= 960, f"El audio suena a {hz:.0f} Hz: se esperaba la música (880 Hz) sin el original (440 Hz)"
+    evidence("editor-de-video-musica-exportado")
+
+
+@check("establecer-fondo-de-pantalla")
+def set_wallpaper():
+    """«Más» → «Establecer fondo de pantalla» y, en el escritorio de Android, se ve la imagen."""
+    push_bytes(png_image(270, 480, lambda x, y: (255, 109, 0)), f"{DIR}/fondo-naranja.png")
+    open_test_folder()
+    long_press(find("fondo-naranja.png").get("text"))
+    menu_option("Establecer fondo de pantalla")
+    wait_text("Fondo de pantalla actualizado", timeout=30)
+    adb("shell", "input", "keyevent", "3")  # Inicio de Android
+    time.sleep(3)
+
+    def orange_share():
+        width, height, pixels = screencap_rgba()
+        total = orange = 0
+        for y in range(0, height, 16):
+            for x in range(0, width, 16):
+                at = 4 * (y * width + x)
+                total += 1
+                orange += similar(tuple(pixels[at:at + 3]), (255, 109, 0), 40)
+        return orange / total
+
+    until(lambda: orange_share() > 0.4, "El escritorio no muestra el fondo naranja", 30)
+    evidence("fondo-de-pantalla-establecido")
+
+
 @check("seleccion-por-rango-copiar-ruta-y-vistas")
 def selection_copy_path_and_views():
     folder = f"{DIR}/seleccion"
