@@ -70,16 +70,19 @@ def center(node):
     return (x1 + x2) // 2, (y1 + y2) // 2
 
 
-def tap_scrolling(label, attempts=8):
+def find_scrolling(label, attempts=8):
     for _ in range(attempts):
         tree = hierarchy()
         found = nodes(label, tree)
         if found:
-            tap_node(found[0])
-            return
+            return found[0]
         adb("shell", "input", "swipe", "540", "1500", "540", "500", "300")
         time.sleep(0.3)
     raise AssertionError(f"Scrollable control not found: {label}")
+
+
+def tap_scrolling(label, attempts=8):
+    tap_node(find_scrolling(label, attempts))
 
 
 def type_into(label, value):
