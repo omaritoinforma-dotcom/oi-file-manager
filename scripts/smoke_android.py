@@ -257,6 +257,7 @@ def main():
     seed_files()
     launch()
     checkpoint("02-home", "Categorías")
+
     for label, title, name in [
         ("Red, nube y USB", "Agregar", "03-connections"),
         ("Transferencias", "Transferencias", "04-transfers"),
@@ -265,22 +266,44 @@ def main():
         drawer(label)
         checkpoint(name, title)
         back_home()
+
     drawer("Red, nube y USB")
     tap("Compartir por Wi-Fi / FTP")
     checkpoint("06-sharing-controls", "Navegador / Wi-Fi")
     adb("shell", "input", "keyevent", "4")
     back_home()
+
+    # Dual-pane native drag/drop: drag smoke.txt from Downloads into internal storage root.
     drawer("Descargas")
     tap("Más opciones")
     tap("Doble panel")
     checkpoint("07-dual-pane", "Doble panel")
+    drag_row_to_right_pane("smoke.txt")
+    tap("Copiar aquí")
+    deadline = time.monotonic() + 20
+    while adb("shell", "cat", "/sdcard/smoke.txt", check=False).strip() != "smoke_original":
+        assert time.monotonic() < deadline, "Dual-pane drag/drop copy did not finish"
+        time.sleep(0.5)
+    CHECKS.append("dual-pane-drag-drop")
+    print("PASS: dual-pane-drag-drop", flush=True)
     adb("shell", "input", "keyevent", "4")
+
     tap("Más opciones")
     tap("Búsqueda avanzada")
     checkpoint("08-advanced-search", "Nombre (opcional)")
     adb("shell", "input", "keyevent", "4")
+
+    # Persist a gesture preference and exercise the real horizontal swipe detector.
+    drawer("Ajustes")
+    tap("Deslizar a la izquierda")
+    tap("Mostrar / ocultar archivos ocultos")
+    tap("Atrás")
+    wait("smoke.txt")
+    adb("shell", "input", "swipe", "930", "1050", "120", "1050", "450")
+    checkpoint("09-gesture-hidden", ".smoke-hidden.txt")
+
     tap("smoke.txt")
-    checkpoint("09-editor", "smoke_original")
+    checkpoint("10-editor", "smoke_original")
     tap("smoke_original")
     adb("shell", "input", "text", "_changed")
     tap("Guardar")
@@ -289,30 +312,92 @@ def main():
         assert time.monotonic() < deadline, "Editor did not save"
         time.sleep(0.5)
     tap("Atrás")
+
     tap("smoke.pdf")
-    checkpoint("10-pdf", "Página 1")
+    checkpoint("11-pdf", "Página 1")
     tap("Atrás")
     tap("smoke.png")
-    checkpoint("11-gallery", "Restablecer zoom")
+    checkpoint("12-gallery", "Restablecer zoom")
     tap("Atrás")
+
     tap("smoke.zip")
-    checkpoint("12-archive", "alpha.txt")
+    checkpoint("13-archive", "alpha.txt")
     tap("Extraer en carpeta nueva")
     deadline = time.monotonic() + 30
-    while "archive payload" not in adb("shell", "cat", "/sdcard/Download/smoke/alpha.txt", check=False):
-        assert time.monotonic() < deadline, "Archive extraction did not finish"
+    while "archive payload" not in adb(
+        "shell", "cat", "/sdcard/Download/smoke/alpha.txt", check=False
+    ):
+        assert time.monotonic() < deadline, "ZIP extraction did not finish"
         time.sleep(0.5)
-    checkpoint("13-archive-extracted", "alpha.txt")
+    checkpoint("14-archive-extracted", "alpha.txt")
     tap("Atrás")
+
+    # Exercise the bundled Android 7-Zip binary with an encrypted RAR5 fixture.
+    tap("smoke-encrypted.rar")
+    type_into("Contraseña (si corresponde)", "password")
+    tap("Abrir")
+    checkpoint("15-rar5-encrypted", "a.txt")
+    tap("Extraer en carpeta nueva")
+    deadline = time.monotonic() + 30
+    while "This is from a.txt" not in adb(
+        "shell", "cat", "/sdcard/Download/smoke-encrypted/a.txt", check=False
+    ):
+        assert time.monotonic() < deadline, "Encrypted RAR5 extraction did not finish"
+        time.sleep(0.5)
+    CHECKS.append("rar5-android-extraction")
+    print("PASS: rar5-android-extraction", flush=True)
+    tap("Atrás")
+
+    # Open the actual video viewer, enter the editor and export an MP4 copy.
+    tap("smoke.mp4")
+    checkpoint("16-video-viewer", "Editar")
+    tap("Editar")
+    checkpoint("17-video-editor", "Exportar MP4")
+    tap("Exportar MP4")
+    deadline = time.monotonic() + 60
+    while int(adb(
+        "shell",
+        "stat",
+        "-c",
+        "%s",
+        "/sdcard/Download/smoke-editado.mp4",
+        check=False,
+    ).strip() or "0") <= 0:
+        assert time.monotonic() < deadline, "Video export did not finish"
+        time.sleep(1)
+    CHECKS.append("video-export")
+    print("PASS: video-export", flush=True)
+    tap("Atrás")
+    tap("Atrás")
+
+    # MediaSessionService must keep audio playback alive after the Activity goes to Home.
+    tap("smoke.wav")
+    checkpoint("18-audio-viewer", "smoke.wav")
+    time.sleep(2)
+    before = adb("shell", "dumpsys", "media_session")
+    assert PACKAGE in before and ("state=3" in before or "state=PLAYING" in before), before
+    adb("shell", "input", "keyevent", "3")
+    time.sleep(2)
+    background = adb("shell", "dumpsys", "media_session")
+    assert PACKAGE in background and (
+        "state=3" in background or "state=PLAYING" in background
+    ), background
+    CHECKS.append("audio-background-playback")
+    print("PASS: audio-background-playback", flush=True)
+    adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity")
+    wait("smoke.wav")
+    tap("Atrás")
+
     drawer("Red, nube y USB")
     tap("Compartir por Wi-Fi / FTP")
     verify_http()
     adb("shell", "input", "keyevent", "4")
     adb("shell", "input", "keyevent", "4")
+
     # Verify leaving/re-entering the Activity keeps normal file browsing usable.
     adb("shell", "input", "keyevent", "3")
     adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity")
-    checkpoint("14-resume", "smoke.txt")
+    checkpoint("19-resume", "smoke.txt")
     crash = adb("logcat", "-d", "-b", "crash")
     assert f"Process: {PACKAGE}" not in crash, crash
 
