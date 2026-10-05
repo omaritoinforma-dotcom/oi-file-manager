@@ -59,13 +59,14 @@ object VideoTools {
         if (edit.isIdentityExport()) {
             val originalSize = source.length()
             val originalModified = source.lastModified()
+            val coroutineContext = currentCoroutineContext()
             SafeFiles.writeAtomic(target) { temp ->
                 source.inputStream().buffered().use { input ->
                     temp.outputStream().buffered().use { output ->
                         val buffer = ByteArray(256 * 1024)
                         var done = 0L
                         while (true) {
-                            currentCoroutineContext().ensureActive()
+                            coroutineContext.ensureActive()
                             val n = input.read(buffer)
                             if (n < 0) break
                             output.write(buffer, 0, n)
