@@ -228,10 +228,29 @@ def find(label, swipes=10):
     raise AssertionError(f"Not found after scrolling: {label}")
 
 
+def screencap_rgba(retries=4):
+    """Captura RGBA completa. El emulador puede devolver un frame truncado cuando se reinicia
+    su contexto gráfico; en ese caso se reintenta en vez de convertir un fallo del emulador en
+    un falso fallo visual de la app."""
+    last = "sin datos"
+    for _ in range(retries):
+        raw = subprocess.check_output(["adb", "exec-out", "screencap"], timeout=30)
+        if len(raw) >= 12:
+            width, height = struct.unpack("<II", raw[:8])
+            expected = width * height * 4
+            if 0 < width <= 10000 and 0 < height <= 10000 and expected > 0 and len(raw) >= expected + 8:
+                pixels = raw[-expected:]
+                if len(pixels) == expected:
+                    return width, height, pixels
+            last = f"{width}x{height}, {len(raw)} bytes; se esperaban al menos {expected + 8}"
+        else:
+            last = f"{len(raw)} bytes"
+        time.sleep(0.75)
+    raise AssertionError(f"El emulador devolvió una captura incompleta: {last}")
+
+
 def brightness():
-    raw = subprocess.check_output(["adb", "exec-out", "screencap"], timeout=30)
-    width, height = struct.unpack("<II", raw[:8])
-    pixels = raw[len(raw) - width * height * 4:]
+    _, _, pixels = screencap_rgba()
     samples = [pixels[i] + pixels[i + 1] + pixels[i + 2] for i in range(0, len(pixels), 4 * 997)]
     return sum(samples) / len(samples) / 3
 
@@ -1906,18 +1925,36 @@ class FakeTv:
 
 
 def fetch_from_host(url, host_port=48080):
-    """Pide [url] (del servidor de la app en el emulador) desde el equipo de CI, como haría la TV:
-    la consola del emulador redirige el puerto y la app ve llegar la conexión desde 10.0.2.2."""
+    """Pide [url] (del servidor de la app en el emulador) desde el equipo de CI, como haría la TV.
+    Se conserva el redireccionamiento de la consola del emulador porque así la app ve a la TV como
+    10.0.2.2 y se prueba también la lista blanca. Los reintentos cubren redirecciones que el emulador
+    pierde al recomponer su red; nunca relajan la comprobación HTTP ni el hash del archivo."""
+    import urllib.error
     import urllib.parse
     import urllib.request
 
     parsed = urllib.parse.urlparse(url)
-    adb("emu", "redir", "add", f"tcp:{host_port}:{parsed.port}")
-    try:
-        with urllib.request.urlopen(f"http://127.0.0.1:{host_port}{parsed.path}", timeout=30) as reply:
-            return reply.status, reply.read()
-    finally:
-        adb("emu", "redir", "del", f"tcp:{host_port}", check=False)
+    if parsed.port is None:
+        raise AssertionError(f"El enlace de la TV no tiene puerto: {url}")
+    suffix = urllib.parse.urlunsplit(("", "", parsed.path, parsed.query, ""))
+    last = None
+    for attempt in range(3):
+        port = host_port + attempt
+        adb("emu", "redir", "del", f"tcp:{port}", check=False)
+        try:
+            adb("emu", "redir", "add", f"tcp:{port}:{parsed.port}")
+            time.sleep(0.75)
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}{suffix}", timeout=12) as reply:
+                return reply.status, reply.read()
+        except urllib.error.HTTPError:
+            # Un 403/404 es evidencia real del servidor, no un problema transitorio de la red.
+            raise
+        except (TimeoutError, OSError, urllib.error.URLError) as error:
+            last = error
+            time.sleep(0.75)
+        finally:
+            adb("emu", "redir", "del", f"tcp:{port}", check=False)
+    raise AssertionError(f"No se pudo leer el enlace servido a la TV tras 3 intentos: {last}")
 
 
 @check("enviar-a-la-tv-dlna")
@@ -2396,7 +2433,8 @@ def removable_storage_notice():
         until(lambda: "» conectada" in sh("dumpsys", "notification", "--noredact"), "Sin aviso al conectar la unidad", 30)
         # La unidad aparece en Inicio con su nombre y su botón de expulsar.
         launch_home()
-        assert eject_button(), "La unidad no aparece en Inicio"
+        button = wait_eject_button(timeout=30)
+        assert button is not None, "La unidad no aparece en Inicio"
         evidence("unidad-extraible-en-inicio")
         # Desde la notificación: abrir la unidad.
         sh("cmd", "statusbar", "expand-notifications")
@@ -2406,7 +2444,7 @@ def removable_storage_notice():
         assert "» conectada" in sh("dumpsys", "notification", "--noredact"), "El aviso debe seguir mientras la unidad está conectada"
         # Expulsar desde Inicio: avisa y lleva a Ajustes → Almacenamiento.
         launch_home()
-        button = eject_button()
+        button = wait_eject_button(timeout=30)
         assert button is not None, "La unidad no aparece en Inicio"
         tap_node(button)
         wait_text("No queda ninguna copia en curso")
@@ -2425,14 +2463,30 @@ def removable_storage_notice():
         sh("sm", "set-virtual-disk", "false", check=False)
 
 
-def eject_button(swipes=6):
-    """Botón «Expulsar «…»» de la tarjeta de la unidad en Inicio, desplazando si hace falta."""
+def eject_button(swipes=8):
+    """Botón «Expulsar «…»» de la tarjeta de la unidad en Inicio.
+    Primero vuelve al principio: otras comprobaciones pueden dejar la LazyColumn desplazada."""
+    for _ in range(5):
+        adb("shell", "input", "swipe", "540", "700", "540", "1500", "250")
+        time.sleep(0.15)
     for _ in range(swipes):
         found = [n for n in hierarchy().iter("node") if (n.get("content-desc") or "").startswith("Expulsar «")]
         if found:
             return found[0]
-        adb("shell", "input", "swipe", "540", "1500", "540", "700", "400")
-        time.sleep(0.5)
+        adb("shell", "input", "swipe", "540", "1500", "540", "700", "300")
+        time.sleep(0.35)
+    return None
+
+
+def wait_eject_button(timeout=30):
+    """Espera la recomposición de Inicio después de que vold monte una unidad."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        found = eject_button()
+        if found is not None:
+            return found
+        launch_home()  # fuerza refreshVolumes() si el broadcast llegó antes de arrancar la app
+        time.sleep(1)
     return None
 
 
@@ -2513,7 +2567,7 @@ def root_functions():
         ui.drawer("Root con Magisk")
         fill("Ruta", "/data/data", clear=True)
         tap("Autorizar y explorar")
-        wait("com.android.settings", timeout=60)
+        find("com.android.settings", swipes=20)
         evidence("root-explorador-data")
         assert "find '/data/data'" in root.log(), root.log()[-500:]
         # Archivo hosts: se monta una copia encima del original y luego se vuelve atrás.
@@ -2570,7 +2624,7 @@ def obex_server():
           "El Bluetooth del emulador no se encendió", 30)
     launch_home()
     ui.drawer("Red, nube y USB")
-    tap(find("Compartir por red").get("text"))
+    tap(find("Compartir por Wi-Fi / FTP").get("text"))
     tap(find("Bluetooth (OBEX FTP)").get("text"))
     wait_text("por Bluetooth como", timeout=30)
     wait_text("Solo pueden ver y descargar.")
@@ -3404,15 +3458,15 @@ def row_height(label):
 
 
 def region_pixels(x1, y1, x2, y2, step=3):
-    """Colores (r, g, b) de un rectángulo de la pantalla, tomando un píxel de cada [step]."""
-    raw = subprocess.check_output(["adb", "exec-out", "screencap"], timeout=30)
-    width, height = struct.unpack("<II", raw[:8])
-    pixels = raw[len(raw) - width * height * 4:]
+    """Colores (r, g, b) de un rectángulo de una captura RGBA completa."""
+    width, height, pixels = screencap_rgba()
     out = []
     for y in range(max(0, y1), min(height, y2), step):
         for x in range(max(0, x1), min(width, x2), step):
             i = (y * width + x) * 4
             out.append((pixels[i], pixels[i + 1], pixels[i + 2]))
+    if not out:
+        raise AssertionError(f"Región de captura vacía: {x1},{y1}-{x2},{y2} en {width}x{height}")
     return out
 
 
