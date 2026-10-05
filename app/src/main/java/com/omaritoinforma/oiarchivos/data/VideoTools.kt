@@ -30,6 +30,22 @@ data class VideoEdit(
     val backgroundImage: String = ""
 )
 
+internal fun VideoEdit.isIdentityExport(): Boolean =
+    startMs == 0L &&
+        endMs == Long.MAX_VALUE &&
+        rotation == 0f &&
+        speed == 1f &&
+        !crop &&
+        caption.isBlank() &&
+        music.isBlank() &&
+        join.isEmpty() &&
+        !mute &&
+        image.isBlank() &&
+        subtitles.isBlank() &&
+        canvasWidth == 0 &&
+        canvasHeight == 0 &&
+        backgroundImage.isBlank()
+
 @androidx.annotation.OptIn(markerClass = [androidx.media3.common.util.UnstableApi::class])
 object VideoTools {
     suspend fun export(
@@ -39,6 +55,39 @@ object VideoTools {
         edit: VideoEdit,
         report: (OpProgress) -> Unit
     ) {
+        SafeFiles.requireRegular(source)
+        if (edit.isIdentityExport()) {
+            val originalSize = source.length()
+            val originalModified = source.lastModified()
+            SafeFiles.writeAtomic(target) { temp ->
+                source.inputStream().buffered().use { input ->
+                    temp.outputStream().buffered().use { output ->
+                        val buffer = ByteArray(256 * 1024)
+                        var done = 0L
+                        while (true) {
+                            currentCoroutineContext().ensureActive()
+                            val n = input.read(buffer)
+                            if (n < 0) break
+                            output.write(buffer, 0, n)
+                            done += n
+                            report(
+                                OpProgress(
+                                    "Exportando video",
+                                    source.name,
+                                    doneBytes = done,
+                                    totalBytes = originalSize))
+                        }
+                        output.flush()
+                    }
+                }
+                if (source.length() != originalSize ||
+                    source.lastModified() != originalModified ||
+                    temp.length() != originalSize)
+                    throw IOException("El video original cambió durante la exportación")
+            }
+            return
+        }
+
         val part = File.createTempFile(".oi-video-", ".mp4", target.parentFile)
         part.delete()
         try {
