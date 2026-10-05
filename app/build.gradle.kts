@@ -10,6 +10,10 @@ val buildNumber =
         ?: 1
 require(buildNumber > 0) { "El número de compilación debe ser positivo" }
 
+val releaseStorePath = System.getenv("OI_RELEASE_STORE_FILE")?.takeIf { it.isNotBlank() }
+val releasePassword = System.getenv("OI_RELEASE_PASSWORD")?.takeIf { it.isNotBlank() }
+val releaseKeyAlias = System.getenv("OI_RELEASE_KEY_ALIAS")?.takeIf { it.isNotBlank() }
+
 android {
     namespace = "com.omaritoinforma.oiarchivos"
     compileSdk = 35
@@ -25,12 +29,19 @@ android {
     }
 
     signingConfigs {
-        // Llave fija dentro del repo: cada APK nuevo se instala encima del anterior.
         getByName("debug") {
             storeFile = file("debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
+        }
+        if (releaseStorePath != null && releasePassword != null && releaseKeyAlias != null) {
+            create("release") {
+                storeFile = file(releaseStorePath)
+                storePassword = releasePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releasePassword
+            }
         }
     }
 
@@ -38,7 +49,9 @@ android {
         debug { signingConfig = signingConfigs.getByName("debug") }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            // Local release builds may remain unsigned. CI refuses to publish unless the private
+            // release keystore is supplied through environment variables.
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
