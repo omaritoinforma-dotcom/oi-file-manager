@@ -31,7 +31,7 @@ WEBDAV_PORT = 18080
 WEBDAV_PROCESS = None
 WEBDAV_LOG = None
 WEBDAV_SHA256 = None
-WEBDAV_SIZE = 8 * 1024 * 1024
+WEBDAV_SIZE = 16 * 1024 * 1024
 
 
 def start_webdav():
@@ -232,6 +232,46 @@ def verify_remote_recovery():
     assert 64 * 1024 <= partial_size < WEBDAV_SIZE, (
         f"Remote download did not create a resumable partial file: {partial_size}"
     )
+
+    tap("Pausar")
+    wait("Reanudar")
+    time.sleep(0.8)
+    paused_values = [
+        int(line)
+        for line in adb("shell", "sh", "-c", partial_command, check=False).splitlines()
+        if line.strip().isdigit()
+    ]
+    paused_size = max(paused_values) if paused_values else 0
+    time.sleep(1.2)
+    paused_values_2 = [
+        int(line)
+        for line in adb("shell", "sh", "-c", partial_command, check=False).splitlines()
+        if line.strip().isdigit()
+    ]
+    paused_size_2 = max(paused_values_2) if paused_values_2 else 0
+    assert paused_size_2 == paused_size, (
+        f"Remote transfer kept writing while paused: {paused_size} -> {paused_size_2}"
+    )
+
+    tap("Reanudar")
+    wait("Pausar")
+    deadline = time.monotonic() + 10
+    resumed_size = paused_size_2
+    while time.monotonic() < deadline:
+        values = [
+            int(line)
+            for line in adb("shell", "sh", "-c", partial_command, check=False).splitlines()
+            if line.strip().isdigit()
+        ]
+        resumed_size = max(values) if values else 0
+        if paused_size_2 < resumed_size < WEBDAV_SIZE:
+            break
+        time.sleep(0.2)
+    assert paused_size_2 < resumed_size < WEBDAV_SIZE, (
+        f"Remote transfer did not resume before completion: {paused_size_2} -> {resumed_size}"
+    )
+    CHECKS.append("remote-pause-resume")
+    print("PASS: remote-pause-resume", flush=True)
 
     adb("shell", "am", "force-stop", PACKAGE)
     time.sleep(0.5)
