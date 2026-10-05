@@ -181,6 +181,7 @@ private fun MainContent(vm: MainViewModel) {
             is Screen.DualPane -> DualPaneScreen(vm, screen.path)
             is Screen.Stream -> StreamScreen(vm, screen.url, screen.title)
             Screen.Cast -> CastScreen(vm)
+            Screen.AdbTv -> AdbTvScreen(vm)
             Screen.Cleaner -> CleanerScreen(vm)
             Screen.Playlists -> PlaylistsScreen(vm)
             Screen.AppAnalysis -> AppAnalysisScreen(vm)

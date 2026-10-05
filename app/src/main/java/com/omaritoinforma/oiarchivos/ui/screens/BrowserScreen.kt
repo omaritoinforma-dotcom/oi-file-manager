@@ -35,6 +35,7 @@ import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Android
 import androidx.compose.material.icons.filled.Archive
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Cast
@@ -564,6 +565,12 @@ private fun SelectionBottomBar(
                                 menu = false
                                 vm.installApks(files.map { it.file })
                             }
+                    if (files.all { it.extension.equals("apk", ignoreCase = true) })
+                        MenuItem(tr("Instalar en Android TV"), Icons.Filled.Tv) {
+                            menu = false
+                            vm.clearSelection()
+                            vm.installOnTv(files.map { it.file })
+                        }
                     if (files.all { Kinds.of(it) in setOf(FileKind.AUDIO, FileKind.VIDEO) })
                         MenuItem(tr("Añadir a lista de reproducción"), Icons.AutoMirrored.Filled.PlaylistAdd) {
                             menu = false

@@ -13,9 +13,9 @@ La matriz completa está en [COMPARACION_ES.md](COMPARACION_ES.md). Se hizo a pa
 | Estado | Filas | Qué significa |
 | --- | ---: | --- |
 | ✅ | 58 | Implementado y comprobado en el emulador Android 15 del CI o contra un servidor real |
-| 🟡 | 18 | Implementado y conectado a la interfaz; su comprobación en el emulador ya está escrita y espera su pasada |
+| 🟡 | 19 | Implementado y conectado a la interfaz; su comprobación en el emulador ya está escrita y espera su pasada |
 | 🟠 | 1 | Parcial: envío entre teléfonos por punto de acceso Wi-Fi |
-| ❌ | 8 | Falta: funciones que exigen root (desinstalar apps del sistema, montar /system, editar hosts), Android TV por ADB, servidor OBEX, expulsar USB, punto de acceso propio y las nubes minoritarias |
+| ❌ | 7 | Falta: funciones que exigen root (desinstalar apps del sistema, montar /system, editar hosts), servidor OBEX, expulsar USB, punto de acceso propio y las nubes minoritarias |
 
 Lo que falta en ❌ y en 🟠 necesita hardware, root o cuentas que el CI no tiene.
 
@@ -57,7 +57,7 @@ De los 12 fallos, 10 eran de la prueba y están corregidos:
 
 Los otros 2 eran **errores reales de la app**, ya corregidos (ver la tabla de abajo).
 
-Las comprobaciones nuevas de este punto de control (idioma, Chromecast, intro/outro y las corregidas) esperan la próxima pasada.
+Las comprobaciones nuevas de este punto de control (idioma, Chromecast, Android TV por ADB, intro/outro y las corregidas) esperan la próxima pasada.
 
 ### Pruebas JVM
 
@@ -107,6 +107,7 @@ Hay 236 pruebas en 46 archivos. En local pasan todas menos 9, que necesitan rclo
   Todos van en la copia de ajustes y se validan al restaurar, salvo los que son del dispositivo: la contraseña FTP y la imagen de fondo.
 - **Envío entre teléfonos:** se puede enviar leyendo un código QR.
 - **Chromecast:** envío con el protocolo abierto CASTV2 (TLS y protobuf hechos a mano, sin el SDK de Google), búsqueda por mDNS o por IP; el enlace del archivo solo lo puede leer ese Chromecast.
+- **Android TV por ADB:** cliente ADB propio (sin binarios externos) para instalar APK elegidos en el explorador, listar, abrir y desinstalar apps y usar el teléfono como mando. La primera vez la TV pregunta si permite la depuración; después basta la firma RSA de la app. Probado en la JVM y, en el emulador, contra una TV falsa que verifica la firma.
 - **Idioma:** la app se puede usar en español o en inglés, o seguir el idioma del teléfono (Ajustes → Pantalla). Los textos siguen escritos en español en el código y `tr("…")` los traduce con el catálogo `assets/i18n/en.tsv`; una prueba JVM recorre el código y exige que cada texto tenga su traducción.
 - **Apps:** al desinstalar una app desde OI Archivos, propone mover a la papelera las carpetas con su nombre que dejó en la raíz del almacenamiento (como «Clean associated folders» de ES, pero solo por nombre exacto y con confirmación).
 
@@ -115,7 +116,7 @@ Hay 236 pruebas en 46 archivos. En local pasan todas menos 9, que necesitan rclo
 1. **Pasada del emulador** de las 18 filas en 🟡, ya escritas: corregir lo que falle y pasar a ✅ lo que apruebe.
 2. **Más idiomas:** el catálogo admite cualquier idioma; hoy hay español e inglés.
 3. **Nubes:** registrar el acceso OAuth de la aplicación y comprobar cada operación con cuentas reales (Drive, Dropbox, OneDrive, Box, Yandex, S3, Baidu, SugarSync).
-4. **Hardware y root, imposibles en el CI:** un Chromecast físico (el protocolo se prueba con un receptor de prueba), punto de acceso Wi-Fi, Android TV por ADB, Bluetooth OBEX (cliente con un dispositivo real; servidor por hacer), USB OTG, tarjeta SD y funciones root.
+4. **Hardware y root, imposibles en el CI:** un Chromecast físico (el protocolo se prueba con un receptor de prueba), punto de acceso Wi-Fi, una Android TV física (el protocolo ADB se prueba con una TV falsa), Bluetooth OBEX (cliente con un dispositivo real; servidor por hacer), USB OTG, tarjeta SD y funciones root.
 5. **Revisión estática:** `lintDebug` no tiene errores. Quedan 28 advertencias, sobre todo versiones nuevas de dependencias y la API objetivo 34. Las dos de «TrustAllX509TrustManager» son de clases de commons-net que la app no usa. La de «CustomX509TrustManager» es la conexión con el Chromecast: se acepta su certificado propio solo hacia direcciones de la red local, porque la app no hace el desafío de autenticación de Google.
 
 No se declara el proyecto completo.

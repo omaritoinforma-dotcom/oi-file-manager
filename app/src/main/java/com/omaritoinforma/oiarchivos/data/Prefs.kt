@@ -58,6 +58,11 @@ class Prefs(context: Context) {
         get() = enumOr(sp.getString("swipe_right", null), GestureAction.NONE)
         set(v) = sp.edit().putString("swipe_right", v.name).apply()
 
+    /** Android TV a las que se conectó por ADB, la más reciente primero. */
+    var adbTvAddresses: List<String>
+        get() = sp.getString("adb_tv_addresses", "").orEmpty().split('\n').filter { it.isNotBlank() }
+        set(v) = sp.edit().putString("adb_tv_addresses", v.take(5).joinToString("\n")).apply()
+
     var bookmarks: List<String>
         get() = sp.getString("bookmarks", "").orEmpty().split('\n').filter { it.isNotBlank() }
         set(v) = sp.edit().putString("bookmarks", v.joinToString("\n")).apply()

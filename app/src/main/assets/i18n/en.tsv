@@ -1295,3 +1295,51 @@ Chromecast ({0})	Chromecast ({0})
 Chromecast · {0}	Chromecast · {0}
 DLNA · {0}	DLNA · {0}
 IP de la TV o del Chromecast (por ejemplo 192.168.1.50) o la URL de la descripción DLNA.	The IP of the TV or the Chromecast (for example 192.168.1.50) or the URL of the DLNA description.
+Respuesta no válida del dispositivo	Invalid response from the device
+No se pudo guardar la clave de ADB	Could not save the ADB key
+Dirección no válida	Invalid address
+Puerto no válido	Invalid port
+El dispositivo no respondió. ¿Está activada la depuración por red y aceptada en la TV?	The device did not respond. Is network debugging enabled and accepted on the TV?
+El dispositivo cerró la conexión. Si en la TV salió «¿Permitir la depuración?», hay que aceptarla.	The device closed the connection. If the TV showed “Allow debugging?”, it must be accepted.
+El dispositivo cerró la conexión	The device closed the connection
+El dispositivo rechazó «{0}»	The device refused “{0}”
+«{0}» no se puede abrir	“{0}” cannot be opened
+No se pudo desinstalar	Could not uninstall
+La TV no lo instaló: {0}	The TV did not install it: {0}
+No se pudo instalar	Could not install
+No se pudo copiar a la TV: {0}	Could not copy to the TV: {0}
+Nombre de app no válido	Invalid app name
+Conectando…	Connecting…
+No se pudo completar	Could not be completed
+Instalando en la TV…	Installing on the TV…
+«{0}» instalada en la TV	“{0}” installed on the TV
+{0} APK instaladas en la TV	{0} APKs installed on the TV
+Instalando «{0}» ({1} de {2})…	Installing “{0}” ({1} of {2})…
+Abriendo «{0}»…	Opening “{0}”…
+«{0}» abierta en la TV	“{0}” opened on the TV
+Desinstalando «{0}»…	Uninstalling “{0}”…
+«{0}» desinstalada de la TV	“{0}” uninstalled from the TV
+Leyendo las apps…	Reading the apps…
+Android TV por ADB	Android TV over ADB
+En la TV: Ajustes → Preferencias del dispositivo → Información, pulsa 7 veces «Compilación» y luego activa en Opciones para desarrolladores la depuración USB o por red. La TV debe estar en la misma Wi-Fi.	On the TV: Settings → Device Preferences → About, press “Build” 7 times and then enable USB or network debugging in Developer options. The TV must be on the same Wi-Fi.
+IP de la TV (puerto 5555 si no se indica)	TV IP (port 5555 if not given)
+Conectar	Connect
+Acepta «¿Permitir la depuración?» en la pantalla de la TV (marca «Permitir siempre» para no volver a preguntar).	Accept “Allow debugging?” on the TV screen (check “Always allow” so it does not ask again).
+Conectado a «{0}»	Connected to “{0}”
+Instalar «{0}» en la TV	Install “{0}” on the TV
+Instalar {0} APK en la TV	Install {0} APKs on the TV
+Para instalar, elige uno o varios APK en el explorador y usa Más → Instalar en Android TV.	To install, choose one or more APKs in the browser and use More → Install on Android TV.
+Desconectar	Disconnect
+Apps instaladas ({0})	Installed apps ({0})
+¿Desinstalar de la TV?	Uninstall from the TV?
+Mando	Remote
+Instalar en Android TV	Install on Android TV
+Instalar APK, abrir o quitar apps y usar el teléfono como mando	Install APKs, open or remove apps and use the phone as a remote
+Arriba	Up
+Abajo	Down
+Izquierda	Left
+Derecha	Right
+Reproducir o pausar	Play or pause
+Subir volumen	Volume up
+Bajar volumen	Volume down
+Encender o apagar	Power on or off

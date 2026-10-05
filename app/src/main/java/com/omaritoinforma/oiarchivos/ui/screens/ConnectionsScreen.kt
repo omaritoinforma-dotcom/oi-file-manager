@@ -141,6 +141,12 @@ fun ConnectionsScreen(vm: MainViewModel) {
                 }
                 item {
                     ListItem(
+                        headlineContent = { Text(tr("Android TV por ADB")) },
+                        supportingContent = { Text(tr("Instalar APK, abrir o quitar apps y usar el teléfono como mando")) },
+                        modifier = Modifier.clickable { vm.goTo(Screen.AdbTv) })
+                }
+                item {
+                    ListItem(
                         headlineContent = { Text(tr("Buscar en la red local")) },
                         supportingContent = {
                             Text(tr("Servidores SMB, FTP, FTPS y SFTP de tu Wi-Fi"))

@@ -117,6 +117,9 @@ sealed interface Screen {
     /** Enviar una foto, música o vídeo a la TV por DLNA. */
     data object Cast : Screen
 
+    /** Instalar y manejar una Android TV por ADB. */
+    data object AdbTv : Screen
+
     /** Limpiar basura. */
     data object Cleaner : Screen
 
@@ -571,6 +574,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Lo que se va a enviar a la TV con «Enviar a la TV». */
     var castSource by mutableStateOf<com.omaritoinforma.oiarchivos.data.StreamServer.Source?>(null)
+
+    /** APK elegidos en el explorador para instalar en una Android TV. */
+    var adbApks by mutableStateOf<List<String>>(emptyList())
+
+    fun installOnTv(files: List<java.io.File>) {
+        adbApks = files.map { it.path }
+        goTo(Screen.AdbTv)
+    }
 
     fun castTo(source: com.omaritoinforma.oiarchivos.data.StreamServer.Source) {
         castSource = source

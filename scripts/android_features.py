@@ -2165,6 +2165,201 @@ def cast_to_chromecast():
         tv.close()
 
 
+class FakeAdbd:
+    """Android TV falsa por ADB en el equipo de CI (10.0.2.2:15555 para el emulador). Comprueba la
+    firma RSA de verdad con la clave pública que manda la app, «pregunta» antes de aceptar una clave
+    nueva y responde a pm, monkey, input y a la instalación por streaming (exec:cmd package install)."""
+
+    PREFIX = bytes.fromhex("3021300906052b0e03021a05000414")
+
+    def __init__(self, port=15555):
+        import socket
+        import threading
+
+        self.server = socket.socket()
+        self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.server.bind(("0.0.0.0", port))
+        self.server.listen(4)
+        self.keys = []
+        self.asked = 0
+        self.approve = threading.Event()
+        self.commands = []
+        self.apps = ["com.ejemplo.juego"]
+        self.installed = {}
+        self.signatures_ok = 0
+        self.lock = threading.Lock()
+        threading.Thread(target=self.accept, daemon=True).start()
+
+    @staticmethod
+    def message(command, arg0, arg1, data=b""):
+        cmd = struct.unpack("<I", command)[0]
+        return struct.pack("<6I", cmd, arg0, arg1, len(data), sum(data) & 0xFFFFFFFF, cmd ^ 0xFFFFFFFF) + data
+
+    @staticmethod
+    def read_exact(conn, n):
+        out = b""
+        while len(out) < n:
+            chunk = conn.recv(n - len(out))
+            if not chunk:
+                raise EOFError
+            out += chunk
+        return out
+
+    def read(self, conn):
+        cmd, arg0, arg1, length, _, magic = struct.unpack("<6I", self.read_exact(conn, 24))
+        assert magic == cmd ^ 0xFFFFFFFF, "cabecera ADB no válida"
+        return struct.pack("<I", cmd), arg0, arg1, self.read_exact(conn, length)
+
+    @staticmethod
+    def parse_key(text):
+        import base64
+
+        raw = base64.b64decode(text.split(b" ")[0])
+        words = struct.unpack_from("<I", raw, 0)[0]
+        n = int.from_bytes(raw[8:8 + words * 4], "little")
+        e = struct.unpack_from("<I", raw, 8 + words * 8)[0]
+        return n, e
+
+    def verify(self, signature, token):
+        for n, e in self.keys:
+            size = (n.bit_length() + 7) // 8
+            plain = pow(int.from_bytes(signature, "big"), e, n).to_bytes(size, "big")
+            body = self.PREFIX + token
+            if plain == b"\x00\x01" + b"\xff" * (size - 3 - len(body)) + b"\x00" + body:
+                return True
+        return False
+
+    def accept(self):
+        import threading
+
+        while True:
+            try:
+                conn, _ = self.server.accept()
+            except OSError:
+                return
+            threading.Thread(target=self.serve, args=(conn,), daemon=True).start()
+
+    def serve(self, conn):
+        try:
+            with conn:
+                cmd, *_ = self.read(conn)
+                assert cmd == b"CNXN"
+                token = os.urandom(20)
+                conn.sendall(self.message(b"AUTH", 1, 0, token))
+                while True:
+                    cmd, kind, _, data = self.read(conn)
+                    assert cmd == b"AUTH"
+                    if kind == 2:
+                        if self.verify(data, token):
+                            self.signatures_ok += 1
+                            break
+                        conn.sendall(self.message(b"AUTH", 1, 0, token))
+                    elif kind == 3:
+                        self.asked += 1
+                        # La TV muestra «¿Permitir la depuración?»: la prueba acepta cuando la app lo pide en pantalla.
+                        if not self.approve.wait(90):
+                            return
+                        self.keys.append(self.parse_key(data.rstrip(b"\0")))
+                        break
+                banner = b"device::ro.product.name=tvfalsa;ro.product.model=TV de prueba ADB;features=cmd,shell_v2"
+                conn.sendall(self.message(b"CNXN", 0x01000001, 4096, banner))
+                remote = 100
+                while True:
+                    cmd, local, _, data = self.read(conn)
+                    if cmd != b"OPEN":
+                        continue
+                    me = remote
+                    remote += 1
+                    service = data.rstrip(b"\0").decode()
+                    with self.lock:
+                        self.commands.append(service)
+                    conn.sendall(self.message(b"OKAY", me, local))
+
+                    def reply(text):
+                        if text:
+                            conn.sendall(self.message(b"WRTE", me, local, text.encode()))
+                            assert self.read(conn)[0] == b"OKAY"
+                        conn.sendall(self.message(b"CLSE", me, local))
+
+                    if service == "shell:pm list packages -3":
+                        reply("".join(f"package:{a}\n" for a in sorted(self.apps)))
+                    elif service.startswith("shell:monkey -p "):
+                        reply("No activities found to run, monkey aborted.\n" if "LEANBACK" in service else "Events injected: 1\n")
+                    elif service.startswith("shell:pm uninstall "):
+                        pkg = service.rsplit(" ", 1)[1]
+                        if pkg in self.apps:
+                            self.apps.remove(pkg)
+                        reply("Success\n")
+                    elif service.startswith("shell:input keyevent "):
+                        reply("")
+                    elif service.startswith("exec:cmd package install -r -S "):
+                        size = int(service.rsplit(" ", 1)[1])
+                        apk = b""
+                        while len(apk) < size:
+                            cmd, *_, chunk = self.read(conn)
+                            assert cmd == b"WRTE", cmd
+                            assert len(chunk) <= 4096, len(chunk)
+                            apk += chunk
+                            conn.sendall(self.message(b"OKAY", me, local))
+                        self.installed[hashlib.sha256(apk).hexdigest()] = len(apk)
+                        self.apps.append("com.ejemplo.nueva")
+                        reply("Success\n")
+                    else:
+                        reply("desconocido\n")
+        except (EOFError, OSError):
+            pass
+
+    def has(self, prefix):
+        with self.lock:
+            return any(c.startswith(prefix) for c in self.commands)
+
+    def close(self):
+        self.server.close()
+
+
+@check("android-tv-por-adb")
+def android_tv_over_adb():
+    apk = b"PK\x03\x04" + os.urandom(300 * 1024)
+    push_bytes(apk, f"{DIR}/prueba-tv.apk")
+    tv = FakeAdbd()
+    try:
+        open_test_folder()
+        long_press("prueba-tv.apk")
+        menu_option("Instalar en Android TV")
+        fill("IP de la TV (puerto 5555 si no se indica)", "10.0.2.2:15555", clear=True)
+        tap("Conectar")
+        # La primera vez la TV no conoce la clave de la app: la app pide aceptar en la pantalla de la TV.
+        wait_text("Acepta «¿Permitir la depuración?»", timeout=40)
+        assert tv.asked == 1
+        tv.approve.set()
+        wait_text("Conectado a «TV de prueba ADB»", timeout=40)
+        evidence("android-tv-conectada")
+        tap("Instalar «prueba-tv.apk» en la TV")
+        until(lambda: hashlib.sha256(apk).hexdigest() in tv.installed, "La TV no recibió el APK completo", 60)
+        wait_text("«prueba-tv.apk» instalada en la TV", timeout=30)
+        tap("Derecha")
+        until(lambda: tv.has("shell:input keyevent 22"), "La TV no recibió la tecla Derecha", 15)
+        find("com.ejemplo.nueva")
+        tap("Abrir")
+        until(lambda: tv.has("shell:monkey -p com.ejemplo.juego -c android.intent.category.LAUNCHER"),
+              "No se abrió la app en la TV", 15)
+        wait_text("«com.ejemplo.juego» abierta en la TV")
+        tap("Desinstalar")
+        wait("¿Desinstalar de la TV?")
+        tap_last("Desinstalar")
+        until(lambda: tv.has("shell:pm uninstall com.ejemplo.juego"), "La TV no recibió la desinstalación", 15)
+        wait_text("«com.ejemplo.juego» desinstalada de la TV")
+        # La segunda conexión ya no pregunta: la TV recuerda la clave y basta la firma.
+        find("Desconectar")
+        tap("Desconectar")
+        tap("Conectar")
+        wait_text("Conectado a «TV de prueba ADB»", timeout=40)
+        assert tv.asked == 1 and tv.signatures_ok >= 1, (tv.asked, tv.signatures_ok)
+        tap("Desconectar")
+    finally:
+        tv.close()
+
+
 @check("descargar-desde-una-url")
 def download_from_url():
     """El equipo de CI sirve un archivo por HTTP (10.0.2.2 para el emulador)."""
