@@ -502,8 +502,8 @@ def main():
     tap("smoke.mp4")
     checkpoint("16-video-viewer", "Editar")
     tap("Editar")
-    checkpoint("17-video-editor", "Exportar MP4")
-    tap("Exportar MP4")
+    checkpoint("17-video-editor", "Exporta una copia MP4. El video original se conserva.")
+    tap_scrolling("Exportar MP4")
     deadline = time.monotonic() + 60
     while int(adb(
         "shell",
