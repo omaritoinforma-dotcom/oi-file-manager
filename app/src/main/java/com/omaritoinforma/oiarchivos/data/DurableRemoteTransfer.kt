@@ -389,10 +389,15 @@ private constructor(
                 if (findRemote(fs, parent, entry.name) != null)
                     throw IOException("Apareció otro archivo en el destino: ${entry.name}")
                 val temporaryName = tempName(index)
-                val oldTemp = findRemote(fs, parent, temporaryName, false)
+                var oldTemp = findRemote(fs, parent, temporaryName, false)
+                if (oldTemp != null && oldTemp.size != entry.size) {
+                    // This name belongs exclusively to this durable job. If the provider cannot
+                    // prove the expected size (including size = -1), discard it rather than ever
+                    // promoting a possibly truncated upload to the final name.
+                    fs.delete(oldTemp)
+                    oldTemp = null
+                }
                 if (oldTemp != null) {
-                    if (oldTemp.size >= 0 && oldTemp.size != entry.size)
-                        throw IOException("La subida parcial remota cambió")
                     entry.remotePath = oldTemp.path
                     entry.actualSize = entry.size
                     entry.phase = 1
