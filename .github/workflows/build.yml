@@ -42,6 +42,25 @@ jobs:
         run: |
           # Exporta la misma carpeta que los demás servidores; escucha en 127.0.0.1.
           scripts/nfs_ganesha.sh start "$PWD/build/remote-servers/data" >> "$GITHUB_ENV"
+      - name: Clave de firma de las versiones
+        env:
+          KEYSTORE_B64: ${{ secrets.OI_RELEASE_KEYSTORE_B64 }}
+          PASSWORD: ${{ secrets.OI_RELEASE_PASSWORD }}
+          ALIAS: ${{ secrets.OI_RELEASE_KEY_ALIAS }}
+        run: |
+          # Sin el secreto (forks), se firma con la clave de depuración; las versiones de main lo exigen.
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/oi-release.jks"
+            echo "::add-mask::$PASSWORD"
+            {
+              echo "OI_RELEASE_KEYSTORE=$RUNNER_TEMP/oi-release.jks"
+              echo "OI_RELEASE_PASSWORD=$PASSWORD"
+              echo "OI_RELEASE_KEY_ALIAS=${ALIAS:-oiarchivos}"
+            } >> "$GITHUB_ENV"
+          fi
+          if [ "${{ github.ref }}" = "refs/heads/main" ] && [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "OI_REQUIRE_RELEASE_KEY=1" >> "$GITHUB_ENV"
+          fi
       - name: Pruebas y compilación
         env:
           OI_ARCHIVE_TEST_EXECUTABLE: ${{ github.workspace }}/build/native-archives/--host/7zz
@@ -50,6 +69,10 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew testDebugUnitTest assembleRelease lintDebug --stacktrace
+          # Huella del certificado con el que quedó firmado el APK (para comprobarla al instalar).
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner"
+          "$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | grep -i "SHA-256" || true
+          rm -f "$RUNNER_TEMP/oi-release.jks"
       - name: Guardar informes de pruebas
         if: always()
         uses: actions/upload-artifact@v4

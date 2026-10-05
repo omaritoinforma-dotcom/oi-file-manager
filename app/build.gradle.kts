@@ -24,21 +24,36 @@ android {
         manifestPlaceholders["appAuthRedirectScheme"] = "com.omaritoinforma.oiarchivos.oauth"
     }
 
+    // Clave de las versiones publicadas: solo existe en los secretos del repositorio (el CI la deja en
+    // un archivo temporal y pasa su ruta y contraseña por el entorno). Sin ella, las compilaciones
+    // locales y las de forks se firman con la clave de depuración, que es pública y no sirve para
+    // publicar: con OI_REQUIRE_RELEASE_KEY=1 (las versiones de main) la compilación falla.
+    val releaseKeystore = System.getenv("OI_RELEASE_KEYSTORE")?.let { file(it) }?.takeIf { it.isFile }
+    if (releaseKeystore == null && System.getenv("OI_REQUIRE_RELEASE_KEY") == "1")
+        throw GradleException("Falta la clave de firma de las versiones (secreto OI_RELEASE_KEYSTORE_B64)")
+
     signingConfigs {
-        // Llave fija dentro del repo: cada APK nuevo se instala encima del anterior.
+        // Clave de depuración del repo: solo para pruebas.
         getByName("debug") {
             storeFile = file("debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        if (releaseKeystore != null)
+            create("release") {
+                storeFile = releaseKeystore
+                storePassword = System.getenv("OI_RELEASE_PASSWORD")
+                keyAlias = System.getenv("OI_RELEASE_KEY_ALIAS") ?: "oiarchivos"
+                keyPassword = System.getenv("OI_RELEASE_PASSWORD")
+            }
     }
 
     buildTypes {
         debug { signingConfig = signingConfigs.getByName("debug") }
         release {
             isMinifyEnabled = false
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
 
