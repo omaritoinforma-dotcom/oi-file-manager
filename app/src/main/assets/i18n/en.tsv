@@ -710,6 +710,7 @@ Ordenar…	Sort…
 Ocultar archivos ocultos	Hide hidden files
 Mostrar archivos ocultos	Show hidden files
 Acceso directo en Android	Android shortcut
+Acceso directo del servidor FTP	FTP server shortcut
 Quitar de marcadores	Remove from bookmarks
 Agregar a marcadores	Add to bookmarks
 {0} seleccionado(s)	{0} selected
@@ -1272,6 +1273,7 @@ Sin repetición	No repeat
 Página {0}	Page {0}
 El lanzador no permite fijar accesos directos	The launcher doesn't allow pinning shortcuts
 No se pudo solicitar el acceso directo	Couldn't request the shortcut
+No se pudo iniciar el servidor FTP	Couldn't start the FTP server
 Texto (editor de OI Archivos)	Text (OI Archivos editor)
 Audio	Audio
 Vídeo	Video

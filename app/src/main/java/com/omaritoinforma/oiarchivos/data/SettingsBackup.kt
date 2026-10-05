@@ -88,6 +88,7 @@ object SettingsBackup {
             "low_space_mb" to Kind.Number(100..102400),
             "ftp_port" to Kind.Number(0..65535),
             "ftp_encoding" to choice(FtpEncoding.entries.toTypedArray()),
+            "ftp_share_root" to Kind.Folder,
             "new_files_notify" to Kind.Flag,
             "removable_notice" to Kind.Flag,
             "obex_writable" to Kind.Flag,
