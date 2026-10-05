@@ -142,9 +142,15 @@ jobs:
           set -euo pipefail
           package='system-images;android-35;google_apis;x86_64'
           sdk_root="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
-          yes | sdkmanager --licenses >/dev/null || true
+          # sdkmanager no está en el PATH del runner: se usa el de cmdline-tools del SDK.
+          sdkmanager="$(command -v sdkmanager || ls "$sdk_root"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -1 || true)"
+          if [ -z "$sdkmanager" ]; then
+            echo "No se encontró sdkmanager en $sdk_root" >&2
+            exit 1
+          fi
+          yes | "$sdkmanager" --licenses >/dev/null || true
           for attempt in 1 2 3; do
-            if sdkmanager --install "$package"; then
+            if "$sdkmanager" --install "$package"; then
               exit 0
             fi
             echo "Fallo al instalar la imagen en el intento $attempt; limpiando la descarga parcial" >&2
