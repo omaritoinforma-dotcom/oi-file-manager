@@ -393,6 +393,113 @@ def seed_files():
             adb("push", str(file), f"/sdcard/Download/{file.name}")
 
 
+def ftp_read_reply(control):
+    line = control.stdout.readline()
+    if not line:
+        stderr = control.stderr.read().decode("utf-8", "replace")
+        raise AssertionError("FTP control connection closed: " + stderr)
+    text = line.decode("utf-8", "replace").strip()
+    assert re.match(r"^\\d{3}[ -]", text), "Invalid FTP reply: " + text
+    return text
+
+
+def ftp_command(control, command, expected):
+    control.stdin.write((command + "\\r\\n").encode())
+    control.stdin.flush()
+    reply = ftp_read_reply(control)
+    assert reply.startswith(str(expected)), f"FTP {command}: {reply}"
+    return reply
+
+
+def ftp_data_command(control, address, command, payload=None):
+    passive = ftp_command(control, "EPSV", 229)
+    match = re.search(r"\\(\\|\\|\\|(\\d+)\\|\\)", passive)
+    assert match, "Invalid EPSV reply: " + passive
+    port = match.group(1)
+
+    control.stdin.write((command + "\\r\\n").encode())
+    control.stdin.flush()
+    opening = ftp_read_reply(control)
+    assert opening.startswith("150"), f"FTP {command}: {opening}"
+
+    result = subprocess.run(
+        ["adb", "shell", "toybox", "nc", "-w", "15", address, port],
+        input=payload,
+        capture_output=True,
+        timeout=25,
+        check=True,
+    )
+    finished = ftp_read_reply(control)
+    assert finished.startswith("226"), f"FTP {command}: {finished}"
+    return result.stdout
+
+
+def verify_ftp():
+    tap("Servidor FTP")
+    _, tree = wait("Detener servidor")
+    text = "\\n".join(n.get("text", "") for n in tree.iter("node"))
+    address, port = re.search(r"ftp://([^:]+):(\\d+)/", text).groups()
+    password = re.search(r"Contraseña: (\\S+)", text).group(1)
+
+    control = subprocess.Popen(
+        ["adb", "shell", "toybox", "nc", "-w", "30", address, port],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    try:
+        assert ftp_read_reply(control).startswith("220")
+        ftp_command(control, "USER oi", 331)
+        ftp_command(control, "PASS incorrecta", 530)
+        ftp_command(control, "PASS " + password, 230)
+        ftp_command(control, "TYPE I", 200)
+        assert ftp_command(control, "PWD", 257).startswith('257 "')
+
+        listing = ftp_data_command(control, address, "NLST")
+        assert b"smoke.txt" in listing and b"smoke.zip" in listing
+
+        expected = adb("shell", "cat", "/sdcard/Download/smoke.txt").encode()
+        downloaded = ftp_data_command(control, address, "RETR smoke.txt")
+        assert downloaded == expected, (downloaded, expected)
+
+        ftp_command(control, "REST 6", 350)
+        resumed = ftp_data_command(control, address, "RETR smoke.txt")
+        assert resumed == expected[6:], (resumed, expected[6:])
+
+        uploaded = b"FTP upload from OI Archivos"
+        ftp_data_command(control, address, "STOR ftp-upload.txt", uploaded)
+        assert adb("shell", "cat", "/sdcard/Download/ftp-upload.txt").encode() == uploaded
+
+        ftp_command(control, "RNFR ftp-upload.txt", 350)
+        ftp_command(control, "RNTO ftp-renamed.txt", 250)
+        assert adb("shell", "cat", "/sdcard/Download/ftp-renamed.txt").encode() == uploaded
+
+        ftp_command(control, "MKD ftp-smoke-dir", 257)
+        ftp_command(control, "RMD ftp-smoke-dir", 250)
+        rejected = ftp_command(control, "SIZE ../oi-smoke.xml", 550)
+        assert rejected.startswith("550")
+
+        ftp_command(control, "DELE ftp-renamed.txt", 250)
+        assert "No such file" in adb(
+            "shell", "cat", "/sdcard/Download/ftp-renamed.txt", check=False
+        ) or not adb(
+            "shell", "test", "-e", "/sdcard/Download/ftp-renamed.txt", check=False
+        )
+
+        CHECKS.append("ftp-auth-list-download-resume-upload-confinement")
+        print("PASS: ftp-auth-list-download-resume-upload-confinement", flush=True)
+        ftp_command(control, "QUIT", 221)
+    finally:
+        if control.poll() is None:
+            control.terminate()
+            try:
+                control.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                control.kill()
+        tap("Detener servidor")
+        wait("Servidor FTP")
+
+
 def verify_http():
     tap("Navegador / Wi-Fi")
     _, tree = wait("Detener servidor")
@@ -583,6 +690,7 @@ def main():
     drawer("Red, nube y USB")
     tap("Compartir por Wi-Fi / FTP")
     verify_http()
+    verify_ftp()
     adb("shell", "input", "keyevent", "4")
     adb("shell", "input", "keyevent", "4")
 
