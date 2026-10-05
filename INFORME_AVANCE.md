@@ -1,6 +1,6 @@
 # OI Archivos — informe de avance
 
-Fecha: 4 de octubre de 2026. Rama `ccr-cc9d8418-yd5iu0` (PR #1). Estado: **versión de desarrollo; equivalencia completa con ES File Explorer pendiente**.
+Fecha: 5 de octubre de 2026. Rama `ccr-cc9d8418-yd5iu0` (PR #1). Estado: **versión de desarrollo; equivalencia completa con ES File Explorer pendiente**.
 
 ## Objetivo y criterio de terminación
 
@@ -12,8 +12,8 @@ La matriz completa está en [COMPARACION_ES.md](COMPARACION_ES.md). Se hizo a pa
 
 | Estado | Filas | Qué significa |
 | --- | ---: | --- |
-| ✅ | 58 | Implementado y comprobado en el emulador Android 15 del CI o contra un servidor real |
-| 🟡 | 26 | Implementado y conectado a la interfaz; su comprobación en el emulador ya está escrita y espera su pasada |
+| ✅ | 69 | Implementado y comprobado en el emulador Android 15 del CI o contra un servidor real |
+| 🟡 | 15 | Implementado y conectado a la interfaz; su comprobación en el emulador ya está escrita y espera su pasada, o necesita hardware real |
 | 🟠 | 0 | Parcial |
 | ❌ | 1 | Falta: las nubes minoritarias (MediaFire, Flickr, Instagram, Facebook, Nutstore, China Mobile Cloud) |
 
@@ -39,25 +39,22 @@ Además, el servidor FTP del propio teléfono se prueba con el cliente FTP de co
 El trabajo `smoke` arranca la app en un emulador Android 15 y ejecuta dos scripts:
 
 - `scripts/smoke_android.py` recorre la app de punta a punta. Incluye una descarga SFTP de 24 MiB que se reanuda tras matar el proceso y se compara por SHA-256.
-- `scripts/android_features.py` hace **84 comprobaciones**, una por función. Cada una guarda su captura, su jerarquía de pantalla y el resultado en `results.json`.
+- `scripts/android_features.py` hace **89 comprobaciones**, una por función. Cada una guarda su captura, su jerarquía de pantalla y el resultado en `results.json`.
 
 Desde ahora las comprobaciones se reparten en **tres emuladores nuevos en paralelo** (`OI_SHARD=k/3`). Así una sesión no pasa de unos 40 minutos.
 
-**Última pasada completa (2e7ae5c, ejecución 37234077192):** aprobó **69 de 81** en tres emuladores. Pasan a ✅ 18 filas: abrir con y abrir como, apps predeterminadas, ocultar y lista de ocultos, accesos directos, nivel de compresión, doble panel, barra lateral y barra de herramientas, ajustes de pantalla, botón de pestañas, buscador de Inicio, búsqueda avanzada, uso del almacenamiento en la barra de estado, reproductor, editor de texto, instalar y desinstalar por lotes, aviso de permisos, copia antes de desinstalar y limpiar carpetas, y archivo remoto editado que se sube solo. Además pasó el SMB contra Samba en el CI.
+**Última pasada completa (35e0256, ejecución 37331516858):** aprobó **84 de 89** en tres emuladores. Pasan a ✅ 11 filas: selección múltiple, copiar ruta, vistas, temas, tipos de documento, idioma, unir vídeos y GIF, lista de apps, NFS desde Android, envío entre teléfonos (también uniéndose a la red de un punto de acceso) y Android TV por ADB. También aprobaron por primera vez el servidor OBEX por Bluetooth (arranca en la pila Bluetooth real; falta otro equipo), la intro y el outro del editor de vídeo, limpiar las carpetas que deja una app, el fondo con imagen y el aviso claro cuando el teléfono no puede crear un punto de acceso.
 
-De los 12 fallos, 10 eran de la prueba y están corregidos:
+Antes hubo que arreglar el propio CI: Google estaba actualizando la imagen de Android 15 y la descarga llegaba dañada. El paso con reintentos (d72d226) llamaba a `sdkmanager`, que no está en el PATH del runner; 35e0256 usa el del SDK.
 
-- leer archivos con paréntesis en el nombre (`exec-out cat`);
-- `screenrecord` no deja un MP4 terminado en el emulador del CI (ahora los vídeos se generan con PyAV);
-- la ruta copiada es `/storage/emulated/0/…`, no `/sdcard/…`;
-- tocar un menú mientras se anima;
-- listas desplazadas y botones fuera de la pantalla;
-- un píxel de muestra que caía en un texto;
-- dos fallos en cascada porque otra prueba no dejaba el estado como estaba.
+Los 5 fallos, en estudio:
 
-Los otros 2 eran **errores reales de la app**, ya corregidos (ver la tabla de abajo).
+- **DLNA y Chromecast:** la app reproduce en la TV de prueba y muestra la posición, pero la petición del archivo que hace la «TV» desde el equipo de CI (redirigida por la consola del emulador) no recibe respuesta. Aprobaban en 521f954 y fallan desde be8215d con el mismo orden de comprobaciones. La próxima pasada guarda el estado de la red del emulador para encontrar la causa.
+- **USB y tarjeta SD:** el aviso y la tarjeta de la unidad en Inicio funcionan; lo que no encontraba la prueba era el texto de la notificación en la cortina. Ahora la abre de otra forma y guarda su captura.
+- **Root:** el su de prueba quedaba montado, pero la app no lo veía: un montaje hecho después de arrancar zygote no llega a las apps. Ahora se monta también dentro del espacio de montajes del proceso de la app, como hace Magisk.
+- **GIF:** el archivo se escribe de forma atómica; lo que falló fue leerlo con `adb pull`, que ahora se reintenta.
 
-Las comprobaciones nuevas de este punto de control (idioma, Chromecast, Android TV por ADB, USB y tarjeta SD, funciones root, punto de acceso, servidor OBEX, intro/outro y las corregidas) esperan la próxima pasada.
+Además, cada comprobación que falla guarda el logcat del sistema.
 
 ### Pruebas JVM
 

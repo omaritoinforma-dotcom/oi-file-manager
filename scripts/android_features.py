@@ -46,10 +46,15 @@ def read(path):
 def read_bytes(path):
     """Contenido de un archivo del emulador. Se usa «adb pull»: «exec-out cat» no lleva bien los nombres
     con espacios o paréntesis («mitad (editada).png»)."""
-    with tempfile.TemporaryDirectory() as tmp:
-        local = pathlib.Path(tmp) / "f"
-        subprocess.run(["adb", "pull", path, str(local)], check=False, capture_output=True, timeout=60)
-        return local.read_bytes() if local.exists() else b""
+    for attempt in range(3):
+        with tempfile.TemporaryDirectory() as tmp:
+            local = pathlib.Path(tmp) / "f"
+            subprocess.run(["adb", "pull", path, str(local)], check=False, capture_output=True, timeout=60)
+            if local.exists() and (local.stat().st_size > 0 or attempt == 2):
+                return local.read_bytes()
+        # Un «adb pull» puede fallar si coincide con otra orden de adb: se reintenta antes de dar el archivo por vacío.
+        time.sleep(1)
+    return b""
 
 
 def exists(path):
@@ -84,6 +89,13 @@ def check(name):
                 RESULTS[name] = f"FAIL: {error}"
                 print(f"FAIL: {name}: {error}", flush=True)
                 traceback.print_exc()
+                # El logcat de la parte de funciones no se guarda en otro sitio: sin él no se ve si la app falló.
+                try:
+                    log = subprocess.run(["adb", "logcat", "-d", "-t", "4000"], capture_output=True, text=True,
+                                         timeout=60, errors="replace").stdout
+                    (OUTPUT / f"{name}-logcat.txt").write_text(log, encoding="utf-8")
+                except Exception:
+                    pass
             evidence(name)
             # Se guarda tras cada comprobación para que, si CI corta por tiempo, queden los resultados.
             (OUTPUT / "results.json").write_text(
@@ -585,7 +597,8 @@ def video_editor():
     until(lambda: exists(f"{folder}/clip.gif"), "No se creó el GIF", 120)
     time.sleep(1)
     gif = read_bytes(f"{folder}/clip.gif")
-    assert gif[:6] == b"GIF89a" and gif[-1] == 0x3B, "El GIF no está bien formado"
+    assert gif[:6] == b"GIF89a" and gif[-1:] == b"\x3b", (
+        f"El GIF no está bien formado: {len(gif)} bytes, empieza por {gif[:6]!r} y termina en {gif[-4:]!r}")
     width, height = struct.unpack("<HH", gif[6:10])
     assert (width, height) == (source["width"], source["height"]), f"GIF de {width}×{height}"
     frames = gif.count(b"\x21\xf9\x04\x08")
@@ -1954,6 +1967,47 @@ def fetch_from_host(url, host_port=48080):
             time.sleep(0.75)
         finally:
             adb("emu", "redir", "del", f"tcp:{port}", check=False)
+    # Último intento con el Wi-Fi apagado: la redirección de la consola entra por eth0 y, si la red
+    # por defecto es la Wi-Fi (misma subred 10.0.2.x), la respuesta puede salir por wlan0 y perderse.
+    via_eth0 = None
+    sh("svc", "wifi", "disable", check=False)
+    try:
+        time.sleep(6)
+        port = host_port + 5
+        adb("emu", "redir", "del", f"tcp:{port}", check=False)
+        adb("emu", "redir", "add", f"tcp:{port}:{parsed.port}")
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}{suffix}", timeout=15) as reply:
+                via_eth0 = (reply.status, reply.read())
+        except urllib.error.HTTPError:
+            raise
+        except (TimeoutError, OSError, urllib.error.URLError) as error:
+            last = error
+        finally:
+            adb("emu", "redir", "del", f"tcp:{port}", check=False)
+    finally:
+        sh("svc", "wifi", "enable", check=False)
+        deadline = time.monotonic() + 40
+        while time.monotonic() < deadline and "wlan0" not in sh("ip", "-4", "addr", "show", "wlan0", check=False):
+            time.sleep(1)
+    (OUTPUT / "diagnostico-tv-red-via.txt").write_text(
+        "con Wi-Fi: falló; sin Wi-Fi (eth0): " + ("respondió" if via_eth0 else f"falló ({last})"), encoding="utf-8")
+    if via_eth0:
+        return via_eth0
+    # Diagnóstico: por qué la conexión redirigida por el emulador no llega a la app.
+    try:
+        parts = [
+            ("redir", subprocess.run(["adb", "emu", "redir", "list"], capture_output=True, text=True, timeout=30).stdout),
+            ("ip addr", sh("ip", "-4", "addr", check=False)),
+            ("ip rule", sh("ip", "rule", check=False)),
+            ("ip route", sh("ip", "route", "show", "table", "all", check=False)[:6000]),
+            ("escucha", sh("sh", "-c", q(f"cat /proc/net/tcp /proc/net/tcp6 | grep -i ':{parsed.port:04X} '"), check=False)),
+            ("red por defecto", sh("sh", "-c", q("dumpsys connectivity | grep -iE 'Active default network|NetworkAgentInfo' | head -20"), check=False)),
+        ]
+        (OUTPUT / "diagnostico-tv-red.txt").write_text(
+            f"url: {url}\n" + "\n".join(f"$ {k}\n{v}" for k, v in parts), encoding="utf-8")
+    except Exception:
+        pass
     raise AssertionError(f"No se pudo leer el enlace servido a la TV tras 3 intentos: {last}")
 
 
@@ -2437,8 +2491,7 @@ def removable_storage_notice():
         assert button is not None, "La unidad no aparece en Inicio"
         evidence("unidad-extraible-en-inicio")
         # Desde la notificación: abrir la unidad.
-        sh("cmd", "statusbar", "expand-notifications")
-        title = wait_text_node("» conectada", timeout=20)
+        title = notification_node("conectada")
         tap_node(title)
         wait("en-la-memoria.txt", timeout=30)
         assert "» conectada" in sh("dumpsys", "notification", "--noredact"), "El aviso debe seguir mientras la unidad está conectada"
@@ -2490,6 +2543,33 @@ def wait_eject_button(timeout=30):
     return None
 
 
+def notification_node(fragment, timeout=30):
+    """Abre la cortina de notificaciones y devuelve el nodo con [fragment]. Si las notificaciones de la
+    app están agrupadas, expande el grupo; deja una captura de la cortina para el diagnóstico."""
+    deadline = time.monotonic() + timeout
+    expanded_group = False
+    while time.monotonic() < deadline:
+        sh("cmd", "statusbar", "expand-notifications", check=False)
+        time.sleep(1.5)
+        tree = hierarchy()
+        for n in tree.iter("node"):
+            if fragment in (n.get("text") or "") or fragment in (n.get("content-desc") or ""):
+                evidence("cortina-de-notificaciones")
+                return n
+        if not expanded_group:
+            # Grupo «OI Archivos» plegado: se toca su botón de expandir.
+            for n in tree.iter("node"):
+                desc = (n.get("content-desc") or "").lower()
+                if n.get("resource-id", "").endswith("expand_button") or desc in ("expand", "expandir", "ampliar"):
+                    tap_node(n)
+                    expanded_group = True
+                    break
+        # Otra forma de abrirla: deslizar desde arriba dos veces (notificaciones y luego ajustes rápidos).
+        adb("shell", "input", "swipe", "540", "5", "540", "1400", "300")
+    evidence("cortina-de-notificaciones")
+    raise AssertionError(f"La notificación con «{fragment}» no aparece en la cortina")
+
+
 def wait_text_node(fragment, timeout=30):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -2538,6 +2618,26 @@ class TestRoot:
             "getenforce: " + sh("getenforce", check=False), encoding="utf-8")
         return self
 
+    def inject(self):
+        """Monta el su de prueba también dentro del espacio de montajes del proceso de la app (como
+        Magisk): un montaje hecho después de arrancar zygote puede no verse en las apps."""
+        pid = ""
+        for _ in range(20):
+            pid = sh("pidof", ui.PACKAGE, check=False).strip().split(" ")[0]
+            if pid:
+                break
+            time.sleep(0.5)
+        assert pid, "La app no está en marcha para darle el su de prueba"
+        target = self.target or "/system/xbin/su"
+        inside = sh("grep", "-c", "/system/xbin/su", f"/proc/{pid}/mounts", check=False).strip()
+        out = ""
+        if inside in ("", "0"):
+            out = sh("nsenter", "-t", pid, "-m", "--", "mount", "-o", "bind", f"{self.D}/su", target, check=False)
+        with open(OUTPUT / "root-de-prueba.txt", "a", encoding="utf-8") as diag:
+            diag.write(f"\nnsenter ({inside or 'sin dato'} montajes previos): {out.strip()}")
+            diag.write(f"\napp {pid}: " + sh("grep", "xbin", f"/proc/{pid}/mounts", check=False))
+            diag.write("\ndemonio: " + sh("sh", "-c", q("ps -A -o PID,ARGS | grep daemon.sh | grep -v grep"), check=False))
+
     def log(self):
         return sh("cat", f"{self.D}/log", check=False)
 
@@ -2564,6 +2664,7 @@ def root_functions():
     with TestRoot() as root:
         # Explorador root: /data/data solo se puede listar como root.
         launch_home()
+        root.inject()
         ui.drawer("Root con Magisk")
         fill("Ruta", "/data/data", clear=True)
         tap("Autorizar y explorar")
@@ -2572,6 +2673,7 @@ def root_functions():
         assert "find '/data/data'" in root.log(), root.log()[-500:]
         # Archivo hosts: se monta una copia encima del original y luego se vuelve atrás.
         launch_home()
+        root.inject()
         ui.drawer("Root con Magisk")
         tap(find("Editar el archivo hosts").get("text"))
         fill("/system/etc/hosts", "127.0.0.1 localhost", clear=True, verify=False)
@@ -2593,6 +2695,7 @@ def root_functions():
         assert "mount -o remount,rw" in root.log()
         # Quitar una app del sistema desde Apps y devolverla desde la pantalla de root.
         launch_home()
+        root.inject()
         ui.drawer("Aplicaciones")
         wait("OI Archivos")
         tap("Más")
@@ -2605,6 +2708,7 @@ def root_functions():
         until(lambda: f"package:{egg}" not in sh("pm", "list", "packages", egg, check=False),
               "La app del sistema sigue instalada para el usuario", 30)
         launch_home()
+        root.inject()
         ui.drawer("Root con Magisk")
         find(egg)
         tap(find("Devolver").get("text"))

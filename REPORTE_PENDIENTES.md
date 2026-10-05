@@ -8,8 +8,8 @@ Según COMPARACION_ES.md, de 85 filas:
 
 | Estado | Filas | Qué significa |
 | --- | ---: | --- |
-| ✅ | 58 | Implementado y comprobado en el emulador Android 15 del CI o contra un servidor real |
-| 🟡 | 26 | Implementado y conectado a la interfaz; su comprobación ya está escrita y espera la próxima pasada del emulador, o necesita hardware real |
+| ✅ | 69 | Implementado y comprobado en el emulador Android 15 del CI o contra un servidor real |
+| 🟡 | 15 | Implementado y conectado a la interfaz; su comprobación ya está escrita y espera la próxima pasada del emulador, o necesita hardware real |
 | 🟠 | 0 | — |
 | ❌ | 1 | Nubes minoritarias |
 
@@ -34,10 +34,7 @@ Cada función tiene pruebas JVM y su comprobación en el emulador ya escrita.
 ## Lo que falta
 
 1. **Nubes minoritarias** (MediaFire, Flickr, Instagram, Facebook, Nutstore, China Mobile Cloud): es la única fila ❌. Hace falta registrar la app en cada servicio para obtener las claves OAuth, y tener cuentas reales para probarlas. Instagram y Facebook ya no ofrecen API para leer archivos del usuario, así que probablemente no se puedan hacer.
-2. **Pasada completa del emulador** con todo lo nuevo. La última ejecución (37257397887) dio:
-   - bloque 2 en verde;
-   - bloque 1 con 25 de 28, por 3 fallos de las propias pruebas, ya corregidos;
-   - bloque 3 seguía en curso cuando se paró el trabajo.
+2. **Los 5 fallos de la última pasada del emulador** (37331516858, 84 de 89): DLNA y Chromecast (la «TV» del CI no recibe el archivo por la redirección del emulador; aprobaban en 521f954), USB/SD (la prueba no encontraba la notificación en la cortina), root (la app no veía el su de prueba) y GIF (lectura con `adb pull`). Las pruebas ya están ajustadas y guardan diagnóstico; falta su pasada.
 3. **Comprobar en hardware real** lo que el emulador no tiene:
    - punto de acceso Wi-Fi;
    - otro equipo Bluetooth, para el cliente y el servidor OBEX;
