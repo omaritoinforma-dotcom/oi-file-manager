@@ -15,12 +15,14 @@ import com.omaritoinforma.oiarchivos.util.*
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun RemoteScreen(vm: MainViewModel, id: String) {
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
     var connection by remember(id) { mutableStateOf<Connection?>(null) }
     val stack = remember(id) { mutableStateListOf<String>() }
     var list by remember { mutableStateOf<List<RemoteEntry>>(emptyList()) }
@@ -87,9 +89,9 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                 if (c != null && path != null && (clip != null || remoteClip != null))
                     Button(
                         onClick = {
-                            vm.runTask("Pegando archivos remotos") { report ->
-                                RemoteFiles.connect(c).use { target ->
-                                    if (remoteClip != null) {
+                            if (remoteClip != null) {
+                                vm.runTask("Pegando archivos remotos") { report ->
+                                    RemoteFiles.connect(c).use { target ->
                                         if (remoteClip.connection.id == c.id &&
                                             remoteClip.entries.any {
                                                 it.path == path ||
@@ -122,22 +124,32 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                                         withContext(Dispatchers.Main) {
                                             NetworkClipboard.value = null
                                         }
-                                    } else if (clip != null) {
-                                        val sources = clip.paths.map(::File)
-                                        RemoteFiles.upload(target, sources, path, report)
-                                        if (clip.move)
-                                            for (source in sources) {
-                                                kotlinx.coroutines
-                                                    .currentCoroutineContext()
-                                                    .ensureActive()
-                                                if (!source.deleteRecursively())
-                                                    throw java.io.IOException(
-                                                        "Subido, pero no se pudo borrar el original")
+                                    }
+                                    OperationResult("Archivos pegados")
+                                }
+                            } else if (clip != null) {
+                                val sources = clip.paths.map(::File)
+                                val moving = clip.move
+                                scope.launch {
+                                    try {
+                                        val job =
+                                            withContext(Dispatchers.IO) {
+                                                DurableRemoteTransfer.createUpload(
+                                                    ctx,
+                                                    TransferService.jobsDirectory(ctx),
+                                                    c,
+                                                    sources,
+                                                    path,
+                                                    moving)
                                             }
-                                        withContext(Dispatchers.Main) { vm.clipboard = null }
+                                        vm.clipboard = null
+                                        if (!TransferService.submitDurable(ctx, job))
+                                            vm.toast(
+                                                "Transferencia guardada. Ábrela desde Transferencias.")
+                                    } catch (error: Exception) {
+                                        vm.toast(error.message ?: "No se pudo preparar la subida")
                                     }
                                 }
-                                OperationResult("Archivos pegados")
                             }
                         },
                         modifier = Modifier.padding(horizontal = 12.dp)) {
@@ -167,17 +179,26 @@ fun RemoteScreen(vm: MainViewModel, id: String) {
                         TextButton(
                             onClick = {
                                 val entries = selected.values.toList()
-                                vm.runTask("Descargando archivos") { report ->
-                                    val out = ArrayList<File>()
-                                    RemoteFiles.connect(c).use { fs ->
-                                        for (entry in entries) out +=
-                                            RemoteFiles.download(
-                                                fs,
-                                                entry,
-                                                File(PathUtil.internalRoot, "Download/OI Archivos"),
-                                                report)
+                                scope.launch {
+                                    try {
+                                        val job =
+                                            withContext(Dispatchers.IO) {
+                                                DurableRemoteTransfer.createDownload(
+                                                    ctx,
+                                                    TransferService.jobsDirectory(ctx),
+                                                    c,
+                                                    entries,
+                                                    File(
+                                                        PathUtil.internalRoot,
+                                                        "Download/OI Archivos"))
+                                            }
+                                        selected.clear()
+                                        if (!TransferService.submitDurable(ctx, job))
+                                            vm.toast(
+                                                "Transferencia guardada. Ábrela desde Transferencias.")
+                                    } catch (error: Exception) {
+                                        vm.toast(error.message ?: "No se pudo preparar la descarga")
                                     }
-                                    OperationResult("Guardados en Descargas/OI Archivos", out)
                                 }
                             }) {
                                 Text("Descargar")
