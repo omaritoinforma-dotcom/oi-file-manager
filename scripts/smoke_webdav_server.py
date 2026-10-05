@@ -43,8 +43,10 @@ class DavHandler(BaseHTTPRequestHandler):
 
     def href(self, target):
         rel = target.resolve().relative_to(self.root).as_posix()
+        if rel in ("", "."):
+            return "/"
         path = "/" + urllib.parse.quote(rel, safe="/")
-        if target.is_dir() and path != "/":
+        if target.is_dir():
             path += "/"
         return path
 
