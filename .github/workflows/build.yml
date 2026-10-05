@@ -21,6 +21,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Validar scripts de CI
+        run: python3 -m py_compile scripts/smoke_android.py scripts/smoke_webdav_server.py scripts/build_archives.py
       - name: Preparar 7-Zip para las pruebas de RAR cifrado
         run: python3 scripts/build_archives.py --host
       - name: Preparar firma privada de release
