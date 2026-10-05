@@ -18,6 +18,7 @@ import com.omaritoinforma.oiarchivos.data.Clipboard
 import com.omaritoinforma.oiarchivos.data.Conflict
 import com.omaritoinforma.oiarchivos.data.CryptoTools
 import com.omaritoinforma.oiarchivos.data.DurableCopy
+import com.omaritoinforma.oiarchivos.data.DurableRemoteTransfer
 import com.omaritoinforma.oiarchivos.data.FileCategory
 import com.omaritoinforma.oiarchivos.data.FileItem
 import com.omaritoinforma.oiarchivos.data.FileOps
@@ -377,20 +378,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun pasteNetwork(folder: String) {
         val clip = com.omaritoinforma.oiarchivos.data.NetworkClipboard.value ?: return
-        runTask("Pegando desde red / nube") { report ->
-            val out = ArrayList<File>()
-            com.omaritoinforma.oiarchivos.data.RemoteFiles.connect(clip.connection).use { fs ->
-                for (entry in clip.entries) {
-                    out +=
-                        com.omaritoinforma.oiarchivos.data.RemoteFiles.download(
-                            fs, entry, File(folder), report)
-                    if (clip.move) fs.delete(entry)
-                }
-            }
-            withContext(Dispatchers.Main) {
+        viewModelScope.launch {
+            try {
+                val job =
+                    withContext(Dispatchers.IO) {
+                        DurableRemoteTransfer.createDownload(
+                            ctx,
+                            TransferService.jobsDirectory(ctx),
+                            clip.connection,
+                            clip.entries,
+                            File(folder),
+                            clip.move)
+                    }
                 com.omaritoinforma.oiarchivos.data.NetworkClipboard.value = null
+                if (!TransferService.submitDurable(ctx, job))
+                    toast("Transferencia guardada. Ábrela desde Transferencias.")
+            } catch (error: Exception) {
+                toast(error.message ?: "No se pudo preparar la transferencia remota")
             }
-            OperationResult("Pegados ${out.size} elementos", out)
         }
     }
 
