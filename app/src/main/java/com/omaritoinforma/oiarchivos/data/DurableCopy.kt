@@ -70,7 +70,7 @@ private constructor(
             }
         }
 
-    override fun discard() {
+    override suspend fun discard() {
         entries.indices.forEach { index ->
             val part = partial(index)
             if (!Files.isSymbolicLink(part.toPath())) part.delete()
