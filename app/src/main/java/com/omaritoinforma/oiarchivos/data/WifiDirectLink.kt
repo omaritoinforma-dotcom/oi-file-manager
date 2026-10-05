@@ -31,6 +31,11 @@ object WifiDirectLink {
     val hotspotPermission: String
         get() = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.NEARBY_WIFI_DEVICES else Manifest.permission.ACCESS_FINE_LOCATION
 
+    /** Lo que hay que pedir: en Android 12 y 13 la ubicación precisa va siempre junto a la aproximada. */
+    val hotspotPermissions: Array<String>
+        get() = if (Build.VERSION.SDK_INT >= 33) arrayOf(hotspotPermission)
+        else arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+
     fun hasHotspotPermission(ctx: Context) = ctx.checkSelfPermission(hotspotPermission) == PackageManager.PERMISSION_GRANTED
 
     class Hotspot(val ssid: String, val key: String, val address: String, private val reservation: WifiManager.LocalOnlyHotspotReservation) : AutoCloseable {

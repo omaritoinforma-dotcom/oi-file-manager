@@ -65,8 +65,8 @@ fun NearbyScreen(vm: MainViewModel) {
     }
     val hotspotPermission =
         androidx.activity.compose.rememberLauncherForActivityResult(
-            androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
-                if (granted) startHotspot() else receiveError = tr("Sin ese permiso Android no deja crear el punto de acceso")
+            androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()) { _ ->
+                if (WifiDirectLink.hasHotspotPermission(ctx)) startHotspot() else receiveError = tr("Sin ese permiso Android no deja crear el punto de acceso")
             }
     DisposableEffect(hotspot) {
         val current = hotspot
@@ -160,7 +160,7 @@ fun NearbyScreen(vm: MainViewModel) {
                     OutlinedButton(
                         onClick = {
                             if (WifiDirectLink.hasHotspotPermission(ctx)) startHotspot()
-                            else hotspotPermission.launch(WifiDirectLink.hotspotPermission)
+                            else hotspotPermission.launch(WifiDirectLink.hotspotPermissions)
                         },
                         enabled = !startingHotspot,
                         modifier = Modifier.padding(top = 8.dp)) {
