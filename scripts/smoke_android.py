@@ -100,6 +100,20 @@ def type_into(label, value):
     adb("shell", "input", "text", value)
 
 
+def drag_row_to_right_pane(label):
+    tree = hierarchy()
+    row = wait(label)[0]
+    _, y = center(row)
+    handles = [
+        node
+        for node in nodes("Mantén pulsado y arrastra al otro panel", tree)
+        if abs(center(node)[1] - y) < 90
+    ]
+    assert handles, f"Drag handle not found for {label}"
+    sx, sy = center(handles[0])
+    adb("shell", "input", "draganddrop", str(sx), str(sy), "820", "1050", "1200")
+
+
 def checkpoint(name, label):
     _, tree = wait(label)
     ET.ElementTree(tree).write(OUTPUT / f"{name}.xml", encoding="utf-8")
