@@ -6,11 +6,15 @@ need separate device/account verification. Run with an APK in ./apk/ and adb rea
 
 import base64
 import json
+import math
 import pathlib
 import re
+import shutil
+import struct
 import subprocess
 import tempfile
 import time
+import wave
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -59,6 +63,29 @@ def tap_node(node):
 
 def tap(label):
     tap_node(wait(label)[0])
+
+
+def center(node):
+    x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds")))
+    return (x1 + x2) // 2, (y1 + y2) // 2
+
+
+def tap_scrolling(label, attempts=8):
+    for _ in range(attempts):
+        tree = hierarchy()
+        found = nodes(label, tree)
+        if found:
+            tap_node(found[0])
+            return
+        adb("shell", "input", "swipe", "540", "1500", "540", "500", "300")
+        time.sleep(0.3)
+    raise AssertionError(f"Scrollable control not found: {label}")
+
+
+def type_into(label, value):
+    tap_node(wait(label)[0])
+    adb("shell", "input", "keyevent", "KEYCODE_MOVE_END")
+    adb("shell", "input", "text", value)
 
 
 def checkpoint(name, label):
