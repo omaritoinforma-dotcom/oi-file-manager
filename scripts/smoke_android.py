@@ -480,10 +480,15 @@ def verify_ftp():
         assert rejected.startswith("550")
 
         ftp_command(control, "DELE ftp-renamed.txt", 250)
-        assert "No such file" in adb(
-            "shell", "cat", "/sdcard/Download/ftp-renamed.txt", check=False
-        ) or not adb(
-            "shell", "test", "-e", "/sdcard/Download/ftp-renamed.txt", check=False
+        assert (
+            adb(
+                "shell",
+                "sh",
+                "-c",
+                '[ ! -e "/sdcard/Download/ftp-renamed.txt" ] && echo missing',
+                check=False,
+            ).strip()
+            == "missing"
         )
 
         CHECKS.append("ftp-auth-list-download-resume-upload-confinement")
