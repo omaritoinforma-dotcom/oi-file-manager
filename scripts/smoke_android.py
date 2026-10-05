@@ -247,6 +247,11 @@ def verify_remote_recovery():
         f"Remote download did not create a resumable partial file: {partial_size}"
     )
 
+    # RemoteScreen and ConnectionsScreen use back navigation, not the home drawer.
+    # The foreground service keeps running while we return to Home.
+    adb("shell", "input", "keyevent", "4")
+    adb("shell", "input", "keyevent", "4")
+    wait("Categorías")
     drawer("Transferencias")
     wait("Pausar transferencia")
     tap("Pausar transferencia")
