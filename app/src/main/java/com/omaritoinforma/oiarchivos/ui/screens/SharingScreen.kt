@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.omaritoinforma.oiarchivos.data.FtpEncoding
 import com.omaritoinforma.oiarchivos.data.ShareService
 import com.omaritoinforma.oiarchivos.ui.MainViewModel
+import com.omaritoinforma.oiarchivos.util.FolderActions
 import com.omaritoinforma.oiarchivos.util.Opener
 import com.omaritoinforma.oiarchivos.util.PathUtil
 import com.omaritoinforma.oiarchivos.data.tr
@@ -29,7 +30,7 @@ import com.omaritoinforma.oiarchivos.data.tr
 @Composable
 fun SharingScreen(vm: MainViewModel) {
     val ctx = LocalContext.current
-    var root by remember { mutableStateOf(PathUtil.internalRoot + "/Download") }
+    var root by remember { mutableStateOf(vm.ftpShareRoot.value) }
     val state by ShareService.state.collectAsState()
     val error by ShareService.error.collectAsState()
     var port by remember { mutableStateOf(vm.ftpPort.value.takeIf { it != 0 }?.toString().orEmpty()) }
@@ -113,6 +114,7 @@ fun SharingScreen(vm: MainViewModel) {
                     Row {
                         Button(
                             onClick = {
+                                vm.ftpShareRoot.value = root
                                 runCatching { ShareService.start(ctx, root, "HTTP") }
                                     .onFailure { vm.toast(it.message.orEmpty()) }
                             }) {
@@ -122,6 +124,7 @@ fun SharingScreen(vm: MainViewModel) {
                         Button(
                             enabled = !portInvalid && ShareService.ftpPasswordValid(vm.ftpPassword.value),
                             onClick = {
+                                vm.ftpShareRoot.value = root
                                 runCatching { ShareService.start(ctx, root, "FTP") }
                                     .onFailure { vm.toast(it.message.orEmpty()) }
                             }) {
@@ -145,9 +148,20 @@ fun SharingScreen(vm: MainViewModel) {
                             if (Build.VERSION.SDK_INT >= 31 &&
                                 ctx.checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED)
                                 bluetoothPermission.launch(android.Manifest.permission.BLUETOOTH_CONNECT)
-                            else runCatching { ShareService.start(ctx, root, "BLUETOOTH") }.onFailure { vm.toast(it.message.orEmpty()) }
+                            else {
+                                vm.ftpShareRoot.value = root
+                                runCatching { ShareService.start(ctx, root, "BLUETOOTH") }.onFailure { vm.toast(it.message.orEmpty()) }
+                            }
                         }) {
                             Text(tr("Bluetooth (OBEX FTP)"))
+                        }
+                    OutlinedButton(
+                        onClick = {
+                            vm.ftpShareRoot.value = root
+                            runCatching { FolderActions.pinFtpServer(ctx) }
+                                .onFailure { vm.toast(it.message ?: tr("No se pudo solicitar el acceso directo")) }
+                        }) {
+                            Text(tr("Acceso directo del servidor FTP"))
                         }
                 }
                 state?.takeIf { it.mode == "BLUETOOTH" }?.let { s ->
