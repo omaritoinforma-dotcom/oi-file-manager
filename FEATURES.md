@@ -38,6 +38,6 @@ Referencia de funciones: ficha del desarrollador de ES en [Xiaomi](https://app.m
 1. Pasar en el emulador las funciones en 🟡 de [COMPARACION_ES.md](COMPARACION_ES.md) (sus comprobaciones ya están escritas) y corregir lo que falle.
 2. Idioma dentro de la app: sacar los textos de la interfaz a recursos y añadir otros idiomas.
 3. Registrar/configurar OAuth para las nubes y probar cada operación y la renovación con cuentas reales, incluidos Baidu/SugarSync.
-4. Hardware y root: un Chromecast físico (el protocolo CASTV2 ya se prueba con un receptor de prueba), punto de acceso Wi-Fi, una Android TV física (ADB se prueba con una TV falsa), Bluetooth OBEX (servidor por hacer), SD/USB y funciones root, en dispositivos compatibles.
+4. Hardware y root: un Chromecast físico (el protocolo CASTV2 ya se prueba con un receptor de prueba), punto de acceso Wi-Fi, una Android TV física (ADB se prueba con una TV falsa), Bluetooth OBEX (cliente y servidor con otro equipo), SD/USB y funciones root, en dispositivos compatibles.
 5. Extender la reanudación al pegado de remoto a remoto; atender las advertencias de `lintDebug` (dependencias y API objetivo).
 6. Extras posteriores al mínimo: Shizuku, bóveda con huella, MCP e instalador de paquetes divididos.

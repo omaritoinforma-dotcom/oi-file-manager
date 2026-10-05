@@ -2559,6 +2559,28 @@ def root_functions():
         wait_text(f"«{egg}» devuelta", timeout=30)
 
 
+@check("servidor-obex-por-bluetooth")
+def obex_server():
+    """El emulador tiene Bluetooth virtual pero ningún otro equipo: se comprueba que el servidor OBEX FTP
+    arranca en la pila Bluetooth real de Android y se detiene; el protocolo se prueba en la JVM."""
+    sh("pm", "grant", ui.PACKAGE, "android.permission.BLUETOOTH_CONNECT", check=False)
+    sh("cmd", "bluetooth_manager", "enable", check=False)
+    until(lambda: "enabled: true" in sh("dumpsys", "bluetooth_manager", check=False)[:3000].lower()
+          or "state: on" in sh("dumpsys", "bluetooth_manager", check=False)[:3000].lower(),
+          "El Bluetooth del emulador no se encendió", 30)
+    launch_home()
+    ui.drawer("Red, nube y USB")
+    tap(find("Compartir por red").get("text"))
+    tap(find("Bluetooth (OBEX FTP)").get("text"))
+    wait_text("por Bluetooth como", timeout=30)
+    wait_text("Solo pueden ver y descargar.")
+    evidence("obex-servidor-activo")
+    (OUTPUT / "obex-bluetooth.txt").write_text(sh("dumpsys", "bluetooth_manager", check=False), encoding="utf-8")
+    tap(find("Detener servidor").get("text"))
+    until(lambda: not any("por Bluetooth como" in (n.get("text") or "") for n in hierarchy().iter("node")),
+          "El servidor Bluetooth no se detuvo", 15)
+
+
 @check("descargar-desde-una-url")
 def download_from_url():
     """El equipo de CI sirve un archivo por HTTP (10.0.2.2 para el emulador)."""

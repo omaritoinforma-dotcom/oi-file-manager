@@ -131,7 +131,7 @@ Fecha: 4 de octubre de 2026 (actualizada con la última pasada completa de `scri
 | Enviar a la TV: DLNA/UPnP y Chromecast | 🟡 | DLNA comprobado en el emulador con una TV de prueba (reproducir, pausa, detener; solo esa TV puede leer el archivo). Chromecast con el protocolo abierto CASTV2, sin el SDK de Google: se busca por mDNS o por su IP, se abre el reproductor por omisión y se le pasa el enlace, que solo puede leer ese Chromecast; reproducir, pausa, posición y detener. Probado en la JVM contra un receptor de prueba y, con TLS, contra el receptor en Python que usa el emulador; comprobación en el emulador preparada. Falta probarlo con un Chromecast físico |
 | Instalar y gestionar una Android TV por ADB | 🟡 | Cliente ADB propio por red (puerto 5555), sin binarios externos: clave RSA de la app, la TV pregunta «¿Permitir la depuración?» la primera vez y luego basta la firma. Instalar uno o varios APK desde el explorador (por streaming en Android 7+, con copia sync y pm install en los viejos), listar, abrir y desinstalar apps y mando a distancia (cruceta, Aceptar, Atrás, Inicio, volumen, encendido). Probado en la JVM contra un adbd de prueba que verifica la firma; comprobación en el emulador preparada contra una TV falsa que verifica la firma RSA en Python. Falta probarlo con una Android TV física |
 | Bluetooth: compartir y explorar (cliente OBEX) | 🟡 | Falta un dispositivo real |
-| Bluetooth: servidor OBEX FTP (que otros exploren el teléfono) | ❌ | |
+| Bluetooth: servidor OBEX FTP (que otros exploren el teléfono) | 🟡 | Compartir por red → Bluetooth (OBEX FTP): los equipos emparejados exploran y descargan la carpeta elegida y, si se permite, suben, crean carpetas, renombran y borran; nada fuera de la carpeta (tampoco por enlaces simbólicos). El cliente OBEX de la app pasa a funcionar sobre cualquier flujo y se prueba en la JVM contra este servidor; en el emulador se comprueba que arranca en la pila Bluetooth real. Falta otro equipo Bluetooth |
 | USB OTG y tarjeta SD (SAF) | 🟡 | Falta hardware |
 | Expulsar USB de forma segura y aviso al conectarlo | 🟡 | Al montar una memoria USB o tarjeta SD sale un aviso con «Abrir» y «Expulsar», que sigue mientras está conectada, y otro si se quita sin expulsar (se puede desactivar en Ajustes). La unidad aparece en Inicio con su nombre y un botón de expulsar. Android no deja a una app desmontar unidades sin root: «Expulsar» comprueba que no queda ninguna copia en curso, sale de la unidad y abre Ajustes → Almacenamiento para pulsar «Expulsar». Comprobación en el emulador preparada con un disco virtual de vold |
 | Gestor de descargas desde URL | ✅ | Emulador Android 15: descarga desde el equipo de CI con SHA-256 comprobado; si se corta, continúa con Range/If-Range (pruebas unitarias) |
@@ -160,14 +160,14 @@ No se replican porque no son funciones de gestión de archivos o dependen de ser
 | Estado | Filas |
 | --- | ---: |
 | ✅ Comprobadas en su entorno real | 58 |
-| 🟡 Implementadas; su comprobación en el emulador está escrita y espera su pasada | 25 |
+| 🟡 Implementadas; su comprobación en el emulador está escrita y espera su pasada | 26 |
 | 🟠 Parciales | 0 |
-| ❌ Faltan | 2 |
+| ❌ Faltan | 1 |
 | **Total de filas** | **85** |
 
 **OI Archivos no cubre todavía el mínimo.** Lo que falta, por valor para el usuario:
 
-1. Lo que exige hardware o cuentas que el CI no tiene: servidor OBEX por Bluetooth y nubes minoritarias.
+1. Las nubes minoritarias (MediaFire, Flickr, Instagram, Facebook, Nutstore, China Mobile Cloud): exigen registrar la app en cada servicio y cuentas reales para probarlas.
 2. Comprobar en teléfonos reales lo que el emulador no tiene: punto de acceso, Bluetooth, Chromecast y Android TV físicos, Magisk.
 
 Las filas en 🟡 pasan a ✅ cuando las aprueba una pasada del emulador en el CI.

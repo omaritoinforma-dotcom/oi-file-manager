@@ -1,5 +1,8 @@
 package com.omaritoinforma.oiarchivos.ui.screens
 
+import android.content.pm.PackageManager
+import android.os.Build
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.semantics.Role
@@ -32,6 +35,12 @@ fun SharingScreen(vm: MainViewModel) {
     var port by remember { mutableStateOf(vm.ftpPort.value.takeIf { it != 0 }?.toString().orEmpty()) }
     val portNumber = port.toIntOrNull()
     val portInvalid = port.isNotBlank() && (portNumber == null || portNumber !in 1024..65535)
+    val bluetoothPermission =
+        androidx.activity.compose.rememberLauncherForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
+                if (granted) runCatching { ShareService.start(ctx, root, "BLUETOOTH") }.onFailure { vm.toast(it.message.orEmpty()) }
+                else vm.toast(tr("Concede el permiso de dispositivos cercanos para usar Bluetooth"))
+            }
     ToolPage(tr("Compartir por red"), vm) { pad ->
         Column(
             Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState()).padding(16.dp),
@@ -119,8 +128,35 @@ fun SharingScreen(vm: MainViewModel) {
                                 Text(tr("Servidor FTP"))
                             }
                     }
+                    // Servidor OBEX FTP: los equipos emparejados exploran la carpeta por Bluetooth.
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .toggleable(
+                                vm.obexWritable.value,
+                                role = Role.Switch,
+                                onValueChange = { vm.obexWritable.value = it }),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(tr("Por Bluetooth, permitir que el otro equipo suba, renombre y borre"), Modifier.weight(1f))
+                            Switch(vm.obexWritable.value, null)
+                        }
+                    OutlinedButton(
+                        onClick = {
+                            if (Build.VERSION.SDK_INT >= 31 &&
+                                ctx.checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED)
+                                bluetoothPermission.launch(android.Manifest.permission.BLUETOOTH_CONNECT)
+                            else runCatching { ShareService.start(ctx, root, "BLUETOOTH") }.onFailure { vm.toast(it.message.orEmpty()) }
+                        }) {
+                            Text(tr("Bluetooth (OBEX FTP)"))
+                        }
                 }
-                state?.let { s ->
+                state?.takeIf { it.mode == "BLUETOOTH" }?.let { s ->
+                    Text(
+                        tr("Compartiendo «{0}» por Bluetooth como «{1}». Los equipos emparejados la ven en su explorador Bluetooth (OBEX FTP).", s.root, s.url.removePrefix("bluetooth://")))
+                    Text(if (vm.obexWritable.value) tr("Pueden subir, renombrar y borrar.") else tr("Solo pueden ver y descargar."))
+                    Button(onClick = { ShareService.stop(ctx) }) { Text(tr("Detener servidor")) }
+                }
+                state?.takeIf { it.mode != "BLUETOOTH" }?.let { s ->
                     SelectionContainer {
                         Text(
                             tr("Dirección: {0}\nUsuario: {1}\nContraseña: {2}\nCarpeta: {3}", s.url, s.user, s.password, s.root))

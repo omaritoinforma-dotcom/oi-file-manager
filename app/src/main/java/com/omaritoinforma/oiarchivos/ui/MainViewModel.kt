@@ -300,6 +300,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val homeSearch = PrefState({ prefs.homeSearch }, { prefs.homeSearch = it })
     val ftpPassword = PrefState({ prefs.ftpPassword }, { prefs.ftpPassword = it })
     val ftpStopOnExit = PrefState({ prefs.ftpStopOnExit }, { prefs.ftpStopOnExit = it })
+    val obexWritable = PrefState({ prefs.obexWritable }, { prefs.obexWritable = it })
     val folderStyle = PrefState({ prefs.folderStyle }, { prefs.folderStyle = it })
     val toolbarShowName = PrefState({ prefs.toolbarShowName }, { prefs.toolbarShowName = it })
     val showSelectButton = PrefState({ prefs.showSelectButton }, { prefs.showSelectButton = it })
@@ -510,6 +511,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             cleanAssociatedFolders,
             homeSearch,
             ftpStopOnExit,
+            obexWritable,
             backgroundStrength,
             folderStyle,
             toolbarShowName,

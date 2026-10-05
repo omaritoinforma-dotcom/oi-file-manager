@@ -32,6 +32,7 @@ data class ShareInfo(
 class ShareService : Service() {
     private var http: LocalHttp? = null
     private var ftp: LocalFtp? = null
+    private var bluetooth: BluetoothObexShare? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -59,13 +60,22 @@ class ShareService : Service() {
         try {
             http?.stop()
             ftp?.close()
+            bluetooth?.close()
+            bluetooth = null
             val root =
                 File(intent?.getStringExtra("root") ?: throw IOException(tr("Elige una carpeta")))
                     .canonicalFile
             if (!root.isDirectory || !root.canRead())
                 throw IOException(tr("La carpeta no se puede leer"))
-            val address = localAddress() ?: throw IOException(tr("Conéctate a una red Wi-Fi local"))
             val mode = intent.getStringExtra("mode") ?: "HTTP"
+            if (mode == "BLUETOOTH") {
+                val share = BluetoothObexShare(this, root, Prefs(this).obexWritable)
+                bluetooth = share
+                state.value = ShareInfo("bluetooth://${share.deviceName}", "", "", root.path, mode)
+                error.value = null
+                return START_NOT_STICKY
+            }
+            val address = localAddress() ?: throw IOException(tr("Conéctate a una red Wi-Fi local"))
             // Con una contraseña fija elegida en la pantalla de compartir, el PC puede guardar la conexión (solo FTP).
             val fixed = Prefs(this).ftpPassword.takeIf { mode == "FTP" && ftpPasswordValid(it) && it.isNotEmpty() }
             val password =
@@ -112,6 +122,7 @@ class ShareService : Service() {
     override fun onDestroy() {
         http?.stop()
         ftp?.close()
+        bluetooth?.close()
         state.value = null
         stopForeground(STOP_FOREGROUND_REMOVE)
         super.onDestroy()

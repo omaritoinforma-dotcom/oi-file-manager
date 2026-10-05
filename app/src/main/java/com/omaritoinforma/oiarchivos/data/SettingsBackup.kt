@@ -90,6 +90,7 @@ object SettingsBackup {
             "ftp_encoding" to choice(FtpEncoding.entries.toTypedArray()),
             "new_files_notify" to Kind.Flag,
             "removable_notice" to Kind.Flag,
+            "obex_writable" to Kind.Flag,
             "daily_report" to Kind.Flag,
             "new_files_kinds" to Kind.Choices(NewFileKind.entries.map { it.name }.toSet()),
             "remote_sync" to Kind.Flag,

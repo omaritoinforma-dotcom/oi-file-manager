@@ -315,6 +315,11 @@ class Prefs(context: Context) {
         set(v) = sp.edit().putString("ftp_password", v).apply()
 
     /** «Cerrar al salir» del servidor FTP de ES: se detiene al salir de la app. */
+    /** Si los equipos Bluetooth pueden subir, renombrar y borrar en la carpeta compartida. */
+    var obexWritable: Boolean
+        get() = sp.getBoolean("obex_writable", false)
+        set(v) = sp.edit().putBoolean("obex_writable", v).apply()
+
     var ftpStopOnExit: Boolean
         get() = sp.getBoolean("ftp_stop_on_exit", false)
         set(v) = sp.edit().putBoolean("ftp_stop_on_exit", v).apply()

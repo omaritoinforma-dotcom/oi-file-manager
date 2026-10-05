@@ -13,11 +13,11 @@ La matriz completa está en [COMPARACION_ES.md](COMPARACION_ES.md). Se hizo a pa
 | Estado | Filas | Qué significa |
 | --- | ---: | --- |
 | ✅ | 58 | Implementado y comprobado en el emulador Android 15 del CI o contra un servidor real |
-| 🟡 | 25 | Implementado y conectado a la interfaz; su comprobación en el emulador ya está escrita y espera su pasada |
+| 🟡 | 26 | Implementado y conectado a la interfaz; su comprobación en el emulador ya está escrita y espera su pasada |
 | 🟠 | 0 | Parcial |
-| ❌ | 2 | Falta: servidor OBEX por Bluetooth y las nubes minoritarias |
+| ❌ | 1 | Falta: las nubes minoritarias (MediaFire, Flickr, Instagram, Facebook, Nutstore, China Mobile Cloud) |
 
-Lo que falta en ❌ y en 🟠 necesita hardware, root o cuentas que el CI no tiene.
+Lo que falta en ❌ necesita hardware o cuentas que el CI no tiene.
 
 ## Cómo se comprueba
 
@@ -57,7 +57,7 @@ De los 12 fallos, 10 eran de la prueba y están corregidos:
 
 Los otros 2 eran **errores reales de la app**, ya corregidos (ver la tabla de abajo).
 
-Las comprobaciones nuevas de este punto de control (idioma, Chromecast, Android TV por ADB, USB y tarjeta SD, funciones root, punto de acceso, intro/outro y las corregidas) esperan la próxima pasada.
+Las comprobaciones nuevas de este punto de control (idioma, Chromecast, Android TV por ADB, USB y tarjeta SD, funciones root, punto de acceso, servidor OBEX, intro/outro y las corregidas) esperan la próxima pasada.
 
 ### Pruebas JVM
 
@@ -111,6 +111,7 @@ Hay 236 pruebas en 46 archivos. En local pasan todas menos 9, que necesitan rclo
 - **Memorias USB y tarjetas SD:** aviso al conectarlas con «Abrir» y «Expulsar», aviso si se quitan sin expulsar y botón de expulsar en Inicio. Como Android no deja a las apps desmontar sin root, «Expulsar» comprueba que no quede ninguna copia en curso y abre Ajustes → Almacenamiento.
 - **Root:** quitar y devolver apps del sistema (`pm uninstall -k --user 0`), montar el sistema en lectura y escritura cuando Android lo permite y editar el hosts (con una copia montada encima si el sistema no se puede escribir). El explorador root lista cada carpeta con una sola orden. En el emulador se prueban con un su de prueba (scripts/test_root): un demonio root, como el de Magisk, ejecuta las órdenes que deja el su.
 - **Punto de acceso:** «Recibir con punto de acceso (sin router)» crea un punto de acceso local y pone su red y clave en el QR; el que envía se une a esa red solo para la app y envía por ella. El emulador no puede crear puntos de acceso (lo confirma el diagnóstico de la pasada 37257397887), así que se prueba la parte del que envía con la Wi-Fi del emulador.
+- **Servidor OBEX por Bluetooth:** Compartir por red → Bluetooth (OBEX FTP) deja que los equipos emparejados exploren la carpeta elegida (solo lectura salvo que se permita escribir). El cliente OBEX de la app ahora funciona sobre cualquier flujo y se prueba en la JVM contra el servidor.
 - **Idioma:** la app se puede usar en español o en inglés, o seguir el idioma del teléfono (Ajustes → Pantalla). Los textos siguen escritos en español en el código y `tr("…")` los traduce con el catálogo `assets/i18n/en.tsv`; una prueba JVM recorre el código y exige que cada texto tenga su traducción.
 - **Apps:** al desinstalar una app desde OI Archivos, propone mover a la papelera las carpetas con su nombre que dejó en la raíz del almacenamiento (como «Clean associated folders» de ES, pero solo por nombre exacto y con confirmación).
 
@@ -119,7 +120,7 @@ Hay 236 pruebas en 46 archivos. En local pasan todas menos 9, que necesitan rclo
 1. **Pasada del emulador** de las 18 filas en 🟡, ya escritas: corregir lo que falle y pasar a ✅ lo que apruebe.
 2. **Más idiomas:** el catálogo admite cualquier idioma; hoy hay español e inglés.
 3. **Nubes:** registrar el acceso OAuth de la aplicación y comprobar cada operación con cuentas reales (Drive, Dropbox, OneDrive, Box, Yandex, S3, Baidu, SugarSync).
-4. **Hardware y root, imposibles en el CI:** un Chromecast físico (el protocolo se prueba con un receptor de prueba), punto de acceso Wi-Fi, una Android TV física (el protocolo ADB se prueba con una TV falsa), Bluetooth OBEX (cliente con un dispositivo real; servidor por hacer), USB OTG, tarjeta SD y funciones root.
+4. **Hardware y root, imposibles en el CI:** un Chromecast físico (el protocolo se prueba con un receptor de prueba), punto de acceso Wi-Fi, una Android TV física (el protocolo ADB se prueba con una TV falsa), Bluetooth OBEX (cliente y servidor con otro equipo real), USB OTG, tarjeta SD y funciones root.
 5. **Revisión estática:** `lintDebug` no tiene errores. Quedan 28 advertencias, sobre todo versiones nuevas de dependencias y la API objetivo 34. Las dos de «TrustAllX509TrustManager» son de clases de commons-net que la app no usa. La de «CustomX509TrustManager» es la conexión con el Chromecast: se acepta su certificado propio solo hacia direcciones de la red local, porque la app no hace el desafío de autenticación de Google.
 
 No se declara el proyecto completo.

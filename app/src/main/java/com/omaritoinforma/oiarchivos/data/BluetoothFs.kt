@@ -7,23 +7,18 @@ import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.util.Xml
 import java.io.*
 import java.nio.ByteBuffer
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import org.xmlpull.v1.XmlPullParser
 
 /** Standard Bluetooth OBEX File Transfer Profile, over a paired RFCOMM connection. */
 @SuppressLint(
     "MissingPermission") // Explicit runtime check below; Android also checks every socket call.
 internal class BluetoothFs(connection: Connection, ctx: Context) : RemoteFs {
     private val socket: BluetoothSocket
-    private val input: InputStream
-    private val output: OutputStream
-    private var connectionId = ByteArray(0)
-    private var mtu = 8192
+    private val client: ObexFtpClient
 
     init {
         if (Build.VERSION.SDK_INT >= 31 &&
@@ -42,38 +37,7 @@ internal class BluetoothFs(connection: Connection, ctx: Context) : RemoteFs {
         val executor = Executors.newSingleThreadExecutor()
         try {
             executor.submit { socket.connect() }.get(30, TimeUnit.SECONDS)
-            input = socket.inputStream
-            output = socket.outputStream
-            val target =
-                byteArrayOf(
-                    0xf9.toByte(),
-                    0xec.toByte(),
-                    0x7b,
-                    0xc4.toByte(),
-                    0x95.toByte(),
-                    0x3c,
-                    0x11,
-                    0xd2.toByte(),
-                    0x98.toByte(),
-                    0x4e,
-                    0x52,
-                    0x54,
-                    0,
-                    0xdc.toByte(),
-                    0x9e.toByte(),
-                    0x09)
-            val reply =
-                exchange(
-                    0x80,
-                    byteArrayOf(0x10, 0, 0x20, 0) + ObexCodec.bytes(0x46, target),
-                    connecting = true)
-            if (reply.size < 7) throw IOException(tr("Respuesta Bluetooth incompleta"))
-            val remoteMtu = ObexCodec.ushort(reply, 5)
-            if (remoteMtu < 255) throw IOException(tr("Tamaño de paquete OBEX no válido"))
-            mtu = remoteMtu.coerceAtMost(32768)
-            ObexCodec.headers(reply, 7)
-                .firstOrNull { it.first == 0xcb }
-                ?.let { connectionId = byteArrayOf(0xcb.toByte()) + it.second }
+            client = ObexFtpClient(socket.inputStream, socket.outputStream) { socket.close() }
         } catch (e: Exception) {
             socket.close()
             throw IOException(
@@ -82,6 +46,46 @@ internal class BluetoothFs(connection: Connection, ctx: Context) : RemoteFs {
         } finally {
             executor.shutdownNow()
         }
+    }
+
+    override fun list(path: String) = client.list(path)
+
+    override fun read(path: String) = client.read(path)
+
+    override fun write(parent: String, name: String, input: InputStream, size: Long) = client.write(parent, name, input, size)
+
+    override fun mkdir(parent: String, name: String) = client.mkdir(parent, name)
+
+    override fun delete(entry: RemoteEntry) = client.delete(entry)
+
+    override fun rename(entry: RemoteEntry, name: String) = client.rename(entry, name)
+
+    override fun close() {
+        socket.close()
+    }
+}
+
+/**
+ * Cliente OBEX FTP sobre cualquier par de flujos (un socket RFCOMM en el teléfono, tuberías en las
+ * pruebas). [abort] corta la conexión si el otro equipo no responde a tiempo.
+ */
+internal class ObexFtpClient(private val input: InputStream, private val output: OutputStream, private val abort: () -> Unit) {
+    private var connectionId = ByteArray(0)
+    private var mtu = 8192
+
+    init {
+        val reply =
+            exchange(
+                0x80,
+                byteArrayOf(0x10, 0, 0x20, 0) + ObexCodec.bytes(0x46, ObexFtpServer.FTP_TARGET),
+                connecting = true)
+        if (reply.size < 7) throw IOException(tr("Respuesta Bluetooth incompleta"))
+        val remoteMtu = ObexCodec.ushort(reply, 5)
+        if (remoteMtu < 255) throw IOException(tr("Tamaño de paquete OBEX no válido"))
+        mtu = remoteMtu.coerceAtMost(32768)
+        ObexCodec.headers(reply, 7)
+            .firstOrNull { it.first == 0xcb }
+            ?.let { connectionId = byteArrayOf(0xcb.toByte()) + it.second }
     }
 
     private fun exchange(op: Int, headers: ByteArray, connecting: Boolean = false): ByteArray {
@@ -97,7 +101,7 @@ internal class BluetoothFs(connection: Connection, ctx: Context) : RemoteFs {
             var position = 0
             while (position < count) {
                 if (System.nanoTime() > deadline || Thread.currentThread().isInterrupted) {
-                    socket.close()
+                    abort()
                     throw IOException(tr("El equipo Bluetooth no respondió a tiempo"))
                 }
                 if (input.available() == 0) {
@@ -162,12 +166,12 @@ internal class BluetoothFs(connection: Connection, ctx: Context) : RemoteFs {
             }
 
             override fun close() {
-                if (!finished || body.available() > 0) socket.close()
+                if (!finished || body.available() > 0) abort()
             }
         }
     }
 
-    override fun list(path: String): List<RemoteEntry> {
+    fun list(path: String): List<RemoteEntry> {
         cd(path)
         val data =
             get(null, "x-obex/folder-listing").use { source ->
@@ -182,35 +186,21 @@ internal class BluetoothFs(connection: Connection, ctx: Context) : RemoteFs {
                 }
                 out.toByteArray()
             }
-        // OBEX folder listings may contain the standard external DTD. Never process it or entities.
-        if (String(data, Charsets.UTF_8).contains("<!ENTITY", ignoreCase = true))
-            throw IOException(tr("Listado Bluetooth no válido"))
-        val xml = Xml.newPullParser()
-        xml.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
-        xml.setInput(ByteArrayInputStream(data), "UTF-8")
-        val result = mutableListOf<RemoteEntry>()
-        while (xml.next() != XmlPullParser.END_DOCUMENT) {
-            if (xml.eventType == XmlPullParser.START_TAG && xml.name in setOf("file", "folder")) {
-                val name = xml.getAttributeValue(null, "name") ?: continue
+        val result =
+            ObexFolderListing.parse(String(data, Charsets.UTF_8)).map { (name, folder, size) ->
                 SafeFiles.requireName(name)
-                result +=
-                    RemoteEntry(
-                        RemoteFiles.join(path, name),
-                        name,
-                        xml.name == "folder",
-                        xml.getAttributeValue(null, "size")?.toLongOrNull() ?: -1)
-                if (result.size > 50000) throw IOException(tr("Demasiados archivos Bluetooth"))
+                RemoteEntry(RemoteFiles.join(path, name), name, folder, size)
             }
-        }
+        if (result.size > 50000) throw IOException(tr("Demasiados archivos Bluetooth"))
         return result
     }
 
-    override fun read(path: String): InputStream {
+    fun read(path: String): InputStream {
         cd(path.substringBeforeLast('/', ""))
         return get(path.substringAfterLast('/').also(SafeFiles::requireName))
     }
 
-    override fun write(parent: String, name: String, input: InputStream, size: Long): String {
+    fun write(parent: String, name: String, input: InputStream, size: Long): String {
         SafeFiles.requireName(name)
         cd(parent)
         var first = true
@@ -247,29 +237,62 @@ internal class BluetoothFs(connection: Connection, ctx: Context) : RemoteFs {
         return RemoteFiles.join(parent, name)
     }
 
-    override fun mkdir(parent: String, name: String): String {
+    fun mkdir(parent: String, name: String): String {
         SafeFiles.requireName(name)
         val path = RemoteFiles.join(parent, name)
         cd(path, create = true)
         return path
     }
 
-    override fun delete(entry: RemoteEntry) {
+    fun delete(entry: RemoteEntry) {
         cd(entry.path.substringBeforeLast('/', ""))
         exchange(0x82, ObexCodec.name(entry.name))
     }
 
-    override fun rename(entry: RemoteEntry, name: String) {
+    fun rename(entry: RemoteEntry, name: String) {
         SafeFiles.requireName(name)
         cd(entry.path.substringBeforeLast('/', ""))
         exchange(
             0x86,
             byteArrayOf(0x94.toByte(), 1) + ObexCodec.name(entry.name) + ObexCodec.name(name, 0x15))
     }
+}
 
-    override fun close() {
-        socket.close()
+/**
+ * Lee un listado x-obex/folder-listing sin procesar DTD ni entidades externas: solo las etiquetas
+ * file y folder, sus atributos y las entidades XML básicas.
+ */
+internal object ObexFolderListing {
+    data class Item(val name: String, val folder: Boolean, val size: Long)
+
+    fun parse(xml: String): List<Item> {
+        if (xml.contains("<!ENTITY", ignoreCase = true)) throw IOException(tr("Listado Bluetooth no válido"))
+        val text = xml.replace(Regex("<!--.*?-->", RegexOption.DOT_MATCHES_ALL), "")
+        val attr = Regex("([A-Za-z_][\\w:.-]*)\\s*=\\s*(\"([^\"]*)\"|'([^']*)')")
+        return Regex("<(file|folder)\\b([^>]*)>").findAll(text).mapNotNull { m ->
+            val attrs = attr.findAll(m.groupValues[2]).associate { a ->
+                a.groupValues[1].lowercase() to decode(a.groupValues[3].ifEmpty { a.groupValues[4] })
+            }
+            val name = attrs["name"] ?: return@mapNotNull null
+            Item(name, m.groupValues[1] == "folder", attrs["size"]?.toLongOrNull() ?: -1)
+        }.toList()
     }
+
+    private fun decode(value: String): String =
+        Regex("&(#x[0-9A-Fa-f]+|#\\d+|amp|lt|gt|quot|apos);").replace(value) { m ->
+            when (val e = m.groupValues[1]) {
+                "amp" -> "&"
+                "lt" -> "<"
+                "gt" -> ">"
+                "quot" -> "\""
+                "apos" -> "'"
+                else -> {
+                    val code = if (e.startsWith("#x")) e.substring(2).toIntOrNull(16) else e.substring(1).toIntOrNull()
+                    if (code == null || code !in 1..0x10FFFF) throw IOException(tr("Listado Bluetooth no válido"))
+                    String(Character.toChars(code))
+                }
+            }
+        }
 }
 
 internal object ObexCodec {
