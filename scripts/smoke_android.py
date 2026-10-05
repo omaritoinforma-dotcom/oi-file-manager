@@ -247,8 +247,10 @@ def verify_remote_recovery():
         f"Remote download did not create a resumable partial file: {partial_size}"
     )
 
-    tap("Pausar")
-    wait("Reanudar")
+    drawer("Transferencias")
+    wait("Pausar transferencia")
+    tap("Pausar transferencia")
+    wait("Reanudar transferencia")
     time.sleep(0.8)
     paused_values = [
         int(line)
@@ -267,8 +269,8 @@ def verify_remote_recovery():
         f"Remote transfer kept writing while paused: {paused_size} -> {paused_size_2}"
     )
 
-    tap("Reanudar")
-    wait("Pausar")
+    tap("Reanudar transferencia")
+    wait("Pausar transferencia")
     deadline = time.monotonic() + 10
     resumed_size = paused_size_2
     while time.monotonic() < deadline:
