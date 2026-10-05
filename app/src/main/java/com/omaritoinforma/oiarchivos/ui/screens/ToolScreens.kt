@@ -82,6 +82,7 @@ fun TransfersScreen(vm: MainViewModel) {
             buildList {
                 addAll(DurableCopy.pending(directory))
                 addAll(DurableRemoteTransfer.pending(ctx, directory))
+                addAll(DurableRemoteRelay.pending(ctx, directory))
             }
         }
     val paused by TransferService.paused.collectAsState()
