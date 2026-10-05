@@ -123,12 +123,14 @@ def seed_files():
     with tempfile.TemporaryDirectory() as tmp:
         folder = pathlib.Path(tmp)
         (folder / "smoke.txt").write_text("smoke_original", encoding="utf-8")
+        (folder / ".smoke-hidden.txt").write_text("hidden payload", encoding="utf-8")
         with zipfile.ZipFile(folder / "smoke.zip", "w") as archive:
             archive.writestr("alpha.txt", "archive payload")
             archive.writestr("nested/beta.txt", "nested payload")
         (folder / "smoke.png").write_bytes(base64.b64decode(
             "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aYV0AAAAASUVORK5CYII="
         ))
+
         stream = b"BT /F1 18 Tf 30 100 Td (OI PDF smoke) Tj ET"
         objects = [
             b"<< /Type /Catalog /Pages 2 0 R >>",
@@ -148,6 +150,53 @@ def seed_files():
             pdf.extend(f"{offset:010} 00000 n \n".encode())
         pdf.extend(f"trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n".encode())
         (folder / "smoke.pdf").write_bytes(pdf)
+
+        wav_path = folder / "smoke.wav"
+        sample_rate = 8000
+        with wave.open(str(wav_path), "wb") as audio:
+            audio.setnchannels(1)
+            audio.setsampwidth(2)
+            audio.setframerate(sample_rate)
+            frames = bytearray()
+            for i in range(sample_rate * 20):
+                sample = int(0.15 * 32767 * math.sin(2 * math.pi * 440 * i / sample_rate))
+                frames.extend(struct.pack("<h", sample))
+            audio.writeframes(frames)
+
+        ffmpeg = shutil.which("ffmpeg")
+        if not ffmpeg:
+            raise AssertionError("ffmpeg is required by the Android smoke test")
+        subprocess.run(
+            [
+                ffmpeg,
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc=size=160x120:rate=15:duration=2",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "ultrafast",
+                "-pix_fmt",
+                "yuv420p",
+                "-an",
+                "-y",
+                str(folder / "smoke.mp4"),
+            ],
+            check=True,
+            capture_output=True,
+            timeout=30,
+        )
+
+        rar_source = pathlib.Path(
+            "app/src/test/resources/archives/test_read_format_rar5_encrypted_filenames.rar"
+        )
+        assert rar_source.is_file(), "RAR5 smoke fixture is missing"
+        shutil.copyfile(rar_source, folder / "smoke-encrypted.rar")
+
         adb("shell", "mkdir", "-p", "/sdcard/Download")
         for file in folder.iterdir():
             adb("push", str(file), f"/sdcard/Download/{file.name}")
