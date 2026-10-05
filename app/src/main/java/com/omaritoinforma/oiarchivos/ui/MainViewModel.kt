@@ -311,6 +311,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         PrefState({ prefs.editorHighlightLimitKb }, { prefs.editorHighlightLimitKb = it })
     val ftpPort = PrefState({ prefs.ftpPort }, { prefs.ftpPort = it })
     val ftpEncoding = PrefState({ prefs.ftpEncoding }, { prefs.ftpEncoding = it })
+    val ftpShareRoot = PrefState({ prefs.ftpShareRoot }, { prefs.ftpShareRoot = it })
     val lowSpaceMb = PrefState({ prefs.lowSpaceMb }, {
         prefs.lowSpaceMb = it
         prefs.lowSpaceWarned = false
@@ -677,6 +678,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         intent.getStringExtra("folder")?.let { if (File(it).isDirectory) openFolder(it) }
+        if (intent.getBooleanExtra("start_ftp_server", false)) {
+            intent.removeExtra("start_ftp_server")
+            val start = {
+                goTo(Screen.Sharing)
+                if (hasPermission)
+                    runCatching { ShareService.start(ctx, prefs.ftpShareRoot, "FTP") }
+                        .onFailure { toast(it.message ?: tr("No se pudo iniciar el servidor FTP")) }
+            }
+            if (AppLock.needsNetwork(prefs) || AppLock.needsStart(prefs))
+                requestUnlock(tr("Servidor FTP"), start)
+            else start()
+        }
         intent.getStringExtra("eject")?.let {
             ejectRequest = it
             intent.removeExtra("eject")
