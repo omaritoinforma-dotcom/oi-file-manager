@@ -11,6 +11,7 @@ import math
 import pathlib
 import re
 import shutil
+import shlex
 import socket
 import struct
 import subprocess
@@ -204,12 +205,16 @@ def drag_row_to_right_pane(label):
 
 def remote_partial_sizes():
     directory = "/sdcard/Download/OI Archivos"
-    names = adb("shell", "ls", "-1A", directory, check=False).splitlines()
+    # adb shell joins argv into a remote shell command. Quote paths that contain
+    # spaces or the shell will treat "OI Archivos" as two separate arguments.
+    quoted_directory = shlex.quote(directory)
+    names = adb("shell", "ls", "-1A", quoted_directory, check=False).splitlines()
     sizes = []
     for name in names:
         if not (name.startswith(".oi-remote-") and name.endswith(".part")):
             continue
-        raw = adb("shell", "stat", "-c", "%s", f"{directory}/{name}", check=False).strip()
+        quoted_file = shlex.quote(f"{directory}/{name}")
+        raw = adb("shell", "stat", "-c", "%s", quoted_file, check=False).strip()
         if raw.isdigit():
             sizes.append(int(raw))
     return sizes

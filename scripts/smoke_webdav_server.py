@@ -124,7 +124,7 @@ class DavHandler(BaseHTTPRequestHandler):
                 if target.name == "big.bin":
                     # Keep the recovery window open long enough for UI navigation,
                     # pause/resume, and process-death assertions on slower CI runners.
-                    time.sleep(0.08)
+                    time.sleep(0.12)
 
     def do_PUT(self):
         if not self.authorized():
