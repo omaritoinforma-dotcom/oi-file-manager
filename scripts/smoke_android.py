@@ -220,6 +220,20 @@ def remote_partial_sizes():
     return sizes
 
 
+def navigate_to_home(max_steps=4):
+    for _ in range(max_steps):
+        tree = hierarchy()
+        if nodes("Categorías", tree):
+            return
+        back = nodes("Atrás", tree)
+        if back:
+            tap_node(back[0])
+        else:
+            adb("shell", "input", "keyevent", "4")
+        time.sleep(0.5)
+    wait("Categorías", timeout=5)
+
+
 def add_ci_webdav_connection():
     drawer("Red, nube y USB")
     tap("Agregar")
@@ -257,11 +271,10 @@ def verify_remote_recovery():
         f"Remote download did not create a resumable partial file: {partial_size}"
     )
 
-    # RemoteScreen and ConnectionsScreen use back navigation, not the home drawer.
-    # The foreground service keeps running while we return to Home.
-    adb("shell", "input", "keyevent", "4")
-    adb("shell", "input", "keyevent", "4")
-    wait("Categorías")
+    # RemoteScreen and ConnectionsScreen expose Compose navigation buttons.
+    # Use those buttons instead of KEYCODE_BACK, which does not reliably drive
+    # the app's navigation stack on the Android 15 emulator.
+    navigate_to_home()
     drawer("Transferencias")
     wait("Pausar transferencia")
     tap("Pausar transferencia")
