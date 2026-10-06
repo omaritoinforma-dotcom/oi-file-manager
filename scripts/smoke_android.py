@@ -228,8 +228,8 @@ def navigate_to_home():
         "am",
         "start",
         "-W",
-        "--activity-clear-task",
-        "--activity-new-task",
+        "-f",
+        "0x10008000",  # FLAG_ACTIVITY_NEW_TASK | FLAG_ACTIVITY_CLEAR_TASK
         "-n",
         f"{PACKAGE}/.MainActivity",
     )
