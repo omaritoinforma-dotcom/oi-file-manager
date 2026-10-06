@@ -220,18 +220,20 @@ def remote_partial_sizes():
     return sizes
 
 
-def navigate_to_home(max_steps=4):
-    for _ in range(max_steps):
-        tree = hierarchy()
-        if nodes("Categorías", tree):
-            return
-        back = nodes("Atrás", tree)
-        if back:
-            tap_node(back[0])
-        else:
-            adb("shell", "input", "keyevent", "4")
-        time.sleep(0.5)
-    wait("Categorías", timeout=5)
+def navigate_to_home():
+    # Recreate only the Activity task. The foreground TransferService remains
+    # alive, but a fresh MainViewModel starts at Screen.Home deterministically.
+    adb(
+        "shell",
+        "am",
+        "start",
+        "-W",
+        "--activity-clear-task",
+        "--activity-new-task",
+        "-n",
+        f"{PACKAGE}/.MainActivity",
+    )
+    wait("Categorías", timeout=15)
 
 
 def add_ci_webdav_connection():
