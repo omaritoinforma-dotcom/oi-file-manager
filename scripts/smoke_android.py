@@ -331,8 +331,7 @@ def verify_remote_recovery():
     checkpoint("20-remote-recovery-complete", "Descargando · Completado")
     CHECKS.append("remote-process-death-recovery")
     print("PASS: remote-process-death-recovery", flush=True)
-    adb("shell", "input", "keyevent", "4")
-    wait("Categorías")
+    navigate_to_home()
 
 
 def checkpoint(name, label):
@@ -362,8 +361,7 @@ def drawer(label):
 
 
 def back_home():
-    adb("shell", "input", "keyevent", "4")
-    wait("Categorías")
+    navigate_to_home()
 
 
 def seed_files():
@@ -728,8 +726,7 @@ def main():
     tap("Compartir por Wi-Fi / FTP")
     verify_http()
     verify_ftp()
-    adb("shell", "input", "keyevent", "4")
-    adb("shell", "input", "keyevent", "4")
+    navigate_to_home()
 
     # Verify leaving/re-entering the Activity keeps normal file browsing usable.
     adb("shell", "input", "keyevent", "3")
