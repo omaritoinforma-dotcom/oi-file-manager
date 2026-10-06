@@ -202,6 +202,19 @@ def drag_row_to_right_pane(label):
     adb("shell", "input", "draganddrop", str(sx), str(sy), "820", "1050", "1200")
 
 
+def remote_partial_sizes():
+    directory = "/sdcard/Download/OI Archivos"
+    names = adb("shell", "ls", "-1A", directory, check=False).splitlines()
+    sizes = []
+    for name in names:
+        if not (name.startswith(".oi-remote-") and name.endswith(".part")):
+            continue
+        raw = adb("shell", "stat", "-c", "%s", f"{directory}/{name}", check=False).strip()
+        if raw.isdigit():
+            sizes.append(int(raw))
+    return sizes
+
+
 def add_ci_webdav_connection():
     drawer("Red, nube y USB")
     tap("Agregar")
@@ -226,18 +239,10 @@ def verify_remote_recovery():
     long_press("big.bin")
     tap("Descargar")
 
-    partial_command = (
-        'for f in "/sdcard/Download/OI Archivos"/.oi-remote-*.part; '
-        'do [ -f "$f" ] && wc -c < "$f"; done'
-    )
     deadline = time.monotonic() + 25
     partial_size = 0
     while time.monotonic() < deadline:
-        values = [
-            int(line)
-            for line in adb("shell", "sh", "-c", partial_command, check=False).splitlines()
-            if line.strip().isdigit()
-        ]
+        values = remote_partial_sizes()
         if values:
             partial_size = max(values)
             if 64 * 1024 <= partial_size < WEBDAV_SIZE:
@@ -257,18 +262,10 @@ def verify_remote_recovery():
     tap("Pausar transferencia")
     wait("Reanudar transferencia")
     time.sleep(0.8)
-    paused_values = [
-        int(line)
-        for line in adb("shell", "sh", "-c", partial_command, check=False).splitlines()
-        if line.strip().isdigit()
-    ]
+    paused_values = remote_partial_sizes()
     paused_size = max(paused_values) if paused_values else 0
     time.sleep(1.2)
-    paused_values_2 = [
-        int(line)
-        for line in adb("shell", "sh", "-c", partial_command, check=False).splitlines()
-        if line.strip().isdigit()
-    ]
+    paused_values_2 = remote_partial_sizes()
     paused_size_2 = max(paused_values_2) if paused_values_2 else 0
     assert paused_size_2 == paused_size, (
         f"Remote transfer kept writing while paused: {paused_size} -> {paused_size_2}"
@@ -279,11 +276,7 @@ def verify_remote_recovery():
     deadline = time.monotonic() + 10
     resumed_size = paused_size_2
     while time.monotonic() < deadline:
-        values = [
-            int(line)
-            for line in adb("shell", "sh", "-c", partial_command, check=False).splitlines()
-            if line.strip().isdigit()
-        ]
+        values = remote_partial_sizes()
         resumed_size = max(values) if values else 0
         if paused_size_2 < resumed_size < WEBDAV_SIZE:
             break

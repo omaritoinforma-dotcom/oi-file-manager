@@ -122,7 +122,9 @@ class DavHandler(BaseHTTPRequestHandler):
                 except (BrokenPipeError, ConnectionResetError):
                     break
                 if target.name == "big.bin":
-                    time.sleep(0.025)
+                    # Keep the recovery window open long enough for UI navigation,
+                    # pause/resume, and process-death assertions on slower CI runners.
+                    time.sleep(0.08)
 
     def do_PUT(self):
         if not self.authorized():
