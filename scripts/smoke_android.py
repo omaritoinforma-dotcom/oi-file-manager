@@ -584,7 +584,17 @@ def main():
     adb("shell", "input", "keyevent", "82")
     adb("logcat", "-c")
     launch()
-    checkpoint("01-storage-permission", "Conceder permiso")
+    tree = hierarchy()
+    if nodes("Conceder permiso", tree):
+        checkpoint("01-storage-permission", "Conceder permiso")
+    elif nodes("Categorías", tree):
+        # GitHub's emulator cache may preserve the permission from a previous
+        # snapshot. That is a valid startup state, not a smoke failure.
+        CHECKS.append("01-storage-permission-already-granted")
+        print("PASS: 01-storage-permission-already-granted", flush=True)
+    else:
+        wait("Conceder permiso", timeout=8)
+        checkpoint("01-storage-permission", "Conceder permiso")
     adb("shell", "appops", "set", PACKAGE, "MANAGE_EXTERNAL_STORAGE", "allow")
     adb("shell", "pm", "grant", PACKAGE, "android.permission.POST_NOTIFICATIONS")
     seed_files()
