@@ -63,6 +63,7 @@ function validArguments(name, args) {
   for (const key of Object.keys(args)) {
     const field=spec.properties[key];
     if (!field) return false;
+    if (field.enum && !field.enum.includes(args[key])) return false;
     const value=args[key];
     if (field.type==="string" && (typeof value!=="string" || value.length>(key==="base64"?90000:65536))) return false;
     if (field.type==="integer" && (!Number.isSafeInteger(value) || value<(field.minimum??0) || value>(field.maximum??Number.MAX_SAFE_INTEGER))) return false;

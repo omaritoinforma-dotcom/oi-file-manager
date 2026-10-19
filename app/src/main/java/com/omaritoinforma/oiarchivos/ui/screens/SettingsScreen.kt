@@ -55,6 +55,7 @@ fun SettingsScreen(vm: MainViewModel) {
     var trashAccess by remember { mutableStateOf(bridge.allowTrash) }
     var remoteAccess by remember { mutableStateOf(bridge.allowRemote) }
     var deleteAccess by remember { mutableStateOf(bridge.allowDelete) }
+    var debugAccess by remember { mutableStateOf(bridge.allowDebug) }
     var bridgeActive by remember { mutableStateOf(BridgeStatus.running) }
     var feedback by remember { mutableStateOf("") }
     Scaffold(
@@ -121,6 +122,14 @@ fun SettingsScreen(vm: MainViewModel) {
                 )
             }
             item { SectionTitle("Conector remoto de archivos", Modifier.padding(start = 16.dp, top = 16.dp)) }
+            item {
+                Column(Modifier.padding(16.dp)) {
+                    Button(onClick={context.startActivity(android.content.Intent(context,com.omaritoinforma.oiarchivos.RootlessDebugActivity::class.java))}){Text("Abrir depurador sin root")}
+                    SwitchRow("Permitir depuración remota", "Diagnósticos y herramientas ADB; requiere autorización adicional de Shizuku en modo sin root",debugAccess) {
+                        debugAccess=it;bridge.allowDebug=it
+                    }
+                }
+            }
             item {
                 Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Text("Permite conectar asistentes y herramientas compatibles mediante un servidor seguro. Únicamente archivos a los que Android da acceso; nunca root.")

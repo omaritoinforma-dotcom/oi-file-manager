@@ -423,5 +423,118 @@
       ],
       "additionalProperties": false
     }
+  },
+  {
+    "name": "debug_status",
+    "description": "Check Shizuku readiness, Android shell UID and owner-enabled remote debugging. No root is used.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "debug_device_info",
+    "description": "Read device/app version and storage diagnostics. Requires owner-enabled remote debugging, no Shizuku required.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "debug_list_apps",
+    "description": "List installed app metadata, paginated. Requires owner-enabled remote debugging; never returns app-private data.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "debug_run",
+    "description": "Run a structured Android debugging action through owner-authorized Shizuku in ADB mode (UID 2000 only). No root or arbitrary shell. Changes require file-change permission; clear_data and uninstall also require permanent-delete permission. Screenshot needs a new absolute shared-storage path in value; read it with read_file_chunk. Output bounded to 64 KiB and execution to 12 seconds.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "memory",
+            "battery",
+            "activity",
+            "package",
+            "appops",
+            "network",
+            "display",
+            "storage",
+            "processes",
+            "list_packages",
+            "crashes",
+            "logcat",
+            "force_stop",
+            "clear_data",
+            "disable",
+            "enable",
+            "install",
+            "uninstall",
+            "grant",
+            "revoke",
+            "set_appop",
+            "tap",
+            "swipe",
+            "keyevent",
+            "text",
+            "screenshot"
+          ]
+        },
+        "packageName": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        },
+        "lines": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "x": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "x2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        },
+        "y2": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000
+        }
+      },
+      "required": [
+        "action"
+      ],
+      "additionalProperties": false
+    }
   }
 ]

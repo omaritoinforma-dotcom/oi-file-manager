@@ -118,6 +118,7 @@ class RemoteBridgeService : Service() {
         active.set(false)
         worker?.interrupt()
         client.dispatcher.cancelAll()
+        RootlessDebugger.disconnect()
         BridgeStatus.running = false
         BridgeStatus.message = "Desconectado"
         super.onDestroy()
@@ -163,6 +164,7 @@ class FileAgent(private val context: Context, private val changes: Boolean, priv
     }
     fun execute(action: String, args: JSONObject): JSONObject {
         val config = BridgeConfig(context)
+        if (action.startsWith("debug_"))return RootlessDebugger.execute(context,action,args)
         if (action in setOf("begin_upload","upload_chunk","commit_upload","cancel_upload"))
             return BridgeUploads(context,config).execute(action,args)
         if (action == "device_capabilities") return JSONObject()
@@ -170,6 +172,7 @@ class FileAgent(private val context: Context, private val changes: Boolean, priv
             .put("storage", Perms.hasStorage(context)).put("changes",config.allowChanges)
             .put("trash",config.allowTrash).put("remoteConnections",config.allowRemote)
             .put("permanentDelete",config.allowDelete)
+            .put("debugger",RootlessDebugger.status()).put("remoteDebug",config.allowDebug)
         if (action == "list_connections") return RemoteFileAgent(context,config).connections()
         if (args.has("connectionId")) return RemoteFileAgent(context,config).execute(action,args)
         if (!Perms.hasStorage(context)) throw IOException("Permiso de almacenamiento revocado")
@@ -311,6 +314,9 @@ class BridgeConfig(context: Context) {
     var allowDelete: Boolean
         get() = sp.getBoolean("permanent_delete",false)
         set(v) { sp.edit().putBoolean("permanent_delete",v).apply() }
+    var allowDebug: Boolean
+        get() = sp.getBoolean("remote_debug",false)
+        set(v) { sp.edit().putBoolean("remote_debug",v).apply() }
     var token: String
         get() {
             val raw = sp.getString("encrypted_token","").orEmpty()

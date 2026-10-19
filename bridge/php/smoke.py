@@ -34,7 +34,7 @@ with tempfile.TemporaryDirectory() as tmp:
         assert call('/device/pair',payload={'ticket':ticket})[1]['deviceToken']==device
         assert call('/device/pair',payload={'ticket':ticket})[0]==410
         assert rpc('initialize')[1]['result']['serverInfo']['name']=='oi-android-bridge'
-        listed=rpc('tools/list')[1]['result']['tools'];assert len(listed)==21
+        listed=rpc('tools/list')[1]['result']['tools'];assert len(listed)==25
         assert isinstance(listed[0]['inputSchema']['properties'],dict)
         assert rpc('tools/call',params={'name':'read_text','arguments':{'path':17}})[1]['error']['code']==-32602
         assert rpc('tools/call',params={'name':'list_roots'})[1]['result']['isError'] is True

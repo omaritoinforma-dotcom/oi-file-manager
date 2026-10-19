@@ -20,7 +20,7 @@ object BridgePairing {
         if (!Regex("[a-f0-9]{64}").matches(ticket)) return
         intent.data = null // Don't show the same prompt again on recreation.
         AlertDialog.Builder(activity).setTitle("Conectar OI Archivos con ChatGPT")
-            .setMessage("Se habilitarán lectura, escritura, papelera, borrado de archivos y uso de las conexiones guardadas. Puedes desconectarlo desde Ajustes o la notificación.")
+            .setMessage("Se habilitarán lectura, escritura, papelera, borrado de archivos, conexiones guardadas y diagnóstico remoto. La depuración ADB requiere además autorizar Shizuku sin root. Puedes desconectarlo desde Ajustes o la notificación.")
             .setNegativeButton("Cancelar",null)
             .setPositiveButton("Conectar") { _, _ ->
                 if (!Perms.hasStorage(activity)) {
@@ -48,6 +48,7 @@ object BridgePairing {
                         check(config.valid()) { "Configuración no válida" }
                         config.allowChanges = true; config.allowTrash = true
                         config.allowRemote = true; config.allowDelete = true
+                        config.allowDebug = true
                     }
                     activity.runOnUiThread {
                         if (activity.isFinishing || activity.isDestroyed) return@runOnUiThread

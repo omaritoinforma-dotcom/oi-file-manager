@@ -54,6 +54,7 @@ function validArgs(string $name,$args): bool {
     if(!$spec||!is_array($args))return false;
     foreach($args as $key=>$v){
         $f=$spec['properties'][$key]??null;if(!$f)return false;
+        if(isset($f['enum'])&&!in_array($v,$f['enum'],true))return false;
         if($f['type']==='string'&&(!is_string($v)||strlen($v)>($key==='base64'?90000:65536)))return false;
         if($f['type']==='integer'&&(!is_int($v)||$v<($f['minimum']??0)||$v>($f['maximum']??PHP_INT_MAX)))return false;
         if(in_array($key,['path','destination'],true)&&(strlen($v)>4096||strpos($v,"\0")!==false))return false;
