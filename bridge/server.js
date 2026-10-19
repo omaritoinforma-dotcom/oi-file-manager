@@ -70,7 +70,7 @@ function deviceAuthorized(req) {
 function enqueue(action,args) {
   return new Promise((resolve,reject)=>{
     const id=crypto.randomUUID();
-    const timeout=setTimeout(()=>{inFlight.delete(id);reject(Error("Phone unavailable or command timed out"));},MAX_WAIT_MS);
+    const timeout=setTimeout(()=>{inFlight.delete(id);const i=jobs.findIndex(j=>j.id===id);if(i>=0)jobs.splice(i,1);reject(Error("Phone unavailable or command timed out"));},MAX_WAIT_MS);
     inFlight.set(id,{resolve,reject,timeout});
     jobs.push({id,action,args});
   });
@@ -103,6 +103,7 @@ async function mcp(payload) {
   return rpcError(id??null,-32601,"Method not found");
 }
 const server=http.createServer(async (req,res)=>{
+  try {
   const u=new URL(req.url,"http://localhost");
   // No browser CORS, no public file serving.
   if(req.method==="GET" && u.pathname==="/health")
@@ -136,6 +137,10 @@ const server=http.createServer(async (req,res)=>{
     return json(res,200,result);
   }
   return json(res,404,{error:"Not found"});
+  } catch (e) {
+    if (!res.headersSent) return json(res,400,{error:"Invalid request"});
+    res.end();
+  }
 });
 server.requestTimeout=35000;
 server.listen(PORT,()=>console.log("OI Android bridge listening on "+PORT+
