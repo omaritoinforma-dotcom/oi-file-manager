@@ -181,9 +181,14 @@ def main():
     checkpoint("02-home", "Categorías")
     # The remote connector must be visible but disabled until explicitly paired.
     drawer("Ajustes")
-    checkpoint("02a-remote-connector-settings", "Conector remoto de archivos")
-    checkpoint("02b-connector-enable-controls", "Permitir cambios de archivos")
-    assert nodes("Conectar", hierarchy()), "Remote connector toggle missing"
+    for label in ("Conector remoto de archivos", "Permitir cambios de archivos", "Conectar"):
+        for _ in range(8):
+            if nodes(label, hierarchy()):
+                break
+            adb("shell", "input", "swipe", "500", "1660", "500", "700", "350")
+        else:
+            raise AssertionError(f"Remote connector control not visible: {label}")
+    checkpoint("02a-remote-connector-settings", "Conectar")
     back_home()
     for label, title, name in [
         ("Red, nube y USB", "Agregar", "03-connections"),
