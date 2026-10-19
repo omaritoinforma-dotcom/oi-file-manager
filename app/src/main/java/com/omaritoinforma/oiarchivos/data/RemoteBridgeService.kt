@@ -193,7 +193,7 @@ class FileAgent(private val context: Context, private val changes: Boolean, priv
                 requireChanges()
                 val content = args.optString("content", "").toByteArray(Charsets.UTF_8)
                 if (content.size > 65536) throw IOException("Máximo 64 KiB por operación")
-                if (!f.parentFile.isDirectory) throw IOException("Directorio de destino no válido")
+                if (f.parentFile?.isDirectory != true) throw IOException("Directorio de destino no válido")
                 Files.newOutputStream(f.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
                     .use { it.write(content) }
                 JSONObject().put("created",f.path).put("bytes",content.size)
@@ -201,7 +201,7 @@ class FileAgent(private val context: Context, private val changes: Boolean, priv
             "rename_file", "move_file", "copy_file" -> {
                 requireChanges()
                 val dest = file(args.optString("destination"))
-                if (volumes().any { it.path == f.path } || !f.exists() || !dest.parentFile.isDirectory || dest.exists())
+                if (volumes().any { it.path == f.path } || !f.exists() || dest.parentFile?.isDirectory != true || dest.exists())
                     throw IOException("Origen o destino no válido, o el destino ya existe")
                 if (f.isDirectory && dest.path.startsWith(f.path + File.separator))
                     throw IOException("No puedes mover/copiar una carpeta dentro de sí misma")
