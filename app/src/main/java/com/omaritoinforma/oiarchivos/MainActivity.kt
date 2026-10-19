@@ -25,6 +25,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         vm.receive(intent)
+        com.omaritoinforma.oiarchivos.data.BridgePairing.offer(this,intent)
         setContent {
             val dark =
                 when (vm.themeMode) {
@@ -54,6 +55,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         vm.receive(intent)
+        com.omaritoinforma.oiarchivos.data.BridgePairing.offer(this,intent)
     }
 
     override fun onResume() {

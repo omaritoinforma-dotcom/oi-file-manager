@@ -176,6 +176,12 @@ interface RemoteFs : Closeable {
 
     fun rename(entry: RemoteEntry, name: String)
 
+    fun move(entry: RemoteEntry, destination: String) {
+        if (entry.path.substringBeforeLast('/') != destination.substringBeforeLast('/'))
+            throw IOException("Este proveedor solo permite renombrar dentro de la misma carpeta")
+        rename(entry, destination.substringAfterLast('/'))
+    }
+
     fun delete(entry: RemoteEntry)
 
     override fun close() {}
@@ -471,6 +477,10 @@ private class SftpFs(c: Connection) : RemoteFs {
 
     override fun rename(entry: RemoteEntry, name: String) {
         sftp.rename(entry.path, RemoteFiles.join(entry.path.substringBeforeLast('/'), name))
+    }
+
+    override fun move(entry: RemoteEntry, destination: String) {
+        sftp.rename(entry.path,destination)
     }
 
     override fun delete(entry: RemoteEntry) {

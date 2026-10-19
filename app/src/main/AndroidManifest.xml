@@ -58,8 +58,22 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="*/*" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="oiarchivos" android:host="pair" />
+            </intent-filter>
         </activity>
 
+        <provider
+            android:name="rikka.shizuku.ShizukuProvider"
+            android:authorities="${applicationId}.shizuku"
+            android:multiprocess="false"
+            android:enabled="true"
+            android:exported="true"
+            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
+        <activity android:name=".RootlessDebugActivity" android:exported="false" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"
@@ -70,6 +84,8 @@
                 android:resource="@xml/file_paths" />
         </provider>
         <service android:name=".data.TransferService" android:exported="false"
+            android:foregroundServiceType="dataSync" />
+        <service android:name=".data.RemoteBridgeService" android:exported="false"
             android:foregroundServiceType="dataSync" />
         <service android:name=".data.ShareService" android:exported="false"
             android:foregroundServiceType="dataSync" />

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "oi-archivos-android": {
+      "type": "streamable-http",
+      "url": "https://test.omaritoinforma.com/oi-android-bridge/index.php/mcp",
+      "extensions": {
+        "com.openai": {
+          "auth": {
+            "type": "api_key",
+            "headerScheme": "bearer"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "interface": {
+    "brandColor": "#FFD731",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "category": "Productivity",
+    "composerIcon": "./assets/icon.svg",
+    "defaultPrompt": "Consulta el estado de mi teléfono y muéstrame sus carpetas accesibles.",
+    "developerName": "Omaritoinforma",
+    "displayName": "OI Archivos Android",
+    "logo": "./assets/icon.svg",
+    "longDescription": "Consulta, lee, crea, copia, mueve y edita archivos en tu teléfono Android mediante OI Archivos. Requiere emparejar la aplicación y activar los permisos de escritura o papelera en el móvil cuando correspondan.",
+    "shortDescription": "Archivos de tu móvil Android"
+  },
+  "name": "oi-archivos-android",
+  "version": "0.3.1",
+  "description": "Gestiona archivos locales y conexiones guardadas de OI Archivos mediante un puente HTTPS autenticado, con permisos controlados en el teléfono.",
+  "author": {
+    "name": "Omaritoinforma",
+    "email": "omaritoinforma2026@gmail.com"
+  },
+  "keywords": [],
+  "repository": "https://github.com/omaritoinforma-dotcom/oi-file-manager",
+  "mcpServers": "./.mcp.json"
+}

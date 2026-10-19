@@ -49,6 +49,7 @@ android {
     kotlinOptions { jvmTarget = "17" }
 
     buildFeatures {
+        aidl = true
         compose = true
         buildConfig = true
     }
@@ -65,6 +66,8 @@ android {
 }
 
 dependencies {
+    implementation("dev.rikka.shizuku:api:13.1.5")
+    implementation("dev.rikka.shizuku:provider:13.1.5")
     val composeBom = platform("androidx.compose:compose-bom:2024.12.01")
     implementation(composeBom)
     implementation("androidx.core:core-ktx:1.15.0")
