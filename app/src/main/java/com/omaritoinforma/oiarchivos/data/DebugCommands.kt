@@ -9,6 +9,37 @@ object DebugCommands {
         if (!Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z0-9_]+)+").matches(value)) throw IOException("Paquete no válido")
         return value
     }
+
+    /**
+     * Read-only system diagnostics run as ADB shell UID 2000 via the approved
+     * Shizuku service, never as root. A path is one argv item, not a shell script.
+     * Android DAC/SELinux restrictions still decide what may be inspected.
+     */
+    private fun systemPath(value: String, readingContent: Boolean): String {
+        val path = if (value.isBlank() && !readingContent) "/" else value
+        if (!path.startsWith("/") || path.length > 512 || path.contains('\u0000') ||
+            path.contains('\n') || path.contains('\r') || path.contains('\\') ||
+            path.split('/').any { it == "." || it == ".." }) {
+            throw IOException("Ruta de sistema absoluta no válida")
+        }
+        val forbidden = listOf("/data/data", "/data/user", "/data/user_de")
+        if (forbidden.any { path == it || path.startsWith("$it/") }) {
+            throw IOException("Los datos privados de otras aplicaciones no son accesibles sin root")
+        }
+        if (readingContent) {
+            val readableRoots = listOf("/system", "/system_ext", "/vendor", "/product",
+                "/odm", "/apex", "/etc")
+            val procFiles = setOf("/proc/version", "/proc/cpuinfo", "/proc/meminfo",
+                "/proc/uptime", "/proc/mounts", "/proc/loadavg")
+            val startupConfig = Regex("^/init(?:\\.[a-zA-Z0-9_-]+)?\\.rc$").matches(path)
+            if (readableRoots.none { path.startsWith("$it/") } &&
+                path !in procFiles && !startupConfig) {
+                throw IOException("Lectura de contenido limitada a configuración pública del sistema")
+            }
+        }
+        return path
+    }
+
     fun argv(action: String, pkg: String = "", value: String = "", lines: Int = 200,
              x: Int = 0, y: Int = 0, x2: Int = 0, y2: Int = 0): List<String> {
         fun p() = packageName(pkg)
@@ -29,6 +60,9 @@ object DebugCommands {
             "appops" -> listOf("cmd","appops","get",p())
             "network" -> listOf("dumpsys","connectivity")
             "display" -> listOf("dumpsys","display")
+            "system_list" -> listOf("ls", "-la", "--", systemPath(value, false))
+            "system_stat" -> listOf("ls", "-ld", "--", systemPath(value, false))
+            "system_read" -> listOf("head", "-c", "32768", "--", systemPath(value, true))
             "storage" -> listOf("df","-h")
             "processes" -> listOf("ps","-A")
             "list_packages" -> listOf("pm","list","packages","-f")
