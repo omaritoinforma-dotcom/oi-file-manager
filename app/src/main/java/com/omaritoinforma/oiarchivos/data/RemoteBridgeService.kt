@@ -159,6 +159,7 @@ class FileAgent(private val context: Context, private val changes: Boolean, priv
             }
             return JSONObject().put("roots", a)
         }
+        SftpBridgeOperations.execute(context, action, args, changes)?.let { return it }
         val path = args.optString("path", "")
         val f = file(path)
         return when (action) {
