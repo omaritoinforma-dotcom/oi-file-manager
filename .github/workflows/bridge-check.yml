@@ -21,3 +21,15 @@ jobs:
         run: |
           npm run check
           npm test
+      - name: Guardar paquete del servidor
+        uses: actions/upload-artifact@v4
+        with:
+          name: OI-Android-Bridge-Server
+          path: |
+            bridge/server.js
+            bridge/package.json
+            bridge/README.md
+            bridge/Dockerfile
+            bridge/compose.yaml
+            bridge/.env.example
+          if-no-files-found: error
