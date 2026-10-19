@@ -86,6 +86,23 @@ try {
     if(strpos($path,'/index.php')===0)$path=substr($path,10);
     $path='/'.ltrim($path,'/');$method=$_SERVER['REQUEST_METHOD'];
     if($path==='/health'&&$method==='GET')reply(['ok'=>true,'service'=>'oi-android-bridge','version'=>'0.3.0']);
+    // Pair tickets are short-lived, single-use capabilities. GET never consumes them.
+    if(preg_match('~^/pair/([a-f0-9]{64})$~',$path,$match)&&$method==='GET'){
+        $ticket=$match[1];
+        $valid=state(function(&$s)use($ticket){$p=$s['pairing']??null;return $p&&$p['expires']>time()&&hash_equals($p['hash'],hash('sha256',$ticket));});
+        if(!$valid)reply(['error'=>'Emparejamiento caducado o ya utilizado'],410);
+        header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'");
+        header('Content-Type: text/html; charset=utf-8');
+        $link='oiarchivos://pair?ticket='.$ticket;
+        echo '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Conectar OI Archivos</title><style>body{font-family:system-ui;background:#121316;color:#eee;max-width:560px;margin:12vh auto;padding:24px;line-height:1.6}a{display:block;padding:16px;background:#ffdc42;color:#121316;border-radius:12px;text-align:center;text-decoration:none;font-weight:700}</style><h1>Conectar tu teléfono</h1><p>Abre OI Archivos actualizado y confirma el acceso a tus archivos y conexiones guardadas. El enlace caduca en 30 minutos y funciona una sola vez.</p><a href="'.$link.'">Abrir OI Archivos y conectar</a></html>';exit;
+    }
+    if($path==='/device/pair'&&$method==='POST'){
+        $p=input();$ticket=$p['ticket']??'';
+        if(!is_string($ticket)||!preg_match('/^[a-f0-9]{64}$/',$ticket))reply(['error'=>'Invalid ticket'],400);
+        $valid=state(function(&$s)use($ticket){$p=$s['pairing']??null;if(!$p||$p['expires']<=time()||!hash_equals($p['hash'],hash('sha256',$ticket)))return false;unset($s['pairing']);return true;});
+        if(!$valid)reply(['error'=>'Expired or used pairing ticket'],410);
+        reply(['endpoint'=>'https://test.omaritoinforma.com/oi-android-bridge/index.php','deviceToken'=>$config['device_token']]);
+    }
     if(strpos($path,'/device/')===0){
         if(!auth($config['device_token']))reply(['error'=>'Unauthorized'],401);
         if($path==='/device/next'&&$method==='GET'){
@@ -101,6 +118,11 @@ try {
     }
     if(strpos($path,'/api/v1/')===0){
         if(!auth($config['api_token']))reply(['error'=>'Unauthorized'],401);
+        if($path==='/api/v1/pairing'&&$method==='POST'){
+            $ticket=bin2hex(random_bytes(32));$expires=time()+1800;
+            state(function(&$s)use($ticket,$expires){$s['pairing']=['hash'=>hash('sha256',$ticket),'expires'=>$expires];return null;});
+            reply(['pairingUrl'=>'https://test.omaritoinforma.com/oi-android-bridge/index.php/pair/'.$ticket,'expiresAt'=>$expires]);
+        }
         if($path==='/api/v1/status'&&$method==='GET')reply(phoneStatus());
         if($path==='/api/v1/tools'&&$method==='GET')reply(['tools'=>json_decode(file_get_contents(__DIR__.'/tools.json'))]);
         if($path==='/api/v1/run'&&$method==='POST'){$p=input();$name=$p['name']??'';$args=$p['args']??[];if(!is_string($name)||!validArgs($name,$args))reply(['error'=>'Invalid arguments'],400);$r=callTool($name,$args);reply($r,$r['isError']?503:200);}

@@ -26,6 +26,13 @@ with tempfile.TemporaryDirectory() as tmp:
         assert call('/device/next')[0]==401
         assert call('/mcp',payload={})[0]==401
         assert call('/api/v1/status')[0]==401
+        assert call('/api/v1/pairing',payload={})[0]==401
+        pair=call('/api/v1/pairing',api,{})[1]
+        ticket=pair['pairingUrl'].rsplit('/',1)[-1]
+        assert len(ticket)==64
+        assert call('/device/pair',payload={'ticket':'f'*64})[0]==410
+        assert call('/device/pair',payload={'ticket':ticket})[1]['deviceToken']==device
+        assert call('/device/pair',payload={'ticket':ticket})[0]==410
         assert rpc('initialize')[1]['result']['serverInfo']['name']=='oi-android-bridge'
         listed=rpc('tools/list')[1]['result']['tools'];assert len(listed)==17
         assert isinstance(listed[0]['inputSchema']['properties'],dict)
