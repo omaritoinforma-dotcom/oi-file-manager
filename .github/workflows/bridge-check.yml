@@ -30,6 +30,7 @@ jobs:
         with:
           name: OI-Android-Bridge-Server
           path: |
+            bridge/tools.json
             bridge/server.js
             bridge/package.json
             bridge/README.md

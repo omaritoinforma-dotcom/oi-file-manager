@@ -1,0 +1,341 @@
+[
+  {
+    "name": "phone_status",
+    "description": "Check Android connection status and available tools.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "list_roots",
+    "description": "List Android storage volumes currently available to OI Archivos.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "list_files",
+    "description": "List a folder in Android shared storage. Empty path opens primary storage.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute Android folder path, e.g. /storage/emulated/0/Download"
+        },
+        "connectionId": {
+          "type": "string",
+          "description": "Optional saved connection ID from list_connections; omit for Android local storage."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "file_info",
+    "description": "Get metadata for a file or directory.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Absolute path"
+        },
+        "connectionId": {
+          "type": "string",
+          "description": "Optional saved connection ID from list_connections; omit for Android local storage."
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "read_text",
+    "description": "Read UTF-8 text from an accessible file, up to 64 KiB.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string",
+          "description": "Optional saved connection ID from list_connections; omit for Android local storage."
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "read_file_chunk",
+    "description": "Read a binary file in up to 65536 byte base64 chunks. Continue with offset plus readBytes.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "length": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65536
+        },
+        "connectionId": {
+          "type": "string",
+          "description": "Optional saved connection ID from list_connections; omit for Android local storage."
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "replace_text",
+    "description": "Update an existing text file only when its SHA-256 matches expectedSha256 (from read_text). Requires owner-enabled changes. Local only; remote providers do not offer atomic conditional replacement.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "expectedSha256": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string",
+          "description": "Optional saved connection ID from list_connections; omit for Android local storage."
+        }
+      },
+      "required": [
+        "path",
+        "content",
+        "expectedSha256"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "make_directory",
+    "description": "Create a new directory. Requires owner-enabled file changes.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string",
+          "description": "Optional saved connection ID from list_connections; omit for Android local storage."
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "write_new_text",
+    "description": "Create a new UTF-8 file, never overwrite an existing file, max 64 KiB. Requires owner-enabled changes.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string",
+          "description": "Optional saved connection ID from list_connections; omit for Android local storage."
+        }
+      },
+      "required": [
+        "path",
+        "content"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "rename_file",
+    "description": "Rename an existing file or directory, failing when the destination already exists. Requires owner-enabled changes.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "destination": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string",
+          "description": "Optional saved connection ID from list_connections; omit for Android local storage."
+        }
+      },
+      "required": [
+        "path",
+        "destination"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "copy_file",
+    "description": "Copy an accessible file or directory without overwriting. Requires owner-enabled changes. Saved remote connections currently support individual files up to 8 MiB.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "destination": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string",
+          "description": "Optional saved connection ID from list_connections; omit for Android local storage."
+        }
+      },
+      "required": [
+        "path",
+        "destination"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "move_file",
+    "description": "Move an accessible file or directory without overwriting. Requires owner-enabled changes. SFTP supports cross-folder moves; other remote providers may support same-folder rename only.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "destination": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string",
+          "description": "Optional saved connection ID from list_connections; omit for Android local storage."
+        }
+      },
+      "required": [
+        "path",
+        "destination"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "trash_file",
+    "description": "Move a file to the application's recoverable trash, not permanent delete. Requires separately enabled trash permission. Local only; saved remote providers have no common trash contract.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string",
+          "description": "Optional saved connection ID from list_connections; omit for Android local storage."
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "device_capabilities",
+    "description": "Query actual Android agent version and current read/write/trash/remote/delete permissions.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "list_connections",
+    "description": "List saved connections on the paired phone, without passwords or tokens. Device must allow remote connections.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "write_new_file",
+    "description": "Create a new binary file of up to 64 KiB from base64. Never overwrites an existing file.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "base64": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "base64"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "delete_file",
+    "description": "Permanently delete one file or an empty directory. Requires changes and permanent-delete enabled on phone. Never deletes a storage/connection root.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    }
+  }
+]

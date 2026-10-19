@@ -1,7 +1,7 @@
 FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production
-COPY package.json server.js ./
+COPY package.json tools.json server.js ./
 RUN addgroup -S oi && adduser -S oi -G oi
 USER oi
 EXPOSE 8787

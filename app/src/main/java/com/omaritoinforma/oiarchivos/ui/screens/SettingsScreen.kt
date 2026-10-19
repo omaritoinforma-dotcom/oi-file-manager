@@ -53,6 +53,8 @@ fun SettingsScreen(vm: MainViewModel) {
     var newToken by remember { mutableStateOf("") }
     var writeAccess by remember { mutableStateOf(bridge.allowChanges) }
     var trashAccess by remember { mutableStateOf(bridge.allowTrash) }
+    var remoteAccess by remember { mutableStateOf(bridge.allowRemote) }
+    var deleteAccess by remember { mutableStateOf(bridge.allowDelete) }
     var bridgeActive by remember { mutableStateOf(BridgeStatus.running) }
     var feedback by remember { mutableStateOf("") }
     Scaffold(
@@ -150,6 +152,12 @@ fun SettingsScreen(vm: MainViewModel) {
                         feedback = if (bridge.valid()) "Configuración guardada" else "Se requiere HTTPS y token de 32 caracteres o más"
                     }) { Text("Guardar conexión") }
                     if (feedback.isNotBlank()) Text(feedback)
+                    Button(onClick = {
+                        writeAccess = true; trashAccess = true; remoteAccess = true; deleteAccess = true
+                        bridge.allowChanges = true; bridge.allowTrash = true
+                        bridge.allowRemote = true; bridge.allowDelete = true
+                        feedback = "Gestión de archivos habilitada. Pulsa Conectar para abrir el enlace."
+                    }) { Text("Permitir gestión completa de archivos") }
                 }
             }
             item {
@@ -158,7 +166,10 @@ fun SettingsScreen(vm: MainViewModel) {
                     writeAccess) {
                     writeAccess = it
                     bridge.allowChanges = it
-                    if (!it) { trashAccess = false; bridge.allowTrash = false }
+                    if (!it) {
+                        trashAccess = false; bridge.allowTrash = false
+                        deleteAccess = false; bridge.allowDelete = false
+                    }
                 }
             }
             item {
@@ -167,6 +178,16 @@ fun SettingsScreen(vm: MainViewModel) {
                     trashAccess) {
                     trashAccess = it && writeAccess
                     bridge.allowTrash = trashAccess
+                }
+            }
+            item {
+                SwitchRow("Usar conexiones guardadas", "SFTP, FTP, SMB y nubes ya configuradas; las contraseñas permanecen en el móvil",remoteAccess) {
+                    remoteAccess = it; bridge.allowRemote = it
+                }
+            }
+            item {
+                SwitchRow("Permitir borrado definitivo", "Archivos individuales y carpetas vacías; requiere permitir cambios",deleteAccess) {
+                    deleteAccess = it && writeAccess; bridge.allowDelete = deleteAccess
                 }
             }
             item {

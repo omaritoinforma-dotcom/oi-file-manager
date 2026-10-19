@@ -27,7 +27,7 @@ with tempfile.TemporaryDirectory() as tmp:
         assert call('/mcp',payload={})[0]==401
         assert call('/api/v1/status')[0]==401
         assert rpc('initialize')[1]['result']['serverInfo']['name']=='oi-android-bridge'
-        listed=rpc('tools/list')[1]['result']['tools'];assert len(listed)==13
+        listed=rpc('tools/list')[1]['result']['tools'];assert len(listed)==17
         assert isinstance(listed[0]['inputSchema']['properties'],dict)
         assert rpc('tools/call',params={'name':'read_text','arguments':{'path':17}})[1]['error']['code']==-32602
         assert rpc('tools/call',params={'name':'list_roots'})[1]['result']['isError'] is True

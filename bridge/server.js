@@ -16,37 +16,8 @@ if (!DEVICE_TOKEN || DEVICE_TOKEN.length < 32 || !MCP_ROUTE_KEY || MCP_ROUTE_KEY
   console.error("Set OI_DEVICE_TOKEN and OI_MCP_ROUTE_KEY to independent random secrets (32+ chars).");
   process.exit(1);
 }
-const TOOL_DEF = [
-  ["phone_status", "Check Android connection status and available tools.", {}],
-  ["list_roots", "List Android storage volumes currently available to OI Archivos.", {}],
-  ["list_files", "List a folder in Android shared storage. Empty path opens primary storage.",
-    {path:{type:"string",description:"Absolute Android folder path, e.g. /storage/emulated/0/Download"}}],
-  ["file_info", "Get metadata for a file or directory.",
-    {path:{type:"string",description:"Absolute path"}}],
-  ["read_text", "Read UTF-8 text from an accessible file, up to 64 KiB.",
-    {path:{type:"string"}}],
-  ["read_file_chunk", "Read a binary file in up to 65536 byte base64 chunks. Continue with offset plus readBytes.",
-    {path:{type:"string"},offset:{type:"integer",minimum:0},length:{type:"integer",minimum:1,maximum:65536}}],
-  ["replace_text", "Update an existing text file only when its SHA-256 matches expectedSha256 (from read_text). Requires owner-enabled changes.",
-    {path:{type:"string"},content:{type:"string"},expectedSha256:{type:"string"}}],
-  ["make_directory", "Create a new directory. Requires owner-enabled file changes.",
-    {path:{type:"string"}}],
-  ["write_new_text", "Create a new UTF-8 file, never overwrite an existing file, max 64 KiB. Requires owner-enabled changes.",
-    {path:{type:"string"},content:{type:"string"}}],
-  ["rename_file", "Rename an existing file or directory, failing when the destination already exists. Requires owner-enabled changes.",
-    {path:{type:"string"},destination:{type:"string"}}],
-  ["copy_file", "Copy an accessible file or directory without overwriting. Requires owner-enabled changes.",
-    {path:{type:"string"},destination:{type:"string"}}],
-  ["move_file", "Move an accessible file or directory without overwriting. Requires owner-enabled changes.",
-    {path:{type:"string"},destination:{type:"string"}}],
-  ["trash_file", "Move a file to the application's recoverable trash, not permanent delete. Requires separately enabled trash permission.",
-    {path:{type:"string"}}]
-];
-const tools = TOOL_DEF.map(([name,description,properties])=>({
-  name,description,inputSchema:{type:"object",properties,
-    required:Object.entries(properties).filter(([k])=>!(k==="path" && name==="list_files") && !((k==="offset"||k==="length")&&name==="read_file_chunk")).map(([k])=>k),
-    additionalProperties:false}
-}));
+const tools = require("./tools.json");
+const TOOL_DEF = tools.map(t=>[t.name,t.description,t.inputSchema.properties]);
 const jobs = [];
 const inFlight = new Map();
 let lastSeen = 0, lastResult = null, deviceName = "OI Archivos";
@@ -93,7 +64,7 @@ function validArguments(name, args) {
     const field=spec.properties[key];
     if (!field) return false;
     const value=args[key];
-    if (field.type==="string" && (typeof value!=="string" || value.length>65536)) return false;
+    if (field.type==="string" && (typeof value!=="string" || value.length>(key==="base64"?90000:65536))) return false;
     if (field.type==="integer" && (!Number.isSafeInteger(value) || value<(field.minimum??0) || value>(field.maximum??Number.MAX_SAFE_INTEGER))) return false;
     if ((key==="path"||key==="destination") && (typeof value!=="string" || value.length>4096)) return false;
   }

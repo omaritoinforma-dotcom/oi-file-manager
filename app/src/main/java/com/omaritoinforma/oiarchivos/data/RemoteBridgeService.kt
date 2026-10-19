@@ -133,6 +133,11 @@ class FileAgent(private val context: Context, private val changes: Boolean, priv
     private fun file(path: String): File {
         val raw = if (path.isBlank()) Environment.getExternalStorageDirectory().absolutePath else path
         if (!raw.startsWith("/") || raw.contains('\u0000')) throw IOException("Ruta absoluta no válida")
+        var original = File(raw).toPath()
+        while (original != null) {
+            if (Files.isSymbolicLink(original)) throw IOException("Enlaces simbólicos no permitidos")
+            original = original.parent
+        }
         val f = File(raw).canonicalFile
         val allowed = volumes().any { root ->
             f.path == root.path || f.path.startsWith(root.path + File.separator)
@@ -150,6 +155,14 @@ class FileAgent(private val context: Context, private val changes: Boolean, priv
         if (!changes) throw IOException("Activa operaciones de escritura en Ajustes > Conector")
     }
     fun execute(action: String, args: JSONObject): JSONObject {
+        val config = BridgeConfig(context)
+        if (action == "device_capabilities") return JSONObject()
+            .put("version", com.omaritoinforma.oiarchivos.BuildConfig.VERSION_NAME)
+            .put("storage", Perms.hasStorage(context)).put("changes",config.allowChanges)
+            .put("trash",config.allowTrash).put("remoteConnections",config.allowRemote)
+            .put("permanentDelete",config.allowDelete)
+        if (action == "list_connections") return RemoteFileAgent(context,config).connections()
+        if (args.has("connectionId")) return RemoteFileAgent(context,config).execute(action,args)
         if (!Perms.hasStorage(context)) throw IOException("Permiso de almacenamiento revocado")
         if (action == "list_roots") {
             val a = JSONArray()
@@ -167,14 +180,17 @@ class FileAgent(private val context: Context, private val changes: Boolean, priv
                 val all = f.listFiles()?.sortedWith(compareByDescending<File> { it.isDirectory }.thenBy { it.name.lowercase() })
                     ?: throw IOException("No se pudo listar")
                 val array = JSONArray()
-                all.take(250).forEach { child ->
+                val offset = args.optInt("offset",0)
+                if (offset < 0) throw IOException("Desplazamiento no válido")
+                all.drop(offset).take(250).forEach { child ->
                     if (!Files.isSymbolicLink(child.toPath())) {
                         array.put(JSONObject().put("name",child.name).put("path",child.absolutePath)
                             .put("directory",child.isDirectory).put("bytes",if(child.isFile)child.length() else 0)
                             .put("modified",child.lastModified()))
                     }
                 }
-                JSONObject().put("path", f.path).put("items",array).put("truncated",all.size > 250)
+                JSONObject().put("path", f.path).put("items",array).put("total",all.size)
+                    .put("nextOffset",if (offset + 250 < all.size) offset + 250 else JSONObject.NULL)
             }
             "file_info" -> {
                 if (!f.exists()) throw IOException("No existe")
@@ -222,9 +238,10 @@ class FileAgent(private val context: Context, private val changes: Boolean, priv
                 if (f.exists() || !f.mkdir()) throw IOException("La carpeta existe o no se pudo crear")
                 JSONObject().put("created",f.path)
             }
-            "write_new_text" -> {
+            "write_new_text", "write_new_file" -> {
                 requireChanges()
-                val content = args.optString("content", "").toByteArray(Charsets.UTF_8)
+                val content = if (action == "write_new_file") Base64.decode(args.getString("base64"),Base64.NO_WRAP)
+                    else args.optString("content", "").toByteArray(Charsets.UTF_8)
                 if (content.size > 65536) throw IOException("Máximo 64 KiB por operación")
                 if (f.parentFile?.isDirectory != true) throw IOException("Directorio de destino no válido")
                 Files.newOutputStream(f.toPath(), StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
@@ -255,6 +272,14 @@ class FileAgent(private val context: Context, private val changes: Boolean, priv
                 if (!RecycleBin.trash(f)) throw IOException("No se pudo mover a la papelera")
                 JSONObject().put("trashed", f.path)
             }
+            "delete_file" -> {
+                requireChanges()
+                if (!config.allowDelete) throw IOException("Activa el borrado definitivo en el móvil")
+                if (!f.exists() || volumes().any { it.path == f.path }) throw IOException("No se elimina una raíz")
+                // File.delete refuses nonempty folders, so a typo cannot recursively erase a tree.
+                if (!f.delete()) throw IOException("No se pudo borrar; las carpetas deben estar vacías")
+                JSONObject().put("deleted",f.path)
+            }
             else -> throw IOException("Herramienta no reconocida")
         }
     }
@@ -271,6 +296,12 @@ class BridgeConfig(context: Context) {
     var allowTrash: Boolean
         get() = sp.getBoolean("trash",false)
         set(v) { sp.edit().putBoolean("trash",v).apply() }
+    var allowRemote: Boolean
+        get() = sp.getBoolean("remote_connections",false)
+        set(v) { sp.edit().putBoolean("remote_connections",v).apply() }
+    var allowDelete: Boolean
+        get() = sp.getBoolean("permanent_delete",false)
+        set(v) { sp.edit().putBoolean("permanent_delete",v).apply() }
     var token: String
         get() {
             val raw = sp.getString("encrypted_token","").orEmpty()

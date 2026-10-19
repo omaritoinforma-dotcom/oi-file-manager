@@ -54,7 +54,7 @@ function validArgs(string $name,$args): bool {
     if(!$spec||!is_array($args))return false;
     foreach($args as $key=>$v){
         $f=$spec['properties'][$key]??null;if(!$f)return false;
-        if($f['type']==='string'&&(!is_string($v)||strlen($v)>65536))return false;
+        if($f['type']==='string'&&(!is_string($v)||strlen($v)>($key==='base64'?90000:65536)))return false;
         if($f['type']==='integer'&&(!is_int($v)||$v<($f['minimum']??0)||$v>($f['maximum']??PHP_INT_MAX)))return false;
         if(in_array($key,['path','destination'],true)&&(strlen($v)>4096||strpos($v,"\0")!==false))return false;
     }
@@ -85,7 +85,7 @@ try {
     if(strpos($path,$base)===0)$path=substr($path,strlen($base));
     if(strpos($path,'/index.php')===0)$path=substr($path,10);
     $path='/'.ltrim($path,'/');$method=$_SERVER['REQUEST_METHOD'];
-    if($path==='/health'&&$method==='GET')reply(['ok'=>true,'service'=>'oi-android-bridge','version'=>'0.2.0']);
+    if($path==='/health'&&$method==='GET')reply(['ok'=>true,'service'=>'oi-android-bridge','version'=>'0.3.0']);
     if(strpos($path,'/device/')===0){
         if(!auth($config['device_token']))reply(['error'=>'Unauthorized'],401);
         if($path==='/device/next'&&$method==='GET'){
@@ -113,7 +113,7 @@ try {
         if(($p['jsonrpc']??null)!=='2.0'||!is_string($m))reply(rpcError($id,-32600,'Invalid request'),400);
         if(strpos($m,'notifications/')===0){http_response_code(202);exit;}
         if($m==='server/discover')reply(rpc($id,['supportedVersions'=>['2026-07-28','2025-03-26'],'capabilities'=>['tools'=>(object)[]]]));
-        if($m==='initialize')reply(rpc($id,['protocolVersion'=>'2025-03-26','serverInfo'=>['name'=>'oi-android-bridge','version'=>'0.2.0'],'capabilities'=>['tools'=>(object)[]]]));
+        if($m==='initialize')reply(rpc($id,['protocolVersion'=>'2025-03-26','serverInfo'=>['name'=>'oi-android-bridge','version'=>'0.3.0'],'capabilities'=>['tools'=>(object)[]]]));
         if($m==='ping')reply(rpc($id,(object)[]));
         if($m==='tools/list')reply(rpc($id,['tools'=>json_decode(file_get_contents(__DIR__.'/tools.json'))]));
         if($m==='tools/call'){$name=$p['params']['name']??'';$args=$p['params']['arguments']??[];if(!is_string($name)||!validArgs($name,$args))reply(rpcError($id,-32602,'Invalid arguments'));reply(rpc($id,callTool($name,$args)));}
