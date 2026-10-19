@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; base-uri 'none'; form-action 'self'; object-src 'none'">
+<meta name="theme-color" content="#141923"><title>OI Archivos · IONOS</title>
+<style>
+:root{font-family:system-ui,-apple-system,sans-serif;color-scheme:dark;background:#10131b;color:#f7f8fb}
+*{box-sizing:border-box}body{margin:0}button,input{font:inherit}button{cursor:pointer}
+header{display:flex;align-items:center;justify-content:space-between;padding:17px clamp(16px,4vw,46px);background:#191f2b;border-bottom:1px solid #293142;gap:10px}
+.brand{font-size:1.35rem;font-weight:800;letter-spacing:-.03em}.brand span{color:#ffc845}
+.small{color:#a9b2c4;font-size:.85rem}main{max-width:1080px;margin:0 auto;padding:22px 16px}
+.auth{max-width:390px;margin:12vh auto;background:#1c2433;padding:28px;border:1px solid #394156;border-radius:18px}
+h1,h2{margin:0 0 12px}input[type=password],input[type=text]{background:#101520;border:1px solid #536078;color:white;padding:13px;border-radius:8px;width:100%;min-width:0}
+.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:15px 0}
+.btn{border:1px solid #394760;color:#f6f6fa;background:#283246;border-radius:9px;padding:10px 14px;font-weight:600}
+.btn.primary{background:#fbc647;color:#171b21;border-color:#fbc647}.btn:disabled{opacity:.4}.btn:hover{filter:brightness(1.12)}
+.filelist{background:#191f2c;border:1px solid #303a4c;border-radius:14px;overflow:hidden}
+.file{display:flex;align-items:center;gap:14px;width:100%;padding:13px 17px;background:transparent;color:inherit;border:0;border-bottom:1px solid #2d3745;text-align:left}
+.file:last-child{border-bottom:0}.file:hover,.file:focus-visible{background:#283245}
+.icon{font-size:1.5rem;width:32px;flex-shrink:0}.name{font-weight:600;word-break:break-word;display:block}.details{color:#9caabf;font-size:.8rem}
+.fileBody{flex:1;min-width:0}.fileActions{display:flex;gap:5px;flex-shrink:0}.fileActions button{background:#283244;border:1px solid #40506a;color:#eee;border-radius:6px;padding:8px}
+.path{word-break:break-all;font-family:ui-monospace,monospace;color:#a7b8d1}
+.note{background:#242c3b;border-radius:10px;padding:11px 13px;color:#abb8ca;font-size:.86rem}
+#error{color:#ff929a;min-height:1.5em;margin:8px 0}.hidden{display:none!important}
+@media(max-width:600px){header{padding:14px 16px}.file{gap:7px;padding:12px 8px}.fileActions button{padding:6px}.btn{padding:9px}.small{font-size:.77rem}}
+</style></head><body>
+<header><div class="brand">OI <span>Archivos</span> <span class="small">| IONOS</span></div><button id="logout" class="btn hidden">Salir</button></header>
+<section id="login" class="auth"><h1>Tus archivos, en todas partes</h1><p class="small">Mismo directorio del hosting para la web, el teléfono y las herramientas autorizadas.</p>
+<form id="loginForm"><label for="pass">Contraseña del panel</label><p><input id="pass" type="password" required autocomplete="current-password"></p>
+<button class="btn primary" type="submit">Acceder</button></form><p class="small">Conexión cifrada. No se muestran contraseñas SFTP en esta página.</p></section>
+<main id="app" class="hidden"><h2>Archivos de IONOS</h2><p class="path" id="path">/</p>
+<div class="toolbar"><button class="btn" id="back">↑ Subir</button><button class="btn" id="refresh">↻ Actualizar</button>
+<button class="btn" id="mkdir">+ Carpeta</button><label class="btn primary" for="upload">↑ Subir archivo</label><input id="upload" type="file" class="hidden"></div>
+<p class="note">Los cambios se reflejan en Android cuando recupera conexión. Los archivos solo estarán disponibles sin Internet si se descargaron al teléfono.</p>
+<div id="error" role="alert"></div><div class="filelist" id="items" aria-live="polite"></div>
+<p class="small" id="status"></p></main>
+<script src="./app.js" defer></script></body></html>
