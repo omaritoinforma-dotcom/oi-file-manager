@@ -2,7 +2,7 @@
 const el=id=>document.getElementById(id);
 let csrf="",path="/",busy=false;
 const api=async(action,opts={})=>{
-  const r=await fetch("index.php?action="+encodeURIComponent(action),{credentials:"same-origin",cache:"no-store",...opts});
+  const r=await fetch("index.php?action="+action,{credentials:"same-origin",cache:"no-store",...opts});
   let data={};try{data=await r.json()}catch{}
   if(!r.ok)throw Error(data.error||"Error HTTP "+r.status);
   return data;
