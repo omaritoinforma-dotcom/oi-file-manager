@@ -20,7 +20,7 @@ object BridgePairing {
         if (!Regex("[a-f0-9]{64}").matches(ticket)) return
         intent.data = null // Don't show the same prompt again on recreation.
         AlertDialog.Builder(activity).setTitle("Conectar OI Archivos con ChatGPT")
-            .setMessage("Se habilitarán lectura, escritura, papelera, borrado de archivos, conexiones guardadas y diagnóstico remoto. La depuración ADB requiere además autorizar Shizuku sin root. Puedes desconectarlo desde Ajustes o la notificación.")
+            .setMessage("Conecta este teléfono para permitir consultas de archivos autorizadas por Android. La escritura, el borrado, las conexiones guardadas y la depuración permanecerán desactivados hasta que los actives expresamente en Ajustes. Puedes desconectarlo cuando quieras.")
             .setNegativeButton("Cancelar",null)
             .setPositiveButton("Conectar") { _, _ ->
                 if (!Perms.hasStorage(activity)) {
@@ -46,9 +46,10 @@ object BridgePairing {
                         config.endpoint = data.getString("endpoint")
                         config.token = data.getString("deviceToken")
                         check(config.valid()) { "Configuración no válida" }
-                        config.allowChanges = true; config.allowTrash = true
-                        config.allowRemote = true; config.allowDelete = true
-                        config.allowDebug = true
+                        // Pairing only establishes identity; it never silently escalates permissions.
+                        config.allowChanges = false; config.allowTrash = false
+                        config.allowRemote = false; config.allowDelete = false
+                        config.allowDebug = false
                     }
                     activity.runOnUiThread {
                         if (activity.isFinishing || activity.isDestroyed) return@runOnUiThread
