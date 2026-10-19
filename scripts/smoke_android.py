@@ -179,6 +179,12 @@ def main():
     seed_files()
     launch()
     checkpoint("02-home", "Categorías")
+    # The remote connector must be visible but disabled until explicitly paired.
+    drawer("Ajustes")
+    checkpoint("02a-remote-connector-settings", "Conector remoto de archivos")
+    checkpoint("02b-connector-enable-controls", "Permitir cambios de archivos")
+    assert nodes("Conectar", hierarchy()), "Remote connector toggle missing"
+    back_home()
     for label, title, name in [
         ("Red, nube y USB", "Agregar", "03-connections"),
         ("Transferencias", "Transferencias", "04-transfers"),
