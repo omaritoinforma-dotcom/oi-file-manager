@@ -24,6 +24,10 @@ const TOOL_DEF = [
     {path:{type:"string",description:"Absolute path"}}],
   ["read_text", "Read UTF-8 text from an accessible file, up to 64 KiB.",
     {path:{type:"string"}}],
+  ["read_file_chunk", "Read a binary file in up to 65536 byte base64 chunks. Continue with offset plus readBytes.",
+    {path:{type:"string"},offset:{type:"integer",minimum:0},length:{type:"integer",minimum:1,maximum:65536}}],
+  ["replace_text", "Update an existing text file only when its SHA-256 matches expectedSha256 (from read_text). Requires owner-enabled changes.",
+    {path:{type:"string"},content:{type:"string"},expectedSha256:{type:"string"}}],
   ["make_directory", "Create a new directory. Requires owner-enabled file changes.",
     {path:{type:"string"}}],
   ["write_new_text", "Create a new UTF-8 file, never overwrite an existing file, max 64 KiB. Requires owner-enabled changes.",
@@ -39,7 +43,7 @@ const TOOL_DEF = [
 ];
 const tools = TOOL_DEF.map(([name,description,properties])=>({
   name,description,inputSchema:{type:"object",properties,
-    required:Object.entries(properties).filter(([k])=>!(k==="path" && name==="list_files")).map(([k])=>k),
+    required:Object.entries(properties).filter(([k])=>!(k==="path" && name==="list_files") && !((k==="offset"||k==="length")&&name==="read_file_chunk")).map(([k])=>k),
     additionalProperties:false}
 }));
 const jobs = [];
