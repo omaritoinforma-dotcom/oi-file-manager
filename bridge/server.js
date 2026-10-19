@@ -16,21 +16,30 @@ if (!DEVICE_TOKEN || DEVICE_TOKEN.length < 32 || !MCP_ROUTE_KEY || MCP_ROUTE_KEY
   process.exit(1);
 }
 const TOOL_DEF = [
-  ["phone_status", "Get the phone's pairing, connection, and enabled capabilities.", {}],
-  ["list_files", "List files under the folder explicitly shared by the phone owner.",
-    {path: {type:"string", description:"Relative folder path, empty for the shared root"}}],
-  ["file_info", "Read file metadata under the shared root.",
-    {path: {type:"string"}}],
-  ["read_text", "Read a UTF-8 text file (up to 64 KiB) under the shared root.",
-    {path: {type:"string"}}],
-  ["make_directory", "Create a directory under the shared root. Does not replace existing files.",
-    {path: {type:"string"}}],
-  ["write_new_text", "Create a new UTF-8 file, never overwrite an existing file (max 64 KiB).",
-    {path: {type:"string"}, content: {type:"string"}}]
+  ["phone_status", "Check Android connection status and available tools.", {}],
+  ["list_roots", "List Android storage volumes currently available to OI Archivos.", {}],
+  ["list_files", "List a folder in Android shared storage. Empty path opens primary storage.",
+    {path:{type:"string",description:"Absolute Android folder path, e.g. /storage/emulated/0/Download"}}],
+  ["file_info", "Get metadata for a file or directory.",
+    {path:{type:"string",description:"Absolute path"}}],
+  ["read_text", "Read UTF-8 text from an accessible file, up to 64 KiB.",
+    {path:{type:"string"}}],
+  ["make_directory", "Create a new directory. Requires owner-enabled file changes.",
+    {path:{type:"string"}}],
+  ["write_new_text", "Create a new UTF-8 file, never overwrite an existing file, max 64 KiB. Requires owner-enabled changes.",
+    {path:{type:"string"},content:{type:"string"}}],
+  ["rename_file", "Rename an existing file or directory, failing when the destination already exists. Requires owner-enabled changes.",
+    {path:{type:"string"},destination:{type:"string"}}],
+  ["copy_file", "Copy an accessible file or directory without overwriting. Requires owner-enabled changes.",
+    {path:{type:"string"},destination:{type:"string"}}],
+  ["move_file", "Move an accessible file or directory without overwriting. Requires owner-enabled changes.",
+    {path:{type:"string"},destination:{type:"string"}}],
+  ["trash_file", "Move a file to the application's recoverable trash, not permanent delete. Requires separately enabled trash permission.",
+    {path:{type:"string"}}]
 ];
 const tools = TOOL_DEF.map(([name,description,properties])=>({
   name,description,inputSchema:{type:"object",properties,
-    required:Object.entries(properties).filter(([k])=>k!=="path"||name!=="list_files").map(([k])=>k),
+    required:Object.entries(properties).filter(([k])=>!(k==="path" && name==="list_files")).map(([k])=>k),
     additionalProperties:false}
 }));
 const jobs = [];
