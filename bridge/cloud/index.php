@@ -17,6 +17,7 @@ if (!$root||!is_dir($root)||!isset($cfg['device_token'],$cfg['mcp_token'],$cfg['
     http_response_code(503); exit('Cloud root or credentials not configured');
 }
 $root=rtrim($root,DIRECTORY_SEPARATOR);
+if ($root===''||$root==='/'||strpos($root,realpath($private)?:$private)===0) { http_response_code(503);exit('Unsafe root'); }
 if (PHP_SAPI!=='cli' && (empty($_SERVER['HTTPS'])||$_SERVER['HTTPS']==='off')
     && ((getenv('OI_CLOUD_TRUST_PROXY')!=='1')||($_SERVER['HTTP_X_FORWARDED_PROTO']??'')!=='https')) {
     http_response_code(403); exit('HTTPS required');
