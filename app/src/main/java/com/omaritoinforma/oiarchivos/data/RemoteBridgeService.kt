@@ -18,6 +18,8 @@ import com.omaritoinforma.oiarchivos.MainActivity
 import com.omaritoinforma.oiarchivos.util.Perms
 import java.io.File
 import java.io.IOException
+import java.io.RandomAccessFile
+import java.security.MessageDigest
 import java.nio.file.Files
 import java.nio.file.StandardOpenOption
 import java.security.KeyStore
@@ -183,6 +185,34 @@ class FileAgent(private val context: Context, private val changes: Boolean, priv
                 if (!f.isFile || !f.canRead()) throw IOException("Archivo no accesible")
                 if (f.length() > 65536) throw IOException("La lectura de texto supera 64 KiB")
                 JSONObject().put("path", f.path).put("text", f.readText(Charsets.UTF_8))
+            }
+            "read_file_chunk" -> {
+                if (!f.isFile || !f.canRead()) throw IOException("No se puede leer el archivo")
+                val offset = args.optLong("offset", 0L)
+                if (offset < 0 || offset > f.length()) throw IOException("Desplazamiento no válido")
+                val size = args.optInt("length", 65536).coerceIn(1, 65536)
+                val bytes = ByteArray(minOf(size.toLong(), f.length() - offset).toInt())
+                RandomAccessFile(f, "r").use { raf ->
+                    raf.seek(offset)
+                    raf.readFully(bytes)
+                }
+                JSONObject().put("path", f.path).put("offset", offset)
+                    .put("totalBytes", f.length()).put("readBytes", bytes.size)
+                    .put("base64", Base64.encodeToString(bytes, Base64.NO_WRAP))
+            }
+            "replace_text" -> {
+                requireChanges()
+                if (!f.isFile || !f.canWrite() || f.length() > 65536)
+                    throw IOException("Archivo de texto no válido o superior a 64 KiB")
+                val content = args.optString("content", "").toByteArray(Charsets.UTF_8)
+                if (content.size > 65536) throw IOException("Nuevo contenido superior a 64 KiB")
+                val digest = MessageDigest.getInstance("SHA-256").digest(f.readBytes())
+                    .joinToString("") { "%02x".format(it) }
+                val expected = args.optString("expectedSha256", "")
+                if (!digest.equals(expected, ignoreCase = true))
+                    throw IOException("El archivo cambió; revisa su SHA-256 antes de reemplazar")
+                SafeFiles.writeAtomic(f) { tmp -> tmp.writeBytes(content) }
+                JSONObject().put("updated",f.path).put("bytes",content.size)
             }
             "make_directory" -> {
                 requireChanges()
