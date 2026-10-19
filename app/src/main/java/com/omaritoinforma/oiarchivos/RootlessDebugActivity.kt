@@ -35,6 +35,8 @@ class RootlessDebugActivity : ComponentActivity() {
             val scope=rememberCoroutineScope()
             val actions=listOf("memory","battery","activity","package","appops","network","display","storage","processes","list_packages","crashes","logcat",
                 "force_stop","clear_data","disable","enable","install","uninstall","grant","revoke","set_appop","tap","swipe","keyevent","text","screenshot")
+            val labels=listOf("Memoria","Batería","Actividad de aplicaciones","Inspeccionar paquete","Consultar AppOps","Red","Pantalla","Almacenamiento","Procesos","Paquetes instalados","Fallos recientes","Registros del sistema",
+                "Detener aplicación","Borrar datos de aplicación","Deshabilitar aplicación","Habilitar aplicación","Instalar APK","Desinstalar para este usuario","Conceder permiso","Revocar permiso","Cambiar AppOps","Tocar pantalla","Deslizar","Enviar tecla","Introducir texto","Guardar captura").let {actions.zip(it).toMap()}
             fun runCommand() {
                 busy=true
                 scope.launch {
@@ -70,8 +72,8 @@ class RootlessDebugActivity : ComponentActivity() {
                             }
                         },enabled=!busy){Text("Diagnóstico básico — sin Shizuku")}
                         Box {
-                            OutlinedButton(onClick={menu=true}){Text("Operación: $selected")}
-                            DropdownMenu(expanded=menu,onDismissRequest={menu=false}) {actions.forEach {action->DropdownMenuItem(text={Text(action)},onClick={selected=action;menu=false})}}
+                            OutlinedButton(onClick={menu=true}){Text(labels[selected].orEmpty())}
+                            DropdownMenu(expanded=menu,onDismissRequest={menu=false}) {actions.forEach {action->DropdownMenuItem(text={Text(labels[action].orEmpty())},onClick={selected=action;menu=false})}}
                         }
                         OutlinedTextField(pkg,{pkg=it},label={Text("Paquete, cuando corresponda")},modifier=Modifier.fillMaxWidth(),singleLine=true)
                         OutlinedTextField(value,{value=it},label={Text("Valor: permiso, ruta, texto o código de tecla")},modifier=Modifier.fillMaxWidth())

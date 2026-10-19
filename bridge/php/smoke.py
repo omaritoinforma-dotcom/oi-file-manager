@@ -37,6 +37,7 @@ with tempfile.TemporaryDirectory() as tmp:
         listed=rpc('tools/list')[1]['result']['tools'];assert len(listed)==25
         assert isinstance(listed[0]['inputSchema']['properties'],dict)
         assert rpc('tools/call',params={'name':'read_text','arguments':{'path':17}})[1]['error']['code']==-32602
+        assert rpc('tools/call',params={'name':'debug_run','arguments':{'action':'su'}})[1]['error']['code']==-32602
         assert rpc('tools/call',params={'name':'list_roots'})[1]['result']['isError'] is True
         call('/device/next',device)
         with concurrent.futures.ThreadPoolExecutor() as pool:

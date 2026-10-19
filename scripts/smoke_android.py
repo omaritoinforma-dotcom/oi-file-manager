@@ -181,6 +181,22 @@ def main():
     checkpoint("02-home", "Categorías")
     # The remote connector must be visible but disabled until explicitly paired.
     drawer("Ajustes")
+    for _ in range(8):
+        if nodes("Abrir depurador sin root", hierarchy()):
+            break
+        adb("shell", "input", "swipe", "500", "1660", "500", "700", "350")
+    tap("Abrir depurador sin root")
+    checkpoint("02a-rootless-debugger", "Autorizar Shizuku")
+    tap("Diagnóstico básico — sin Shizuku")
+    deadline = time.monotonic() + 20
+    while True:
+        tree = hierarchy()
+        if any('"manufacturer"' in n.get("text", "") for n in tree.iter("node")):
+            break
+        assert time.monotonic() < deadline, "Basic debugger must work without Shizuku installed"
+        adb("shell", "input", "swipe", "500", "1600", "500", "800", "300")
+    CHECKS.append("rootless-basic-diagnostics-without-shizuku")
+    adb("shell", "input", "keyevent", "4")
     for label in ("Conector remoto de archivos", "Permitir cambios de archivos", "Conectar"):
         for _ in range(8):
             if nodes(label, hierarchy()):

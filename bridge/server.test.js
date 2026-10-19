@@ -47,6 +47,7 @@ test("MCP bridge authenticates device and relays one file operation", async (t) 
   assert.equal((await mcp("tools/call",41,{name:"write_new_text",arguments:{path:"/tmp",content:"x",extra:"unexpected"}})).error.code,-32602);
   assert.equal((await mcp("tools/call",42,{name:"begin_upload",arguments:{path:"/tmp",totalBytes:268435457,sha256:"0".repeat(64)}})).error.code,-32602);
   assert.equal((await mcp("tools/call",43,{name:"list_connections",arguments:{secret:"must-not-be-accepted"}})).error.code,-32602);
+  assert.equal((await mcp("tools/call",44,{name:"debug_run",arguments:{action:"su"}})).error.code,-32602);
   const pending=mcp("tools/call",3,{name:"list_roots",arguments:{}});
   let command;
   for(let i=0;i<30;i++){

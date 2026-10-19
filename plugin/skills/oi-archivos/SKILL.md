@@ -18,6 +18,12 @@ Usar el servidor MCP existente, sin recrear OI SFTP ni extraer las contraseñas 
 
 ## Emparejamiento y límites
 
+## Depurador sin root
+
+Consultar `debug_status` para distinguir Shizuku instalado/iniciado, autorización y UID. `debug_device_info` y `debug_list_apps` utilizan las capacidades normales del gestor. `debug_run` ofrece diagnósticos de memoria, batería, actividad, paquetes, permisos/AppOps, red, pantalla, procesos y registros, además de gestionar apps, capturas y entrada de pantalla. Requiere habilitación remota en la app y Shizuku autorizado en modo ADB, UID 2000. UID 0 se rechaza: no utilizar root, Sui ni su. Las acciones con cambios respetan el permiso de escritura; borrar datos o desinstalar respeta además el de borrado. No ejecutar cambios para probar la conexión. Solicitar una acción concreta del usuario antes de actuar sobre otras aplicaciones.
+
+No hay intérprete de comandos arbitrarios. El servicio valida acciones y parámetros, limita la salida a 64 KiB y el proceso a 12 segundos. Revisar exitCode, timedOut y truncated al informar resultados. Para una captura, indicar en value una ruta nueva del almacenamiento compartido cuyo padre exista y leerla después por bloques. Android puede impedir capturas de ventanas protegidas y restringir funciones según versión/fabricante. La instalación de Shizuku y su arranque/autorización requieren acciones locales del propietario; no inventar su activación remota.
+
 El servicio Android mantiene una notificación con control de desconexión. No concede root ni acceso a datos privados de otras aplicaciones. La configuración y los permisos permanecen en el dispositivo; no prometer que un token del servidor los habilita por sí solo.
 
 El administrador puede emitir un enlace de emparejamiento de un uso y 30 minutos mediante la API privada del puente. La página abre `oiarchivos://pair` y la APK pide confirmación local antes de canjearlo. No incluir el token permanente en el enlace ni en archivos del plugin.
