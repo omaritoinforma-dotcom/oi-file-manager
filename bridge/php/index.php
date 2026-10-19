@@ -48,7 +48,7 @@ function state(callable $fn) {
 }
 function phoneStatus(): array {
     global $tools;
-    return state(function(&$s)use($tools){return ['connected'=>microtime(true)-$s['lastSeen']<45,'deviceName'=>$s['deviceName'],'lastSeen'=>$s['lastSeen']?:null,'queued'=>count($s['jobs']),'capabilities'=>array_column($tools,'name')];});
+    return state(function(&$s)use($tools){return ['connected'=>microtime(true)-$s['lastSeen']<45,'deviceName'=>$s['deviceName'],'lastSeen'=>$s['lastSeen']?:null,'queued'=>count($s['jobs']),'capabilities'=>array_values(array_filter(array_column($tools,'name'),static function($n){return $n!=='create_pairing_link' && strpos($n,'cloud_')!==0;})), 'serverCapabilities'=>array_values(array_filter(array_column($tools,'name'),static function($n){return $n==='create_pairing_link' || strpos($n,'cloud_')===0;}))];});
 }
 function validArgs(string $name,$args): bool {
     global $tools;$spec=null;foreach($tools as $t)if($t['name']===$name)$spec=$t['inputSchema'];
