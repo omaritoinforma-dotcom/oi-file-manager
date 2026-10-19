@@ -18,7 +18,7 @@ if (!$root||!is_dir($root)||!isset($cfg['device_token'],$cfg['mcp_token'],$cfg['
 }
 $root=rtrim($root,DIRECTORY_SEPARATOR);
 if (PHP_SAPI!=='cli' && (empty($_SERVER['HTTPS'])||$_SERVER['HTTPS']==='off')
-    && (($_SERVER['HTTP_X_FORWARDED_PROTO']??'')!=='https')) {
+    && ((getenv('OI_CLOUD_TRUST_PROXY')!=='1')||($_SERVER['HTTP_X_FORWARDED_PROTO']??'')!=='https')) {
     http_response_code(403); exit('HTTPS required');
 }
 session_name('OI_CLOUD');
