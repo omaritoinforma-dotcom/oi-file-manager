@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - codex/rootless-readonly-bridge-20261019
+      - codex/ionos-unified-web-android
   workflow_dispatch:
 permissions:
   contents: read
@@ -28,7 +29,7 @@ jobs:
       - name: Compilar APK y ejecutar pruebas unitarias
         env:
           OI_ARCHIVE_TEST_EXECUTABLE: ${{ github.workspace }}/build/native-archives/--host/7zz
-          OI_BUILD_NUMBER: '900'
+          OI_BUILD_NUMBER: '901'
         run: |
           chmod +x ./gradlew
           ./gradlew --no-daemon testDebugUnitTest assembleRelease
@@ -36,7 +37,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: OI-Archivos-rootless-readonly-apk
+          name: OI-Archivos-IONOS-apk
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
   bridge:
@@ -55,6 +56,8 @@ jobs:
         run: |
           php -l bridge/php/index.php
           python3 bridge/php/smoke.py
+          php -l bridge/cloud/index.php
+          python3 bridge/cloud/smoke.py
       - name: Verificar alineación de herramientas MCP
         run: |
           python3 - <<'PY'
