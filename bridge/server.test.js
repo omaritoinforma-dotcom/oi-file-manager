@@ -9,8 +9,9 @@ test("MCP bridge authenticates device and relays one file operation", async (t) 
   const port = String(20000 + Math.floor(Math.random() * 20000));
   const token = "test-device-secret-abcdefghijklmnopqrstuvwxyz123456789";
   const key = "test-mcp-route-secret-abcdefghijklmnopqrstuvwxyz987654321";
+  const api = "test-rest-secret-abcdefghijklmnopqrstuvwxyz0123456789";
   const proc = spawn(process.execPath, [join(__dirname, "server.js")], {
-    env: {...process.env, PORT: port, OI_DEVICE_TOKEN: token, OI_MCP_ROUTE_KEY: key},
+    env: {...process.env, PORT: port, OI_DEVICE_TOKEN: token, OI_MCP_ROUTE_KEY: key, OI_API_TOKEN: api},
     stdio: "ignore",
   });
   t.after(() => proc.kill("SIGTERM"));
@@ -36,6 +37,14 @@ test("MCP bridge authenticates device and relays one file operation", async (t) 
   const tools=(await mcp("tools/list",2)).result.tools.map(t=>t.name);
   for(const expected of ["list_roots","list_files","read_file_chunk","replace_text","trash_file"])
     assert.ok(tools.includes(expected),expected);
+  assert.equal((await fetch(base+"/api/v1/tools")).status,401);
+  const apiHeaders={"Authorization":"Bearer "+api};
+  const restList=await fetch(base+"/api/v1/tools",{headers:apiHeaders});
+  assert.equal(restList.status,200);
+  assert.ok((await restList.json()).tools.length>=10);
+  assert.equal((await fetch(base+"/api/v1/status",{headers:apiHeaders})).status,200);
+  assert.equal((await mcp("tools/call",40,{name:"read_text",arguments:{path:17}})).error.code,-32602);
+  assert.equal((await mcp("tools/call",41,{name:"write_new_text",arguments:{path:"/tmp",content:"x",extra:"unexpected"}})).error.code,-32602);
   const pending=mcp("tools/call",3,{name:"list_roots",arguments:{}});
   let command;
   for(let i=0;i<30;i++){
