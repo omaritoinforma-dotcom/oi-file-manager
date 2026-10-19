@@ -135,7 +135,7 @@ fun SettingsScreen(vm: MainViewModel) {
                     Text("Permite conectar asistentes y herramientas compatibles mediante un servidor seguro. Únicamente archivos a los que Android da acceso; nunca root.")
                     Button(onClick = {
                         context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
-                            android.net.Uri.parse("https://test.omaritoinforma.com/oi-android-bridge/")))
+                            android.net.Uri.parse("https://test.omaritoinforma.com/oi-android-bridge/index.php")))
                     }) { Text("Abrir panel de emparejamiento") }
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
