@@ -75,6 +75,8 @@ sealed interface Screen {
 
     data class AdvancedSearch(val root: String) : Screen
 
+    data object Ionos : Screen
+
     data object Connections : Screen
 
     data object Bluetooth : Screen

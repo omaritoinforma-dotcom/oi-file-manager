@@ -1,0 +1,42 @@
+name: Verificar puente MCP Android
+on:
+  push:
+    branches: [main, 'codex/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bridge:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bridge
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Comprobar sintaxis y protocolo
+        run: |
+          npm run check
+          npm test
+      - name: Verificar puente PHP para IONOS
+        run: |
+          php -l php/index.php
+          python3 php/smoke.py
+      - name: Guardar paquete del servidor
+        uses: actions/upload-artifact@v4
+        with:
+          name: OI-Android-Bridge-Server
+          path: |
+            bridge/tools.json
+            bridge/server.js
+            bridge/package.json
+            bridge/README.md
+            bridge/Dockerfile
+            bridge/compose.yaml
+            bridge/.env.example
+            bridge/php/
+          if-no-files-found: error
+          include-hidden-files: true

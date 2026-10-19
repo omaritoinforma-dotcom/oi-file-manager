@@ -1,0 +1,73 @@
+name: OI Archivos | compilar y probar puente
+on:
+  push:
+    branches:
+      - codex/rootless-readonly-bridge-20261019
+      - codex/ionos-unified-web-android
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Instalar Android SDK 35
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Preparar motor nativo de archivos
+        run: |
+          python3 scripts/build_archives.py --host
+          test -x build/native-archives/--host/7zz
+      - name: Compilar APK y ejecutar pruebas unitarias
+        env:
+          OI_ARCHIVE_TEST_EXECUTABLE: ${{ github.workspace }}/build/native-archives/--host/7zz
+          OI_BUILD_NUMBER: '901'
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon testDebugUnitTest assembleRelease
+      - name: Guardar APK de prueba
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OI-Archivos-IONOS-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+  bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validar protocolo MCP
+        working-directory: bridge
+        run: |
+          npm run check
+          npm test
+      - name: Validar servidor PHP
+        run: |
+          php -l bridge/php/index.php
+          python3 bridge/php/smoke.py
+          php -l bridge/cloud/index.php
+          python3 bridge/cloud/smoke.py
+      - name: Verificar alineación de herramientas MCP
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          a=json.loads(Path("bridge/tools.json").read_text())
+          b=json.loads(Path("bridge/php/tools.json").read_text())
+          assert a==b, "Catálogos MCP divergentes"
+          debug=next(x for x in a if x["name"]=="debug_run")
+          actions=debug["inputSchema"]["properties"]["action"]["enum"]
+          assert set(("system_list","system_stat","system_read")).issubset(actions)
+          print("Esquemas sincronizados:",len(a),"herramientas")
+          PY

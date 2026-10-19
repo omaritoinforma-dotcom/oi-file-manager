@@ -101,6 +101,18 @@ fun HomeScreen(vm: MainViewModel, openDrawer: () -> Unit) {
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            item {
+                Card(onClick = { vm.goTo(Screen.Ionos) }, modifier = Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Dns, null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(14.dp))
+                        Column {
+                            Text("IONOS · Mis archivos", style = MaterialTheme.typography.titleMedium)
+                            Text("Tu servidor integrado · accesible también en web", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
             items(vm.volumes.toList(), key = { "vol:" + it.path }) { v ->
                 StorageCard(v) { vm.openFolder(v.path) }
             }
@@ -172,6 +184,7 @@ private fun quickTiles(vm: MainViewModel): List<Tile> =
         },
         Tile("Papelera", Icons.Filled.Delete, Color(0xFF757575)) { vm.goTo(Screen.Trash) },
         Tile("Apps", Icons.Filled.Apps, Color(0xFF7CB342)) { vm.goTo(Screen.Apps) },
+        Tile("IONOS", Icons.Filled.Dns, Color(0xFFFFC845)) { vm.goTo(Screen.Ionos) },
         Tile("Red / nube", Icons.Filled.Dns, Color(0xFF1E88E5)) { vm.goTo(Screen.Connections) },
         Tile("Analizar", Icons.Filled.SdCard, Color(0xFF8E24AA)) {
             vm.goTo(Screen.Analysis(PathUtil.internalRoot))

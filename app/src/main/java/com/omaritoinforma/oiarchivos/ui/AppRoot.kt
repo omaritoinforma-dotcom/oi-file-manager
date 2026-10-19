@@ -116,6 +116,7 @@ fun AppRoot(vm: MainViewModel) {
             is Screen.Archive -> ArchiveScreen(vm, screen.path)
             is Screen.Analysis -> AnalysisScreen(vm, screen.root)
             is Screen.AdvancedSearch -> AdvancedSearchScreen(vm, screen.root)
+            Screen.Ionos -> IonosCloudScreen(vm)
             Screen.Connections -> ConnectionsScreen(vm)
             Screen.Bluetooth -> BluetoothScreen(vm)
             is Screen.Remote -> RemoteScreen(vm, screen.id)
@@ -247,6 +248,10 @@ private fun AppDrawer(vm: MainViewModel, close: () -> Unit) {
             }
             DrawerItem("Aplicaciones", Icons.Filled.Apps, vm.screen == Screen.Apps) {
                 vm.goTo(Screen.Apps)
+                close()
+            }
+            DrawerItem("IONOS · Mis archivos", Icons.Filled.Dns, vm.screen == Screen.Ionos) {
+                vm.goTo(Screen.Ionos)
                 close()
             }
             DrawerItem("Red, nube y USB", Icons.Filled.Dns, vm.screen == Screen.Connections) {
