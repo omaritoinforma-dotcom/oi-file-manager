@@ -464,13 +464,16 @@
   },
   {
     "name": "debug_run",
-    "description": "Run a structured Android debugging action through owner-authorized Shizuku in ADB mode (UID 2000 only). No root or arbitrary shell. Changes require file-change permission; clear_data and uninstall also require permanent-delete permission. Screenshot needs a new absolute shared-storage path in value; read it with read_file_chunk. Output bounded to 64 KiB and execution to 12 seconds.",
+    "description": "Run a structured Android debugging action through owner-authorized Shizuku in ADB mode (UID 2000 only). No root or arbitrary shell. Changes require file-change permission; clear_data and uninstall also require permanent-delete permission. Screenshot needs a new absolute shared-storage path in value; read it with read_file_chunk. Output bounded to 64 KiB and execution to 12 seconds. Read-only system_list/system_stat inspect shell-visible paths; system_read permits bounded 32 KiB public system configuration only, not app-private data.",
     "inputSchema": {
       "type": "object",
       "properties": {
         "action": {
           "type": "string",
           "enum": [
+            "system_list",
+            "system_stat",
+            "system_read",
             "memory",
             "battery",
             "activity",
