@@ -30,6 +30,7 @@ import javax.crypto.spec.GCMParameterSpec
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
@@ -200,10 +201,12 @@ class FileAgent(private val context: Context, private val changes: Boolean, priv
             "rename_file", "move_file", "copy_file" -> {
                 requireChanges()
                 val dest = file(args.optString("destination"))
-                if (!f.exists() || !dest.parentFile.isDirectory || dest.exists())
+                if (volumes().any { it.path == f.path } || !f.exists() || !dest.parentFile.isDirectory || dest.exists())
                     throw IOException("Origen o destino no válido, o el destino ya existe")
                 if (f.isDirectory && dest.path.startsWith(f.path + File.separator))
                     throw IOException("No puedes mover/copiar una carpeta dentro de sí misma")
+                if (action == "copy_file" && f.walkTopDown().maxDepth(128).any { Files.isSymbolicLink(it.toPath()) })
+                    throw IOException("No se copian árboles con enlaces simbólicos")
                 val success = if (action == "copy_file") f.copyRecursively(dest, overwrite=false)
                     else f.renameTo(dest)
                 if (!success) throw IOException("Operación no completada")
@@ -264,7 +267,7 @@ class BridgeConfig(context: Context) {
         }.generateKey()
     }
     fun valid(): Boolean = runCatching {
-        val uri = okhttp3.HttpUrl.Companion.toHttpUrl(endpoint)
+        val uri = endpoint.toHttpUrl()
         uri.isHttps && uri.username.isBlank() && uri.password.isBlank() && token.length >= 32
     }.getOrDefault(false)
 }
