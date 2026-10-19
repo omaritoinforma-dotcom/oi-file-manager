@@ -185,6 +185,8 @@ class FileAgent(private val context: Context, private val changes: Boolean, priv
                 if (!f.isFile || !f.canRead()) throw IOException("Archivo no accesible")
                 if (f.length() > 65536) throw IOException("La lectura de texto supera 64 KiB")
                 JSONObject().put("path", f.path).put("text", f.readText(Charsets.UTF_8))
+                    .put("sha256", MessageDigest.getInstance("SHA-256").digest(f.readBytes())
+                        .joinToString("") { "%02x".format(it) })
             }
             "read_file_chunk" -> {
                 if (!f.isFile || !f.canRead()) throw IOException("No se puede leer el archivo")
