@@ -38,3 +38,20 @@ php -l bridge/cloud/index.php
 python3 bridge/cloud/smoke.py
 # Además: pruebas Android con ./gradlew testDebugUnitTest assembleRelease
 \`\`\`
+
+## MCP único para la cuenta actual de ChatGPT
+
+El conector privado **oi-archivos-android** conserva su endpoint original `/oi-android-bridge/index.php/mcp`. La rama `codex/unified-mcp-android-ionos` agrega allí, sin cambiar URL ni contraseña de ChatGPT, las herramientas `cloud_status`, `cloud_list`, `cloud_stat`, `cloud_read_text`, `cloud_mkdir`, `cloud_write_text`, `cloud_rename`, `cloud_delete` y `create_pairing_link`. Android continúa usando una cola de comandos salientes y permisos locales; la nube usa PHP directamente y funciona aun con Android apagado.
+
+La configuración privada PHP necesita:
+
+```php
+'cloud_root' => '/ruta/absoluta/permitida/en/ionos',
+'cloud_mcp_write_enabled' => false, // Solo cambiar a true si el administrador autoriza escrituras MCP.
+```
+
+No se usan credenciales de la sesión de ChatGPT. El plugin utiliza la autenticación MCP previamente configurada y tiene que conectarse/autorizase desde la cuenta mediante los controles normales de ChatGPT. No publicar `mcp_token` ni `device_token` en GitHub o en el APK.
+
+Para emparejar el móvil sin copiar un token permanente: desde ChatGPT conectado con el plugin llama `create_pairing_link`, abre el enlace temporal y acepta en la APK. La página pública del puente es solamente informativa, no crea enlaces sin autorización. El teléfono inicia acceso **solo lectura**; los otros permisos requieren activación expresa en Ajustes. Una app sin privilegios no puede leer la sesión de ChatGPT ni hacerse pasar por ella.
+
+**Estado**: cambios implementados y pruebas de servidor MCP/REST superadas en GitHub Actions; **pendiente despliegue en IONOS**, configuración privada de `cloud_root`, registro/autorización del conector frente al endpoint actualizado y prueba de emparejamiento en teléfono real.
