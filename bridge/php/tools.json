@@ -539,5 +539,154 @@
       ],
       "additionalProperties": false
     }
+  },
+  {
+    "name": "cloud_status",
+    "description": "Comprobar si el almacenamiento IONOS está configurado; disponible incluso sin conexión Android.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "cloud_list",
+    "description": "Listar carpetas/archivos del hosting IONOS sin usar el teléfono.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Ruta dentro de IONOS, por ejemplo / o /documentos"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "cloud_stat",
+    "description": "Metadatos de archivo/carpeta IONOS.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Ruta dentro de IONOS"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "cloud_read_text",
+    "description": "Leer archivo UTF-8 de IONOS (máximo 64 KiB).",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Ruta dentro de IONOS"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "cloud_mkdir",
+    "description": "Crear carpeta IONOS si cloud_mcp_write_enabled está autorizado en el servidor.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Ruta nueva dentro de IONOS"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "cloud_write_text",
+    "description": "Crear archivo UTF-8 nuevo (nunca sobrescribe) de hasta 64 KiB en IONOS.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Ruta nueva dentro de IONOS"
+        },
+        "text": {
+          "type": "string",
+          "description": "Texto UTF-8 a escribir"
+        }
+      },
+      "required": [
+        "path",
+        "text"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "cloud_rename",
+    "description": "Renombrar o mover dentro de la raíz IONOS, sin reemplazar existentes.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Ruta existente"
+        },
+        "destination": {
+          "type": "string",
+          "description": "Ruta nueva"
+        }
+      },
+      "required": [
+        "path",
+        "destination"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "cloud_delete",
+    "description": "Eliminar un archivo regular en IONOS (no carpetas); requiere autorización escrita del servidor.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Ruta del archivo"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "create_pairing_link",
+    "description": "Generar enlace de un solo uso válido durante 30 minutos para vincular OI Archivos Android con este conector. Requiere confirmación en teléfono; no contiene token permanente.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
   }
 ]
