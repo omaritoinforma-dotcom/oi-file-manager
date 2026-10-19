@@ -13,6 +13,7 @@ import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import okio.BufferedSink
 import org.json.JSONObject
 import java.io.File
@@ -79,8 +80,10 @@ class IonosCloud(private val ctx: Context) {
             (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))
     }
     private fun post(action: String, args: JSONObject) {
+        check(paired.allowChanges) { "Activa Permitir cambios de archivos en Ajustes" }
+        if (action == "delete") check(paired.allowDelete) { "El borrado definitivo necesita autorización" }
         val u=endpoint().newBuilder().addQueryParameter("action",action).build()
-        val body=RequestBody.create("application/json".toMediaType(),args.toString())
+        val body=args.toString().toRequestBody("application/json".toMediaType())
         json(client.newCall(request(u).post(body).build()).execute())
     }
     fun mkdir(path: String) = post("mkdir",JSONObject().put("path",path))
@@ -122,6 +125,7 @@ class IonosCloud(private val ctx: Context) {
         }finally{tmp.delete()}
     }
     fun upload(folder: String, uri: Uri) {
+        check(paired.allowChanges) { "Activa Permitir cambios de archivos en Ajustes" }
         check(isUnmetered()) { "Subida bloqueada en datos móviles; conecta a Wi-Fi" }
         val resolver=ctx.contentResolver
         var name="archivo"
