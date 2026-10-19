@@ -110,7 +110,7 @@ function operation(string $action,array $args) {
             return ['path'=>$path,'directory'=>is_dir($f),'size'=>is_file($f)?$s['size']:0,'modified'=>$s['mtime']];
         case 'read_text':
             $f=located($path);if(!is_file($f)||filesize($f)>65536)respond(['error'=>'Only text files up to 64 KiB'],413);
-            $text=file_get_contents($f);if($text===false||!mb_check_encoding($text,'UTF-8'))respond(['error'=>'Not UTF-8 text'],415);
+            $text=file_get_contents($f);if($text===false||preg_match('//u',$text)!==1)respond(['error'=>'Not UTF-8 text'],415);
             return ['path'=>$path,'text'=>$text];
         case 'mkdir':
             $f=located($path,true);if(file_exists($f)||!mkdir($f,0750))respond(['error'=>'Cannot create directory'],409);
