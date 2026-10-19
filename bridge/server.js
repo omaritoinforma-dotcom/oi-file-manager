@@ -74,7 +74,7 @@ function validArguments(name, args) {
 async function mcp(payload) {
   const {method,id,params={}}=payload||{};
   if (method==="initialize") return rpcResponse(id,{protocolVersion:"2025-03-26",
-    capabilities:{tools:{listChanged:false}},serverInfo:{name:"oi-android",version:"0.1.0"}});
+    capabilities:{tools:{listChanged:false}},serverInfo:{name:"oi-android",version:"0.3.1"}});
   if (method==="notifications/initialized") return null;
   if (method==="ping") return rpcResponse(id,{});
   if (method==="tools/list") return rpcResponse(id,{tools});

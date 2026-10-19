@@ -86,7 +86,7 @@ try {
     if(strpos($path,$base)===0)$path=substr($path,strlen($base));
     if(strpos($path,'/index.php')===0)$path=substr($path,10);
     $path='/'.ltrim($path,'/');$method=$_SERVER['REQUEST_METHOD'];
-    if($path==='/health'&&$method==='GET')reply(['ok'=>true,'service'=>'oi-android-bridge','version'=>'0.3.0']);
+    if($path==='/health'&&$method==='GET')reply(['ok'=>true,'service'=>'oi-android-bridge','version'=>'0.3.1']);
     // Pair tickets are short-lived, single-use capabilities. GET never consumes them.
     if(preg_match('~^/pair/([a-f0-9]{64})$~',$path,$match)&&$method==='GET'){
         $ticket=$match[1];
@@ -136,7 +136,7 @@ try {
         if(($p['jsonrpc']??null)!=='2.0'||!is_string($m))reply(rpcError($id,-32600,'Invalid request'),400);
         if(strpos($m,'notifications/')===0){http_response_code(202);exit;}
         if($m==='server/discover')reply(rpc($id,['supportedVersions'=>['2026-07-28','2025-03-26'],'capabilities'=>['tools'=>(object)[]]]));
-        if($m==='initialize')reply(rpc($id,['protocolVersion'=>'2025-03-26','serverInfo'=>['name'=>'oi-android-bridge','version'=>'0.3.0'],'capabilities'=>['tools'=>(object)[]]]));
+        if($m==='initialize')reply(rpc($id,['protocolVersion'=>'2025-03-26','serverInfo'=>['name'=>'oi-android-bridge','version'=>'0.3.1'],'capabilities'=>['tools'=>(object)[]]]));
         if($m==='ping')reply(rpc($id,(object)[]));
         if($m==='tools/list')reply(rpc($id,['tools'=>json_decode(file_get_contents(__DIR__.'/tools.json'))]));
         if($m==='tools/call'){$name=$p['params']['name']??'';$args=$p['params']['arguments']??[];if(!is_string($name)||!validArgs($name,$args))reply(rpcError($id,-32602,'Invalid arguments'));reply(rpc($id,callTool($name,$args)));}
