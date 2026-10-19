@@ -154,8 +154,17 @@ class FileAgent(private val context: Context, private val changes: Boolean, priv
     private fun requireChanges() {
         if (!changes) throw IOException("Activa operaciones de escritura en Ajustes > Conector")
     }
+    internal fun resolveUploadTarget(path: String): File {
+        if (!Perms.hasStorage(context)) throw IOException("Permiso de archivos revocado")
+        requireChanges()
+        return file(path).also {
+            if (it.exists() || it.parentFile?.isDirectory != true) throw IOException("El destino existe o su padre no es válido")
+        }
+    }
     fun execute(action: String, args: JSONObject): JSONObject {
         val config = BridgeConfig(context)
+        if (action in setOf("begin_upload","upload_chunk","commit_upload","cancel_upload"))
+            return BridgeUploads(context,config).execute(action,args)
         if (action == "device_capabilities") return JSONObject()
             .put("version", com.omaritoinforma.oiarchivos.BuildConfig.VERSION_NAME)
             .put("storage", Perms.hasStorage(context)).put("changes",config.allowChanges)

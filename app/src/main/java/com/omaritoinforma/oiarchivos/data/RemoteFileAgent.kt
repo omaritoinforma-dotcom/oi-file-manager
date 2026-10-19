@@ -102,6 +102,12 @@ class RemoteFileAgent(private val context: Context, private val config: BridgeCo
                     fs.write(parent,name,bytes.inputStream(),bytes.size.toLong())
                     JSONObject().put("created",path).put("bytes",bytes.size).put("sha256",digest(bytes))
                 }
+                "_commit_upload" -> {
+                    writeAllowed(); val (parent,name) = destination(path)
+                    val part=java.io.File(args.getString("uploadTemp"))
+                    part.inputStream().use { fs.write(parent,name,it,part.length()) }
+                    JSONObject().put("created",path).put("bytes",part.length())
+                }
                 "make_directory" -> {
                     writeAllowed(); val (parent,name) = destination(path)
                     JSONObject().put("created",fs.mkdir(parent,name))

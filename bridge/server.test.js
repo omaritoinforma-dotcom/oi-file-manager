@@ -45,6 +45,8 @@ test("MCP bridge authenticates device and relays one file operation", async (t) 
   assert.equal((await fetch(base+"/api/v1/status",{headers:apiHeaders})).status,200);
   assert.equal((await mcp("tools/call",40,{name:"read_text",arguments:{path:17}})).error.code,-32602);
   assert.equal((await mcp("tools/call",41,{name:"write_new_text",arguments:{path:"/tmp",content:"x",extra:"unexpected"}})).error.code,-32602);
+  assert.equal((await mcp("tools/call",42,{name:"begin_upload",arguments:{path:"/tmp",totalBytes:268435457,sha256:"0".repeat(64)}})).error.code,-32602);
+  assert.equal((await mcp("tools/call",43,{name:"list_connections",arguments:{secret:"must-not-be-accepted"}})).error.code,-32602);
   const pending=mcp("tools/call",3,{name:"list_roots",arguments:{}});
   let command;
   for(let i=0;i<30;i++){
@@ -62,4 +64,18 @@ test("MCP bridge authenticates device and relays one file operation", async (t) 
   const result=await pending;
   assert.equal(result.result.isError,false);
   assert.match(result.result.content[0].text,/storage\/emulated\/0/);
+  const remote=mcp("tools/call",50,{name:"list_files",arguments:{connectionId:"saved-sftp",path:"/uploads",offset:250}});
+  let job;
+  for(let i=0;i<30;i++) {
+    job=await (await fetch(base+"/device/next",{headers:deviceHeaders})).json();
+    if(job.id) break;
+    await sleep(25);
+  }
+  assert.equal(job.args.connectionId,"saved-sftp");
+  assert.equal(job.args.offset,250);
+  await fetch(base+"/device/result",{method:"POST",headers:{...deviceHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({id:job.id,ok:false,error:"Las conexiones guardadas no están autorizadas"})});
+  const denied=await remote;
+  assert.equal(denied.result.isError,true);
+  assert.match(denied.result.content[0].text,/no están autorizadas/);
 });

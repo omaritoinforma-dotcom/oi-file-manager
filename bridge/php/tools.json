@@ -337,5 +337,91 @@
       ],
       "additionalProperties": false
     }
+  },
+  {
+    "name": "begin_upload",
+    "description": "Begin a new local or saved-connection upload up to 256 MiB; requires expected size and SHA-256. The original destination is never overwritten.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "connectionId": {
+          "type": "string"
+        },
+        "totalBytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 268435456
+        },
+        "sha256": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "totalBytes",
+        "sha256"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "upload_chunk",
+    "description": "Append a base64 block up to 64 KiB at the exact offset. Identical retries are accepted.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "uploadId": {
+          "type": "string"
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "base64": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "uploadId",
+        "offset",
+        "base64"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "commit_upload",
+    "description": "Verify complete upload size and SHA-256, then publish a new local or remote file.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "uploadId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "uploadId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "cancel_upload",
+    "description": "Discard a pending upload and its temporary bytes.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "uploadId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "uploadId"
+      ],
+      "additionalProperties": false
+    }
   }
 ]
