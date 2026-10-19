@@ -219,6 +219,43 @@ fun SettingsScreen(vm: MainViewModel) {
                     }) { Text(if (bridgeActive) "Desconectar" else "Conectar") }
                 }
             }
+            item { SectionTitle("Centro de herramientas", Modifier.padding(start = 16.dp, top = 16.dp)) }
+            item {
+                ListItem(
+                    headlineContent = { Text("Exploración y operaciones de archivos") },
+                    supportingContent = { Text("Gestión local, almacenamiento externo, FTP/SFTP/SMB y conexiones guardadas. Se aplican los permisos de cada proveedor.") },
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text("Depurador Android sin root") },
+                    supportingContent = { Text("Diagnósticos y lectura pública del sistema. Shizuku/ADB para rutas con permisos shell; datos privados protegidos.") },
+                    modifier = Modifier.clickable {
+                        context.startActivity(android.content.Intent(context,
+                            com.omaritoinforma.oiarchivos.RootlessDebugActivity::class.java))
+                    },
+                )
+            }
+            item {
+                ListItem(
+                    headlineContent = { Text("Puente ChatGPT · MCP / REST") },
+                    supportingContent = {
+                        Text(if (BridgeStatus.running) "Agente en ejecución: " + BridgeStatus.message
+                        else "Agente detenido. Emparejar y activar la conexión en este teléfono.")
+                    },
+                )
+            }
+            item {
+                Column(Modifier.padding(16.dp)) {
+                    Text("Compilación y pruebas Android: GitHub Actions, usando Java 17, SDK 35 y Gradle. No ejecuta compiladores de PC en el móvil.")
+                    Spacer(Modifier.height(8.dp))
+                    Button(onClick = {
+                        context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
+                            android.net.Uri.parse("https://github.com/omaritoinforma-dotcom/oi-file-manager/actions/workflows/rootless-build.yml")))
+                    }) { Text("Abrir compilación y pruebas") }
+                    Text("Los conectores externos y las habilidades de ChatGPT se autorizan en su servicio. No se copian tokens, herramientas internas ni permisos del asistente a la APK.")
+                }
+            }
             item { SectionTitle("Acerca de", Modifier.padding(start = 16.dp, top = 16.dp)) }
             item {
                 ListItem(
