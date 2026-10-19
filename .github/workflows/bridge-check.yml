@@ -21,6 +21,10 @@ jobs:
         run: |
           npm run check
           npm test
+      - name: Verificar puente PHP para IONOS
+        run: |
+          php -l php/index.php
+          python3 php/smoke.py
       - name: Guardar paquete del servidor
         uses: actions/upload-artifact@v4
         with:
@@ -32,5 +36,6 @@ jobs:
             bridge/Dockerfile
             bridge/compose.yaml
             bridge/.env.example
+            bridge/php/
           if-no-files-found: error
           include-hidden-files: true

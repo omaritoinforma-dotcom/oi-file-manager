@@ -41,6 +41,7 @@ import org.json.JSONObject
 class RemoteBridgeService : Service() {
     private val active = AtomicBoolean(false)
     private val client = OkHttpClient.Builder()
+        .followRedirects(false).followSslRedirects(false)
         .connectTimeout(10, TimeUnit.SECONDS)
         .callTimeout(15, TimeUnit.SECONDS).build()
     private var worker: Thread? = null
@@ -77,7 +78,7 @@ class RemoteBridgeService : Service() {
         while (active.get() && !Thread.currentThread().isInterrupted) {
             try {
                 val request = Request.Builder().url(config.endpoint.trimEnd('/') + "/device/next")
-                    .header("Authorization", "Bearer " + config.token)
+                    .bridgeAuthorization(config)
                     .header("X-OI-Device", Build.MODEL.take(70)).get().build()
                 val command = client.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) throw IOException("Error HTTP " + response.code)
@@ -98,7 +99,7 @@ class RemoteBridgeService : Service() {
                 if (output.isSuccess) reply.put("data", output.getOrNull())
                 else reply.put("error", output.exceptionOrNull()?.message ?: "Error")
                 val post = Request.Builder().url(config.endpoint.trimEnd('/') + "/device/result")
-                    .header("Authorization", "Bearer " + config.token)
+                    .bridgeAuthorization(config)
                     .post(reply.toString().toRequestBody("application/json".toMediaType())).build()
                 client.newCall(post).execute().use {
                     if (!it.isSuccessful) throw IOException("No se confirmó la respuesta")
@@ -298,13 +299,35 @@ class BridgeConfig(context: Context) {
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).build())
         }.generateKey()
     }
+    /** Keep legacy Docker tokens; Sites pairing binds both headers to its exact origin. */
+    fun credentials(): Pair<String, String?> {
+        val raw = token
+        if (!raw.startsWith("oi1.")) return raw to null
+        val data = JSONObject(String(Base64.decode(raw.removePrefix("oi1."), Base64.NO_WRAP), Charsets.UTF_8))
+        val expected = data.getString("origin").toHttpUrl()
+        val actual = endpoint.toHttpUrl()
+        require(expected.isHttps && actual.isHttps && expected.host == actual.host && expected.port == actual.port &&
+            actual.encodedPath == "/" && actual.query == null && actual.fragment == null) { "El token pertenece a otro servidor" }
+        val device = data.getString("token")
+        val site = data.getString("siteToken")
+        require(device.length >= 32 && site.isNotBlank()) { "Emparejamiento no válido" }
+        return device to site
+    }
     fun valid(): Boolean = runCatching {
         val uri = endpoint.toHttpUrl()
-        uri.isHttps && uri.username.isBlank() && uri.password.isBlank() && token.length >= 32
+        uri.isHttps && uri.username.isBlank() && uri.password.isBlank() && credentials().first.length >= 32
     }.getOrDefault(false)
 }
 
 object BridgeStatus {
     @Volatile var running = false
     @Volatile var message = "Desconectado"
+}
+
+/** Redirects must not forward either credential to another origin. */
+private fun Request.Builder.bridgeAuthorization(config: BridgeConfig): Request.Builder {
+    val (device, site) = config.credentials()
+    header("Authorization", "Bearer " + device)
+    if (site != null) header("OAI-Sites-Authorization", "Bearer " + site)
+    return this
 }
