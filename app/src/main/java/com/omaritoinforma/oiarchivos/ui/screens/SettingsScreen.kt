@@ -11,6 +11,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import com.omaritoinforma.oiarchivos.data.BridgeConfig
+import com.omaritoinforma.oiarchivos.data.RemoteBridgeService
+import com.omaritoinforma.oiarchivos.data.BridgeStatus
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -36,6 +47,14 @@ import com.omaritoinforma.oiarchivos.ui.components.SectionTitle
 
 @Composable
 fun SettingsScreen(vm: MainViewModel) {
+    val context = LocalContext.current
+    val bridge = remember { BridgeConfig(context) }
+    var endpoint by remember { mutableStateOf(bridge.endpoint) }
+    var newToken by remember { mutableStateOf("") }
+    var writeAccess by remember { mutableStateOf(bridge.allowChanges) }
+    var trashAccess by remember { mutableStateOf(bridge.allowTrash) }
+    var bridgeActive by remember { mutableStateOf(BridgeStatus.running) }
+    var feedback by remember { mutableStateOf("") }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -98,6 +117,73 @@ fun SettingsScreen(vm: MainViewModel) {
                     },
                     modifier = Modifier.clickable { vm.updateTheme(m) },
                 )
+            }
+            item { SectionTitle("Conector remoto de archivos", Modifier.padding(start = 16.dp, top = 16.dp)) }
+            item {
+                Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text("Permite conectar asistentes y herramientas compatibles mediante un servidor seguro. Únicamente archivos a los que Android da acceso; nunca root.")
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = endpoint,
+                        onValueChange = { endpoint = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Servidor HTTPS del puente") },
+                        singleLine = true,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = newToken,
+                        onValueChange = { newToken = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(if (bridge.token.isNotEmpty()) "Cambiar token de emparejamiento" else "Token de emparejamiento") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Button(onClick = {
+                        bridge.endpoint = endpoint
+                        if (newToken.isNotBlank()) { bridge.token = newToken.trim(); newToken = "" }
+                        feedback = if (bridge.valid()) "Configuración guardada" else "Se requiere HTTPS y token de 32 caracteres o más"
+                    }) { Text("Guardar conexión") }
+                    if (feedback.isNotBlank()) Text(feedback)
+                }
+            }
+            item {
+                SwitchRow("Permitir cambios de archivos",
+                    "Crear, copiar, mover y renombrar; desactivado por defecto",
+                    writeAccess) {
+                    writeAccess = it
+                    bridge.allowChanges = it
+                    if (!it) { trashAccess = false; bridge.allowTrash = false }
+                }
+            }
+            item {
+                SwitchRow("Permitir enviar a papelera",
+                    "Separado de escritura. No autoriza borrar definitivamente.",
+                    trashAccess) {
+                    trashAccess = it && writeAccess
+                    bridge.allowTrash = trashAccess
+                }
+            }
+            item {
+                Column(Modifier.padding(16.dp)) {
+                    Text(if (bridgeActive) "Conector activo: " + BridgeStatus.message else "Conector detenido")
+                    Spacer(Modifier.height(8.dp))
+                    Button(onClick = {
+                        if (bridgeActive) {
+                            RemoteBridgeService.stop(context)
+                            bridgeActive = false
+                        } else {
+                            bridge.endpoint = endpoint
+                            if (newToken.isNotBlank()) { bridge.token = newToken.trim(); newToken = "" }
+                            if (bridge.valid()) {
+                                RemoteBridgeService.start(context)
+                                bridgeActive = true
+                                feedback = "Conexión iniciada; comprueba el aviso permanente"
+                            } else feedback = "Configura la URL HTTPS y el token"
+                        }
+                    }) { Text(if (bridgeActive) "Desconectar" else "Conectar") }
+                }
             }
             item { SectionTitle("Acerca de", Modifier.padding(start = 16.dp, top = 16.dp)) }
             item {
