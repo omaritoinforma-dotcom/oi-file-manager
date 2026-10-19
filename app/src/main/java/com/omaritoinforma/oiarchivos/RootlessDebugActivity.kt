@@ -33,9 +33,9 @@ class RootlessDebugActivity : ComponentActivity() {
             var menu by remember {mutableStateOf(false)}
             var busy by remember {mutableStateOf(false)}
             val scope=rememberCoroutineScope()
-            val actions=listOf("memory","battery","activity","package","appops","network","display","storage","processes","list_packages","crashes","logcat",
+            val actions=listOf("system_list","system_stat","system_read","memory","battery","activity","package","appops","network","display","storage","processes","list_packages","crashes","logcat",
                 "force_stop","clear_data","disable","enable","install","uninstall","grant","revoke","set_appop","tap","swipe","keyevent","text","screenshot")
-            val labels=listOf("Memoria","Batería","Actividad de aplicaciones","Inspeccionar paquete","Consultar AppOps","Red","Pantalla","Almacenamiento","Procesos","Paquetes instalados","Fallos recientes","Registros del sistema",
+            val labels=listOf("Listar rutas del sistema (solo lectura)","Datos de ruta del sistema","Leer configuración pública (máx. 32 KiB)","Memoria","Batería","Actividad de aplicaciones","Inspeccionar paquete","Consultar AppOps","Red","Pantalla","Almacenamiento","Procesos","Paquetes instalados","Fallos recientes","Registros del sistema",
                 "Detener aplicación","Borrar datos de aplicación","Deshabilitar aplicación","Habilitar aplicación","Instalar APK","Desinstalar para este usuario","Conceder permiso","Revocar permiso","Cambiar AppOps","Tocar pantalla","Deslizar","Enviar tecla","Introducir texto","Guardar captura").let {actions.zip(it).toMap()}
             fun runCommand() {
                 busy=true
@@ -76,7 +76,7 @@ class RootlessDebugActivity : ComponentActivity() {
                             DropdownMenu(expanded=menu,onDismissRequest={menu=false}) {actions.forEach {action->DropdownMenuItem(text={Text(labels[action].orEmpty())},onClick={selected=action;menu=false})}}
                         }
                         OutlinedTextField(pkg,{pkg=it},label={Text("Paquete, cuando corresponda")},modifier=Modifier.fillMaxWidth(),singleLine=true)
-                        OutlinedTextField(value,{value=it},label={Text("Valor: permiso, ruta, texto o código de tecla")},modifier=Modifier.fillMaxWidth())
+                        OutlinedTextField(value,{value=it},label={Text(if(selected.startsWith("system_"))"Ruta absoluta (ej. /system/build.prop)" else "Valor: permiso, ruta, texto o código de tecla")},modifier=Modifier.fillMaxWidth())
                         if(selected in setOf("tap","swipe"))OutlinedTextField(xy,{xy=it},label={Text("Coordenadas: x,y,x2,y2")},modifier=Modifier.fillMaxWidth())
                         Button(onClick={
                             if(selected in setOf("clear_data","uninstall"))android.app.AlertDialog.Builder(this@RootlessDebugActivity)
