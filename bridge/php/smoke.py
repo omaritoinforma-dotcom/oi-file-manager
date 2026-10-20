@@ -1,9 +1,9 @@
 """Integration test with a real PHP process and a simulated Android client."""
 import concurrent.futures, contextlib, json, os, pathlib, socket, subprocess, tempfile, time, urllib.request, urllib.error
 root=pathlib.Path(__file__).resolve().parent
-with tempfile.TemporaryDirectory() as tmp:
-    private=pathlib.Path(tmp); device='d'*64; mcp='m'*64; api='a'*64
-    (private/'config.php').write_text("<?php return ['device_token'=>'%s','mcp_token'=>'%s','api_token'=>'%s'];"%(device,mcp,api))
+with tempfile.TemporaryDirectory() as tmp, tempfile.TemporaryDirectory() as cloud_tmp:
+    private=pathlib.Path(tmp); cloud_root=pathlib.Path(cloud_tmp); (cloud_root/'hello.txt').write_text('Cloud alive',encoding='utf8'); device='d'*64; mcp='m'*64; api='a'*64
+    (private/'config.php').write_text("<?php return ['device_token'=>'%s','mcp_token'=>'%s','api_token'=>'%s','cloud_root'=>'%s','cloud_mcp_write_enabled'=>false];"%(device,mcp,api,str(cloud_root)))
     with socket.socket() as sock: sock.bind(('127.0.0.1',0)); port=sock.getsockname()[1]
     env={**os.environ,'OI_BRIDGE_PRIVATE':tmp,'PHP_CLI_SERVER_WORKERS':'4'}
     proc=subprocess.Popen(['php','-S',f'127.0.0.1:{port}','-t',str(root)],env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
@@ -34,10 +34,20 @@ with tempfile.TemporaryDirectory() as tmp:
         assert call('/device/pair',payload={'ticket':ticket})[1]['deviceToken']==device
         assert call('/device/pair',payload={'ticket':ticket})[0]==410
         assert rpc('initialize')[1]['result']['serverInfo']['name']=='oi-android-bridge'
-        listed=rpc('tools/list')[1]['result']['tools'];assert len(listed)==25
+        listed=rpc('tools/list')[1]['result']['tools'];assert len(listed)==34
         assert isinstance(listed[0]['inputSchema']['properties'],dict)
         assert rpc('tools/call',params={'name':'read_text','arguments':{'path':17}})[1]['error']['code']==-32602
         assert rpc('tools/call',params={'name':'debug_run','arguments':{'action':'su'}})[1]['error']['code']==-32602
+        assert rpc('tools/call',params={'name':'cloud_status'})[1]['result']['isError'] is False
+        cloud_listing=rpc('tools/call',params={'name':'cloud_list','arguments':{'path':'/'}})[1]['result']
+        assert cloud_listing['isError'] is False and 'hello.txt' in cloud_listing['content'][0]['text']
+        cloud_text=rpc('tools/call',params={'name':'cloud_read_text','arguments':{'path':'/hello.txt'}})[1]['result']
+        assert 'Cloud alive' in cloud_text['content'][0]['text']
+        assert rpc('tools/call',params={'name':'cloud_list','arguments':{'path':'/../private'}})[1]['result']['isError'] is True
+        assert rpc('tools/call',params={'name':'cloud_mkdir','arguments':{'path':'/unsafe'}})[1]['result']['isError'] is True
+        link=rpc('tools/call',params={'name':'create_pairing_link'})[1]['result']
+        assert link['isError'] is False
+        assert 'pairingUrl' in link['content'][0]['text']
         assert rpc('tools/call',params={'name':'list_roots'})[1]['result']['isError'] is True
         call('/device/next',device)
         with concurrent.futures.ThreadPoolExecutor() as pool:
@@ -57,7 +67,7 @@ with tempfile.TemporaryDirectory() as tmp:
         assert not json.loads((private/'state.json').read_text())['jobs']
         assert call('/api/v1/status',api)[1]['connected'] is True
         assert call('/api/v1/status',device)[0]==401
-        print('PASS: PHP MCP/REST authentication, schema, offline, atomic queue, single delivery, duplicate rejection and cleanup')
+        print('PASS: unified PHP MCP/REST Android, IONOS, pairing, auth, path restrictions, queue and cleanup')
     finally:
         import signal
         os.killpg(proc.pid,signal.SIGTERM);proc.wait(timeout=5)

@@ -1,0 +1,38 @@
+name: Empaquetar OI Cloud para IONOS
+on:
+  push:
+    branches:
+      - codex/unified-mcp-android-ionos
+    paths:
+      - ".github/workflows/cloud-package.yml"
+      - "bridge/cloud/**"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Comprobar PHP y empaquetar los cuatro archivos públicos
+        run: |
+          php -l bridge/cloud/index.php
+          python3 bridge/cloud/smoke.py
+          mkdir -p dist/oi-cloud
+          cp bridge/cloud/index.html bridge/cloud/app.js bridge/cloud/index.php bridge/cloud/.htaccess dist/oi-cloud/
+          test "$(find dist/oi-cloud -type f | wc -l)" -eq 4
+          cd dist
+          zip -r -q oi-cloud-deploy.zip oi-cloud
+          unzip -t oi-cloud-deploy.zip
+      - name: Archivos para subir a IONOS
+        uses: actions/upload-artifact@v4
+        with:
+          name: OI-Cloud-IONOS-Deploy
+          path: |
+            dist/oi-cloud-deploy.zip
+            dist/oi-cloud/index.html
+            dist/oi-cloud/app.js
+            dist/oi-cloud/index.php
+            dist/oi-cloud/.htaccess
+          include-hidden-files: true
+          if-no-files-found: error

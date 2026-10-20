@@ -30,6 +30,7 @@ function content($value,bool $failed=false): array {
 $private=getenv('OI_BRIDGE_PRIVATE') ?: dirname(__DIR__,2).'/private/oi-android-bridge';
 if(!is_dir($private) || !is_file($private.'/config.php')) reply(['error'=>'Bridge is not configured'],503);
 $config=require $private.'/config.php';
+require_once __DIR__.'/cloud_dispatch.php';
 $tools=json_decode(file_get_contents(__DIR__.'/tools.json'),true,32,JSON_THROW_ON_ERROR);
 function state(callable $fn) {
     global $private;
@@ -47,7 +48,7 @@ function state(callable $fn) {
 }
 function phoneStatus(): array {
     global $tools;
-    return state(function(&$s)use($tools){return ['connected'=>microtime(true)-$s['lastSeen']<45,'deviceName'=>$s['deviceName'],'lastSeen'=>$s['lastSeen']?:null,'queued'=>count($s['jobs']),'capabilities'=>array_column($tools,'name')];});
+    return state(function(&$s)use($tools){return ['connected'=>microtime(true)-$s['lastSeen']<45,'deviceName'=>$s['deviceName'],'lastSeen'=>$s['lastSeen']?:null,'queued'=>count($s['jobs']),'capabilities'=>array_values(array_filter(array_column($tools,'name'),static function($n){return $n!=='create_pairing_link' && strpos($n,'cloud_')!==0;})), 'serverCapabilities'=>array_values(array_filter(array_column($tools,'name'),static function($n){return $n==='create_pairing_link' || strpos($n,'cloud_')===0;}))];});
 }
 function validArgs(string $name,$args): bool {
     global $tools;$spec=null;foreach($tools as $t)if($t['name']===$name)$spec=$t['inputSchema'];
@@ -63,6 +64,21 @@ function validArgs(string $name,$args): bool {
     return true;
 }
 function callTool(string $name,array $args): array {
+    global $config;
+    if (in_array($name,oiCloudTools(),true)) {
+        try {return content(oiCloudExecute($name,$args,$config));}
+        catch (Throwable $e) {return content(['error'=>$e->getMessage(),'location'=>'IONOS'],true);}
+    }
+    if ($name==='create_pairing_link') {
+        $ticket=bin2hex(random_bytes(32));$expires=time()+1800;
+        state(function(&$s)use($ticket,$expires){
+            $s['pairing']=['hash'=>hash('sha256',$ticket),'expires'=>$expires];
+            return null;
+        });
+        return content(['pairingUrl'=>'https://test.omaritoinforma.com/oi-android-bridge/index.php/pair/'.$ticket,
+            'expiresAt'=>$expires,'requiresPhoneApproval'=>true,
+            'permissions'=>'Read only by default. Additional permissions configured on device.']);
+    }
     if($name==='phone_status')return content(phoneStatus());
     if(!phoneStatus()['connected'])return content('OI Archivos está desconectado. Activa Conectar en los ajustes de la aplicación.',true);
     $id=bin2hex(random_bytes(16));$now=microtime(true);

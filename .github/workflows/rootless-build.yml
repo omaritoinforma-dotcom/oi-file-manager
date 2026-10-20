@@ -4,6 +4,7 @@ on:
     branches:
       - codex/rootless-readonly-bridge-20261019
       - codex/ionos-unified-web-android
+      - codex/unified-mcp-android-ionos
   workflow_dispatch:
 permissions:
   contents: read
@@ -29,7 +30,7 @@ jobs:
       - name: Compilar APK y ejecutar pruebas unitarias
         env:
           OI_ARCHIVE_TEST_EXECUTABLE: ${{ github.workspace }}/build/native-archives/--host/7zz
-          OI_BUILD_NUMBER: '901'
+          OI_BUILD_NUMBER: '902'
         run: |
           chmod +x ./gradlew
           ./gradlew --no-daemon testDebugUnitTest assembleRelease
@@ -58,6 +59,24 @@ jobs:
           python3 bridge/php/smoke.py
           php -l bridge/cloud/index.php
           python3 bridge/cloud/smoke.py
+      - name: Empaquetar OI Cloud (solo carpeta independiente, sin secretos)
+        run: |
+          mkdir -p dist/oi-cloud
+          cp bridge/cloud/index.html bridge/cloud/app.js bridge/cloud/index.php bridge/cloud/.htaccess dist/oi-cloud/
+          cd dist
+          zip -r -q oi-cloud-deploy.zip oi-cloud
+          unzip -t oi-cloud-deploy.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OI-Cloud-IONOS-Deploy
+          path: |
+            dist/oi-cloud-deploy.zip
+            dist/oi-cloud/index.html
+            dist/oi-cloud/app.js
+            dist/oi-cloud/index.php
+            dist/oi-cloud/.htaccess
+          include-hidden-files: true
+          if-no-files-found: error
       - name: Verificar alineación de herramientas MCP
         run: |
           python3 - <<'PY'
@@ -65,7 +84,10 @@ jobs:
           from pathlib import Path
           a=json.loads(Path("bridge/tools.json").read_text())
           b=json.loads(Path("bridge/php/tools.json").read_text())
-          assert a==b, "Catálogos MCP divergentes"
+          base={x["name"]: x for x in a}
+          extended={x["name"]: x for x in b}
+          assert all(k in extended and extended[k]==v for k,v in base.items()), "Catálogo PHP debe incluir todas las herramientas de Android"
+          assert set(("cloud_status","cloud_list","cloud_read_text","create_pairing_link")).issubset(extended), "Faltan herramientas unificadas"
           debug=next(x for x in a if x["name"]=="debug_run")
           actions=debug["inputSchema"]["properties"]["action"]["enum"]
           assert set(("system_list","system_stat","system_read")).issubset(actions)
