@@ -59,6 +59,24 @@ jobs:
           python3 bridge/php/smoke.py
           php -l bridge/cloud/index.php
           python3 bridge/cloud/smoke.py
+      - name: Empaquetar OI Cloud (solo carpeta independiente, sin secretos)
+        run: |
+          mkdir -p dist/oi-cloud
+          cp bridge/cloud/index.html bridge/cloud/app.js bridge/cloud/index.php bridge/cloud/.htaccess dist/oi-cloud/
+          cd dist
+          zip -r -q oi-cloud-deploy.zip oi-cloud
+          unzip -t oi-cloud-deploy.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OI-Cloud-IONOS-Deploy
+          path: |
+            dist/oi-cloud-deploy.zip
+            dist/oi-cloud/index.html
+            dist/oi-cloud/app.js
+            dist/oi-cloud/index.php
+            dist/oi-cloud/.htaccess
+          include-hidden-files: true
+          if-no-files-found: error
       - name: Verificar alineación de herramientas MCP
         run: |
           python3 - <<'PY'
