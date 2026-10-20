@@ -25,6 +25,27 @@ jobs:
         run: |
           php -l php/index.php
           python3 php/smoke.py
+          php -l cloud/index.php
+          python3 cloud/smoke.py
+      - name: Empaquetar sitio IONOS independiente
+        run: |
+          mkdir -p ../dist/oi-cloud
+          cp cloud/index.html cloud/app.js cloud/index.php cloud/.htaccess ../dist/oi-cloud/
+          cd ../dist
+          zip -q -r oi-cloud-deploy.zip oi-cloud
+          unzip -t oi-cloud-deploy.zip
+      - name: Guardar paquete OI Cloud para IONOS
+        uses: actions/upload-artifact@v4
+        with:
+          name: OI-Cloud-IONOS-Deploy
+          path: |
+            dist/oi-cloud-deploy.zip
+            dist/oi-cloud/index.html
+            dist/oi-cloud/app.js
+            dist/oi-cloud/index.php
+            dist/oi-cloud/.htaccess
+          include-hidden-files: true
+          if-no-files-found: error
       - name: Guardar paquete del servidor
         uses: actions/upload-artifact@v4
         with:
