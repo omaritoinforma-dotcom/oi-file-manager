@@ -12,6 +12,13 @@ header("Content-Security-Policy: default-src 'none'; frame-ancestors 'none'");
 $private=getenv('OI_BRIDGE_PRIVATE') ?: dirname(__DIR__,2).'/private/oi-android-bridge';
 if (!is_file($private.'/config.php')) { http_response_code(503); exit('Not configured'); }
 $cfg=require $private.'/config.php';
+// Mount selection is non-secret and separate from bridge credentials.
+$mountFile=$private.'/cloud-root.php';
+if (is_file($mountFile)) {
+    $mount=require $mountFile;
+    if (is_array($mount)&&isset($mount['cloud_root'])&&is_string($mount['cloud_root']))
+        $cfg['cloud_root']=$mount['cloud_root'];
+}
 $root=isset($cfg['cloud_root'])&&is_string($cfg['cloud_root'])?realpath($cfg['cloud_root']):false;
 if (!$root||!is_dir($root)) {
     http_response_code(503); exit('Cloud root not configured');
@@ -67,11 +74,18 @@ function segments(string $path): array {
         respond(['error'=>'Invalid path segment'],400);
     return $parts;
 }
+function servicePrivatePath(string $candidate): bool {
+    global $root,$private;
+    $blocked=[$root.'/private',$root.'/phonebridge-private',$root.'/.ssh',$root.'/.oi_private_key.php',$private];
+    foreach($blocked as $path) if ($candidate===$path||strpos($candidate,$path.DIRECTORY_SEPARATOR)===0) return true;
+    return false;
+}
 function located(string $path,bool $creating=false): string {
     global $root;
     $parts=segments($path);$cur=$root;
     foreach ($parts as $i=>$p) {
         $candidate=$cur.DIRECTORY_SEPARATOR.$p;
+        if (servicePrivatePath($candidate)) respond(['error'=>'Service-private path'],403);
         if (is_link($candidate)) respond(['error'=>'Symlink not allowed'],403);
         if (file_exists($candidate)) {
             $canonical=realpath($candidate);
@@ -97,7 +111,7 @@ function cloudList(string $path): array {
     $dir=located($path);if(!is_dir($dir))respond(['error'=>'Not a directory'],400);
     $items=[];
     foreach(scandir($dir)?:[] as $name) {
-        if($name==='.'||$name==='..'||is_link($dir.DIRECTORY_SEPARATOR.$name))continue;
+        if($name==='.'||$name==='..'||is_link($dir.DIRECTORY_SEPARATOR.$name)||servicePrivatePath($dir.DIRECTORY_SEPARATOR.$name))continue;
         $items[]=entry($path,$name);
         if(count($items)>=1000)break;
     }
