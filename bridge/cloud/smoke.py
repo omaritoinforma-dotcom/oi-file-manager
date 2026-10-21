@@ -3,6 +3,7 @@
 import json
 import os
 import pathlib
+import re
 import socket
 import subprocess
 import tempfile
@@ -84,7 +85,13 @@ with tempfile.TemporaryDirectory() as temp:
         initialize = {"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}
         code, _ = req(url + "?action=mcp", "b" * 64, "POST", initialize)
         assert code == 200
-        print("OI Cloud: auth, list, traversal, symlink, write, delete, MCP: PASS")
+        # Android must not depend on a separately configured browser password.
+        without_web = re.sub(r"'cloud_web_password_hash'=>'[^']*',", "", php)
+        (private / "config.php").write_text(without_web, encoding="utf-8")
+        assert req(url + "?action=status", authorized)[0] == 200
+        assert req(url + "?action=list&path=/", authorized)[0] == 200
+        assert req(url + "?action=login", method="POST", payload={"password":"unused"})[0] == 503
+        print("OI Cloud: auth, list, traversal, symlink, write, delete, MCP, Android without web password: PASS")
     finally:
         proc.terminate()
         try:
