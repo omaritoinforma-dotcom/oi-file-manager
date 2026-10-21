@@ -13,8 +13,11 @@ $private=getenv('OI_BRIDGE_PRIVATE') ?: dirname(__DIR__,2).'/private/oi-android-
 if (!is_file($private.'/config.php')) { http_response_code(503); exit('Not configured'); }
 $cfg=require $private.'/config.php';
 $root=isset($cfg['cloud_root'])&&is_string($cfg['cloud_root'])?realpath($cfg['cloud_root']):false;
-if (!$root||!is_dir($root)||!isset($cfg['device_token'],$cfg['mcp_token'],$cfg['cloud_web_password_hash'])) {
-    http_response_code(503); exit('Cloud root or credentials not configured');
+if (!$root||!is_dir($root)) {
+    http_response_code(503); exit('Cloud root not configured');
+}
+if (!isset($cfg['device_token'],$cfg['mcp_token'])) {
+    http_response_code(503); exit('Cloud bridge credentials not configured');
 }
 $root=rtrim($root,DIRECTORY_SEPARATOR);
 if ($root===''||$root==='/'||strpos($root,realpath($private)?:$private)===0) { http_response_code(503);exit('Unsafe root'); }
@@ -137,6 +140,7 @@ $action=(string)($_GET['action']??'');
 $method=$_SERVER['REQUEST_METHOD']??'GET';
 try {
     if($action==='login'&&$method==='POST') {
+        if (!isset($cfg['cloud_web_password_hash'])) respond(['error'=>'Web login is not configured'],503);
         $p=input();$password=(string)($p['password']??'');
         // Shared throttle prevents unlimited guesses from fresh browser sessions.
         $ip=(string)($_SERVER['REMOTE_ADDR']??'unknown');
