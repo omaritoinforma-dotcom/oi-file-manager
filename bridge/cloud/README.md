@@ -1,6 +1,6 @@
 # OI Archivos · Cloud IONOS (versión web + Android + MCP)
 
-**Estado:** código de integración en rama de desarrollo. No implica que IONOS esté desplegado ni que el teléfono esté emparejado.
+**Estado verificado (2026-10-21):** componente Cloud desplegado en IONOS; teléfono SM-M127F con OI Archivos 0.2.230 conectado. La raíz Cloud usa los archivos existentes del explorador web. La lectura autenticada devolvió las mismas 84 entradas visibles y abrió `/OmaritoInforma` (17 elementos). La actualización visual de la pantalla Android requiere comprobarse en el teléfono.
 
 ## Concepto
 - Un único directorio raíz en hosting IONOS, accesible también por SFTP **sin iniciar SFTP desde el mismo hosting**: PHP opera directamente sobre el directorio local autorizado.
@@ -10,6 +10,18 @@
 - Desconexión: solo se guardan listas de carpetas y archivos explícitamente descargados. No se fabrican datos offline ni se descarga todo el hosting.
 - Transferencias Android **solo en Wi-Fi no medido** por defecto. Si un APK de 27 MB viaja al dispositivo, esos bytes necesariamente llegan por alguna red o cable. El servidor no puede instalarlo mágicamente sin tráfico.
 - Actualizaciones de APK mediante consentimiento de instalación de Android, comprobación de firma y versiones: previsto; **no implementado aún**.
+
+## Selección de la ubicación sin editar credenciales
+
+También se admite `OI_BRIDGE_PRIVATE/cloud-root.php`, un archivo PHP privado que devuelve únicamente la selección de montaje y prevalece sobre `cloud_root` en `config.php`:
+
+```php
+<?php return ['cloud_root' => '/ruta/absoluta/existente'];
+```
+
+En el despliegue actual `private/oi-android-bridge/cloud-root.php` usa `dirname(__DIR__, 2)` para seleccionar la raíz existente del explorador web. No se modifica ni descarga `config.php`. Se excluyen los directorios privados del servicio (`private`, `phonebridge-private`, `.ssh` y `.oi_private_key.php`); los enlaces simbólicos siguen bloqueados. La contraseña web es opcional para Android y MCP: solo el inicio de sesión web exige su hash.
+
+El Site privado del conector Android conserva su identidad y añade las herramientas de lectura `cloud_list`, `cloud_stat` y `cloud_read_text` mediante el endpoint Cloud existente. Si Cloud falla, las herramientas del teléfono siguen disponibles.
 
 ## Instalación en IONOS (PHP 7.4+)
 
@@ -30,7 +42,6 @@
 - Cada archivo descargado en Android persiste bajo directorio privado de la app. No se ve como carpeta física por otras aplicaciones sin exportarlo.
 - Credenciales y permisos de escritura del puente configurables en Ajustes Android. Aún falta el control por dispositivo sobre el endpoint cloud en el servidor, notificaciones push y control de versiones o conflictos de edición concurrente.
 - Seguridad: bloquea \`..\`, NUL, barras invertidas y enlaces simbólicos; no usa root. La ubicación raíz no debe estar expuesta públicamente como sitio web si contiene ficheros sensibles; protege el directorio frente a ejecución de scripts cargados y URL directas. No usar como almacenamiento de secretos hasta revisión de seguridad completa.
-- App instalada v0.2.187 todavía usa la ruta defectuosa \`https://test.omaritoinforma.com/oi-android-bridge/\` para «Abrir panel de emparejamiento»; la rama nueva cambia a \`/oi-android-bridge/index.php\`. La página existente solo presenta instrucciones, **no hace el emparejamiento por pulsar el botón**. Para vincular, usar un ticket emitido por una herramienta autorizada o configurar token en Ajustes y pulsar «Conectar».
 
 ## Verificación
 \`\`\`sh
@@ -54,4 +65,4 @@ No se usan credenciales de la sesión de ChatGPT. El plugin utiliza la autentica
 
 Para emparejar el móvil sin copiar un token permanente: desde ChatGPT conectado con el plugin llama `create_pairing_link`, abre el enlace temporal y acepta en la APK. La página pública del puente es solamente informativa, no crea enlaces sin autorización. El teléfono inicia acceso **solo lectura**; los otros permisos requieren activación expresa en Ajustes. Una app sin privilegios no puede leer la sesión de ChatGPT ni hacerse pasar por ella.
 
-**Estado**: cambios implementados y pruebas de servidor MCP/REST superadas en GitHub Actions; **pendiente despliegue en IONOS**, configuración privada de `cloud_root`, registro/autorización del conector frente al endpoint actualizado y prueba de emparejamiento en teléfono real.
+**Verificación del ajuste actual:** 20 pruebas del relay privado superadas; GitHub Actions `39556638463`, segundo intento, superado (PHP lint, integración del puente y smoke Cloud). El primer intento falló en la cola simulada Android antes de ejecutar Cloud. Comprobación real de lectura Cloud y comparación de nombres con el explorador web: correctas. No se probaron escrituras sobre los archivos actuales del usuario.
