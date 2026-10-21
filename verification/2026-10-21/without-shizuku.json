@@ -1,0 +1,44 @@
+{
+  "source_code_commit": "0671a97a5a53be272f9ca5a6f259903429854331",
+  "branch": "codex/android-actions-without-shizuku-20261021",
+  "pull_request": "https://github.com/omaritoinforma-dotcom/oi-file-manager/pull/7",
+  "workflow_run": "https://github.com/omaritoinforma-dotcom/oi-file-manager/actions/runs/39618490025",
+  "apk": "OI-Archivos-v0.2.237.apk",
+  "package": "com.omaritoinforma.oiarchivos",
+  "version_code": 237,
+  "apk_bytes": 26639221,
+  "apk_sha256": "3c9f3efcd92b2af2dc25ed2f6b2da207accf2d0df40871b78b0fff35e72c9851",
+  "certificate_sha256": "24a5e852fa27767d7a3eb5a3196bccd27d7359a2018b5e1f28b47556b1b82c2b",
+  "certificate_matches_archived_0_2_230": true,
+  "ci_unit_tests": {
+    "passed": 58,
+    "failed": 0,
+    "ignored": 0
+  },
+  "android_13_without_shizuku": {
+    "passed": 6,
+    "failed": 0,
+    "final_system_install_confirmation_exercised": false
+  },
+  "android_15_general_smoke": "PASS; storage, connector/debugger UI, connections, transfers, editor, PDF, gallery, archives, resume and HTTP authorization/confinement",
+  "node_relay": "PASS; pending user action preserved",
+  "php_bridge_and_cloud": "PASS; auth, routes, pairing, queue and service-private protection",
+  "lint": {
+    "errors": 0,
+    "warnings": 28,
+    "note": "Includes three localization warnings in the new review activity"
+  },
+  "artifact_validation": {
+    "zip_crc": true,
+    "alignment": true,
+    "signature_v2": true,
+    "dex_files_checked": 5
+  },
+  "device_updated": false,
+  "manual_first_update_required": true,
+  "limitations": [
+    "Normal Android confirmation is required for install/uninstall.",
+    "No ADB privileges, input injection, private app data or other-app crash logs are granted.",
+    "Physical Samsung validation remains pending installation of this update."
+  ]
+}

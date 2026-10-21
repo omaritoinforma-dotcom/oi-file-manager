@@ -22,6 +22,7 @@ object RootlessDebugger {
         val uid=if(running)runCatching { Shizuku.getUid() }.getOrDefault(-1) else -1
         return JSONObject().put("shizukuRunning",running).put("permissionGranted",granted)
             .put("uid",uid).put("rootlessReady",granted && uid==2000)
+            .put("withoutShizuku",AndroidApiDiagnostics.capabilities())
     }
     fun requestPermission() {
         if (!Shizuku.pingBinder())throw IOException("Abre Shizuku e inícialo con depuración inalámbrica o ADB")
@@ -69,6 +70,13 @@ object RootlessDebugger {
         // Validate before binding; argv is rebuilt and checked again in the shell process.
         DebugCommands.argv(command,args.optString("packageName"),args.optString("value"),args.optInt("lines",200),
             args.optInt("x"),args.optInt("y"),args.optInt("x2"),args.optInt("y2"))
+        // API reads never need shell privileges; installation uses Android's visible UI.
+        if(command in setOf("install","uninstall"))
+            return RootlessUserActions.request(context,command,args,fromRemote)
+        if(command in AndroidApiDiagnostics.readActions && !status().getBoolean("rootlessReady"))
+            return AndroidApiDiagnostics.execute(context,command,args)
+        if(!status().getBoolean("rootlessReady"))throw IOException(
+            "Esta operación requiere privilegios ADB/Shizuku. El puente normal no puede concederlos ni acceder a datos privados de otras apps.")
         if(command=="screenshot") {
             val file=FileAgent(context,true,false).resolveUploadTarget(args.getString("value"))
             if(file.parentFile?.isDirectory!=true)throw IOException("La carpeta de captura no existe")

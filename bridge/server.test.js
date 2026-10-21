@@ -79,4 +79,20 @@ test("MCP bridge authenticates device and relays one file operation", async (t) 
   const denied=await remote;
   assert.equal(denied.result.isError,true);
   assert.match(denied.result.content[0].text,/no están autorizadas/);
+  const installing=mcp("tools/call",51,{name:"debug_run",arguments:{action:"install",value:"/storage/emulated/0/Download/review.apk"}});
+  let installJob;
+  for(let i=0;i<30;i++) {
+    installJob=await (await fetch(base+"/device/next",{headers:deviceHeaders})).json();
+    if(installJob.id) break;
+    await sleep(25);
+  }
+  assert.equal(installJob.action,"debug_run");
+  assert.equal(installJob.args.action,"install");
+  const queued={executor:"android_user_interface",status:"requires_user_action",completed:false,requiresUserAction:true,exitCode:null,requestId:"a".repeat(32)};
+  await fetch(base+"/device/result",{method:"POST",headers:{...deviceHeaders,"Content-Type":"application/json"},
+    body:JSON.stringify({id:installJob.id,ok:true,data:queued})});
+  const submitted=await installing;
+  assert.equal(submitted.result.isError,false);
+  const reply=JSON.parse(submitted.result.content[0].text);
+  assert.deepEqual(reply.data,queued,"Relay must preserve pending status, never report a completed installation");
 });

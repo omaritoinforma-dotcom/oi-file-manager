@@ -74,6 +74,15 @@
             android:exported="true"
             android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
         <activity android:name=".RootlessDebugActivity" android:exported="false" />
+        <activity android:name=".UserActionActivity" android:exported="false" />
+        <provider
+            android:name=".data.InstallFileProvider"
+            android:authorities="${applicationId}.installer"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/install_paths" />
+        </provider>
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"
