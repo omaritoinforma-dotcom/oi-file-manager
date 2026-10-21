@@ -91,7 +91,19 @@ with tempfile.TemporaryDirectory() as temp:
         assert req(url + "?action=status", authorized)[0] == 200
         assert req(url + "?action=list&path=/", authorized)[0] == 200
         assert req(url + "?action=login", method="POST", payload={"password":"unused"})[0] == 503
-        print("OI Cloud: auth, list, traversal, symlink, write, delete, MCP, Android without web password: PASS")
+        # A separate mount setting must preserve the credentials in config.php.
+        original_config = (private / "config.php").read_text()
+        (private / "cloud-root.php").write_text("<?php return ['cloud_root'=>'" + str(root) + "'];", encoding="utf-8")
+        assert req(url + "?action=list&path=/", authorized)[0] == 200
+        assert (private / "config.php").read_text() == original_config
+        (root / "private").mkdir()
+        (root / "private" / "credential.txt").write_text("test-only")
+        (root / ".oi_private_key.php").write_text("test-only")
+        code, listing = req(url + "?action=list&path=/", authorized)
+        assert code == 200 and not any(x["name"] in ("private", ".oi_private_key.php") for x in listing["items"])
+        assert req(url + "?action=download&path=/private/credential.txt", authorized)[0] == 403
+        assert req(url + "?action=rename", authorized, "POST", {"path":"/private","destination":"/moved"})[0] == 403
+        print("OI Cloud: auth, Android, separate mount and service-private protection: PASS")
     finally:
         proc.terminate()
         try:
