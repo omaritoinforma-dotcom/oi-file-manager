@@ -155,6 +155,12 @@ class FileAgent(private val context: Context, private val changes: Boolean, priv
     private fun requireChanges() {
         if (!changes) throw IOException("Activa operaciones de escritura en Ajustes > Conector")
     }
+    internal fun resolveReadTarget(path: String): File {
+        if (!Perms.hasStorage(context)) throw IOException("Permiso de archivos revocado")
+        return file(path).also {
+            if (!it.isFile || !it.canRead()) throw IOException("Archivo no accesible")
+        }
+    }
     internal fun resolveUploadTarget(path: String): File {
         if (!Perms.hasStorage(context)) throw IOException("Permiso de archivos revocado")
         requireChanges()

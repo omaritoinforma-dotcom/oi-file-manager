@@ -426,7 +426,7 @@
   },
   {
     "name": "debug_status",
-    "description": "Check Shizuku readiness, Android shell UID and owner-enabled remote debugging. No root is used.",
+    "description": "Check ADB/Shizuku readiness, owner-enabled remote debugging and withoutShizuku capabilities of the installed Android agent. rootlessReady describes the ADB route only.",
     "inputSchema": {
       "type": "object",
       "properties": {},
@@ -464,7 +464,7 @@
   },
   {
     "name": "debug_run",
-    "description": "Run a structured Android debugging action through owner-authorized Shizuku in ADB mode (UID 2000 only). No root or arbitrary shell. Changes require file-change permission; clear_data and uninstall also require permanent-delete permission. Screenshot needs a new absolute shared-storage path in value; read it with read_file_chunk. Output bounded to 64 KiB and execution to 12 seconds. Read-only system_list/system_stat inspect shell-visible paths; system_read permits bounded 32 KiB public system configuration only, not app-private data.",
+    "description": "Run a structured action through the owner-enabled Android agent. New agents support public API metadata without Shizuku: package includes public signing fingerprints and permission state; memory/process/activity details are own-app only. install and uninstall queue a visible request requiring Android user confirmation: requires_user_action and completed:false never mean installed/uninstalled. Respect withoutShizuku capabilities from debug_status; older agents still require Shizuku. Changes require file-change permission; clear_data/uninstall also require permanent-delete permission. Advanced actions require authorized Shizuku ADB UID 2000, never root or arbitrary shell. Shell output is bounded to 64 KiB/12 seconds. Public system reads remain restricted; no app-private data.",
     "inputSchema": {
       "type": "object",
       "properties": {

@@ -1,0 +1,14 @@
+{
+  "local_jvm_tests": 15,
+  "local_jvm_result": "PASS",
+  "node_relay_test": "PASS; pending confirmation state preserved",
+  "catalog_alignment": "PASS; all 25 Android tools match PHP catalog",
+  "android_api33_instrumentation_tests_prepared": 6,
+  "android_instrumentation_executed": false,
+  "full_apk_build": "BLOCKED before Kotlin compilation: existing dev.rikka.shizuku api/provider 13.1.5 missing from restored offline cache",
+  "remote_branch_publication": "BLOCKED by automatic approval review; no matching remote branch found on read-only verification",
+  "device_updated": false,
+  "base_branch": "codex/fix-ionos-android-20261021",
+  "feature_branch": "codex/android-actions-without-shizuku-20261021",
+  "scope": "Public Android diagnostics and installation/uninstallation requests requiring Android confirmation; no Shizuku privilege replacement"
+}

@@ -25,7 +25,7 @@ jobs:
           OI_ARCHIVE_TEST_EXECUTABLE: ${{ github.workspace }}/build/native-archives/--host/7zz
         run: |
           chmod +x gradlew
-          ./gradlew testDebugUnitTest assembleRelease lintDebug --stacktrace
+          ./gradlew testDebugUnitTest assembleRelease assembleDebug assembleDebugAndroidTest lintDebug --stacktrace
       - name: Guardar informes de pruebas
         if: always()
         uses: actions/upload-artifact@v4
@@ -41,6 +41,43 @@ jobs:
         with:
           name: OI-Archivos-apk
           path: OI-Archivos-*.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OI-Archivos-rootless-test-apks
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          if-no-files-found: error
+  without-shizuku:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: OI-Archivos-rootless-test-apks
+          path: rootless-apks
+      - name: Permitir aceleración del emulador
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Comprobar API y confirmaciones sin Shizuku en Android 13
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: python3 scripts/test_without_shizuku.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: OI-Archivos-rootless-Android13
+          path: rootless-test-output/
   smoke:
     needs: build
     runs-on: ubuntu-latest
@@ -78,7 +115,7 @@ jobs:
           path: smoke-output/
           if-no-files-found: ignore
   release:
-    needs: [build, smoke]
+    needs: [build, smoke, without-shizuku]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
